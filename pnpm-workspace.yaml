@@ -1,0 +1,22 @@
+# Flat node_modules so electron-builder can collect native modules.
+nodeLinker: hoisted
+
+# Packages allowed to run install scripts (native prebuilds and the Electron binary).
+allowBuilds:
+  electron: true
+  better-sqlite3: true
+  koffi: true
+  uiohook-napi: true
+  onnxruntime-node: true
+  esbuild: true
+  electron-winstaller: false
+
+minimumReleaseAgeExclude:
+  - '@transcribe-cpp/darwin-arm64-metal@0.3.0'
+  - '@transcribe-cpp/darwin-x64-cpu@0.3.0'
+  - '@transcribe-cpp/linux-arm64-cpu-vulkan@0.3.0'
+  - '@transcribe-cpp/linux-x64-cpu-vulkan@0.3.0'
+  - '@transcribe-cpp/win32-x64-cpu-vulkan@0.3.0'
+  - eslint@10.12.0
+  - lucide-react@1.51.0
+  - transcribe-cpp@0.3.0

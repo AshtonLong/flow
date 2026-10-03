@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'"
+    />
+    <title>Flow overlay</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="stage" data-phase="hidden" data-style="pill" data-size="medium">
+      <div id="pill" role="status" aria-live="polite">
+        <span id="glyph" aria-hidden="true"></span>
+        <canvas id="wave" width="120" height="28" aria-hidden="true"></canvas>
+        <span id="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span id="message"></span>
+        <span id="badges" aria-hidden="true">
+          <svg id="lock" viewBox="0 0 16 16" width="13" height="13">
+            <path
+              d="M4.5 7V5a3.5 3.5 0 1 1 7 0v2h.5A1.5 1.5 0 0 1 13.5 8.5v4A1.5 1.5 0 0 1 12 14H4a1.5 1.5 0 0 1-1.5-1.5v-4A1.5 1.5 0 0 1 4 7h.5Zm1.5 0h4V5a2 2 0 1 0-4 0v2Z"
+              fill="currentColor"
+            />
+          </svg>
+          <svg id="cloud" viewBox="0 0 16 16" width="14" height="14">
+            <path
+              d="M4.6 13A3.6 3.6 0 0 1 4 5.85 4.4 4.4 0 0 1 12.4 6.6 3.2 3.2 0 0 1 11.9 13H4.6Z"
+              fill="currentColor"
+            />
+          </svg>
+          <span id="queued"></span>
+        </span>
+      </div>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

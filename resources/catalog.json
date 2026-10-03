@@ -1,0 +1,336 @@
+{
+  "version": 1,
+  "asOf": "2026-10-03",
+  "providers": [
+    {
+      "id": "groq",
+      "name": "Groq",
+      "api": "openai",
+      "baseUrl": "https://api.groq.com/openai/v1",
+      "keyUrl": "https://console.groq.com/keys"
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "api": "openai",
+      "baseUrl": "https://api.openai.com/v1",
+      "keyUrl": "https://platform.openai.com/api-keys"
+    },
+    {
+      "id": "mistral",
+      "name": "Mistral",
+      "api": "mistral",
+      "baseUrl": "https://api.mistral.ai/v1",
+      "keyUrl": "https://console.mistral.ai/api-keys"
+    },
+    {
+      "id": "elevenlabs",
+      "name": "ElevenLabs",
+      "api": "elevenlabs",
+      "baseUrl": "https://api.elevenlabs.io/v1",
+      "keyUrl": "https://elevenlabs.io/app/settings/api-keys"
+    },
+    {
+      "id": "deepgram",
+      "name": "Deepgram",
+      "api": "deepgram",
+      "baseUrl": "https://api.deepgram.com/v1",
+      "keyUrl": "https://console.deepgram.com/"
+    },
+    {
+      "id": "anthropic",
+      "name": "Anthropic",
+      "api": "anthropic",
+      "baseUrl": "https://api.anthropic.com/v1",
+      "keyUrl": "https://console.anthropic.com/settings/keys"
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama (local)",
+      "api": "openai",
+      "baseUrl": "http://localhost:11434/v1",
+      "keyless": true
+    },
+    {
+      "id": "lmstudio",
+      "name": "LM Studio (local)",
+      "api": "openai",
+      "baseUrl": "http://localhost:1234/v1",
+      "keyless": true
+    }
+  ],
+  "local": [
+    {
+      "kind": "local",
+      "id": "parakeet-tdt-0.6b-v2",
+      "name": "Parakeet TDT 0.6B v2",
+      "family": "parakeet",
+      "description": "Best English accuracy and speed with no GPU needed",
+      "url": "https://huggingface.co/handy-computer/parakeet-tdt-0.6b-v2-gguf/resolve/main/parakeet-tdt-0.6b-v2-Q4_K_M.gguf",
+      "file": "parakeet-tdt-0.6b-v2-Q4_K_M.gguf",
+      "sha256": "4853f9653f641d376e6f7de65d73c7a34a73677704a606727bf51acc83f999f3",
+      "sizeBytes": 475491840,
+      "languages": ["en"],
+      "licence": "CC-BY-4.0",
+      "licenceUrl": "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2",
+      "runsOn": "cpu",
+      "tier": "core",
+      "wer": 6.05,
+      "note": "The default model. Made by NVIDIA."
+    },
+    {
+      "kind": "local",
+      "id": "whisper-large-v3-turbo",
+      "name": "Whisper large-v3-turbo",
+      "family": "whisper",
+      "description": "An alternative when Parakeet mishears a voice or microphone",
+      "url": "https://huggingface.co/handy-computer/whisper-large-v3-turbo-gguf/resolve/main/whisper-large-v3-turbo-F16.gguf",
+      "file": "whisper-large-v3-turbo-F16.gguf",
+      "sha256": "e1d0144e9afc9f479d9e51fc92c7dea9dc36059655eeb3819f16ad2de779046a",
+      "sizeBytes": 1625935520,
+      "languages": ["en"],
+      "licence": "MIT",
+      "licenceUrl": "https://huggingface.co/openai/whisper-large-v3-turbo",
+      "runsOn": "gpu",
+      "tier": "core",
+      "wer": 7.75
+    },
+    {
+      "kind": "local",
+      "id": "whisper-small-en",
+      "name": "Whisper Small",
+      "family": "whisper",
+      "description": "A lighter Whisper for a modest GPU",
+      "url": "https://huggingface.co/handy-computer/whisper-small.en-gguf/resolve/main/whisper-small.en-F16.gguf",
+      "file": "whisper-small.en-F16.gguf",
+      "sha256": "59eade60e072bd289c9ff39313ef14b565691bfe373275ea904ecea497e47c8a",
+      "sizeBytes": 492810784,
+      "languages": ["en"],
+      "licence": "MIT",
+      "licenceUrl": "https://huggingface.co/openai/whisper-small.en",
+      "runsOn": "gpu",
+      "tier": "core"
+    },
+    {
+      "kind": "local",
+      "id": "moonshine-v2-medium",
+      "name": "Moonshine v2 Medium",
+      "family": "moonshine",
+      "description": "Older or low-power PCs",
+      "url": "https://huggingface.co/handy-computer/moonshine-streaming-medium-gguf/resolve/main/moonshine-streaming-medium-Q8_0.gguf",
+      "file": "moonshine-streaming-medium-Q8_0.gguf",
+      "sha256": "f7c9564249b508f6012927ec4f9e536087da53a7047f858ca9975bea5f75299e",
+      "sizeBytes": 295793568,
+      "languages": ["en"],
+      "licence": "MIT",
+      "licenceUrl": "https://huggingface.co/UsefulSensors/moonshine",
+      "runsOn": "cpu",
+      "tier": "core"
+    },
+    {
+      "kind": "local",
+      "id": "moonshine-v2-tiny",
+      "name": "Moonshine v2 Tiny",
+      "family": "moonshine",
+      "description": "Smallest footprint",
+      "url": "https://huggingface.co/handy-computer/moonshine-streaming-tiny-gguf/resolve/main/moonshine-streaming-tiny-Q8_0.gguf",
+      "file": "moonshine-streaming-tiny-Q8_0.gguf",
+      "sha256": "930e4622ad3a24158b91406c30c977fa6a26b34cb32d6ac3e57cfb23383a869e",
+      "sizeBytes": 50462816,
+      "languages": ["en"],
+      "licence": "MIT",
+      "licenceUrl": "https://huggingface.co/UsefulSensors/moonshine",
+      "runsOn": "cpu",
+      "tier": "core"
+    },
+    {
+      "kind": "local",
+      "id": "granite-speech-4.1-2b",
+      "name": "IBM Granite Speech 4.1 2B",
+      "family": "granite",
+      "description": "Lowest word error rate in the catalog; needs a GPU",
+      "url": "https://huggingface.co/handy-computer/granite-speech-4.1-2b-gguf/resolve/main/granite-speech-4.1-2b-Q4_K_M.gguf",
+      "file": "granite-speech-4.1-2b-Q4_K_M.gguf",
+      "sha256": "a7e92314cdff11a095024a3fc35ad3fffd637455b3f6764ffa54d7411d653d3c",
+      "sizeBytes": 1602904896,
+      "languages": ["en"],
+      "licence": "Apache-2.0",
+      "licenceUrl": "https://huggingface.co/ibm-granite/granite-speech-4.1-2b",
+      "runsOn": "gpu",
+      "tier": "accuracy",
+      "wer": 5.33,
+      "note": "Supports keyword biasing, which suits the dictionary."
+    },
+    {
+      "kind": "local",
+      "id": "cohere-transcribe",
+      "name": "Cohere Transcribe",
+      "family": "cohere",
+      "description": "Near-top accuracy under an Apache 2.0 licence; needs a GPU",
+      "url": "https://huggingface.co/handy-computer/cohere-transcribe-03-2026-gguf/resolve/main/cohere-transcribe-03-2026-Q4_K_M.gguf",
+      "file": "cohere-transcribe-03-2026-Q4_K_M.gguf",
+      "sha256": "0ea56826d8bd5d74b7143a4a04e022dc1bb75452cfae49d98b6acb0c1d16a1fb",
+      "sizeBytes": 1558162944,
+      "languages": ["en"],
+      "licence": "Apache-2.0",
+      "licenceUrl": "https://huggingface.co/CohereLabs/cohere-transcribe-03-2026",
+      "runsOn": "gpu",
+      "tier": "accuracy",
+      "wer": 5.42
+    },
+    {
+      "kind": "local",
+      "id": "canary-qwen-2.5b",
+      "name": "NVIDIA Canary-Qwen 2.5B",
+      "family": "canary-qwen",
+      "description": "High accuracy from an English-only model; needs a GPU",
+      "url": "https://huggingface.co/handy-computer/canary-qwen-2.5b-gguf/resolve/main/canary-qwen-2.5b-Q4_K_M.gguf",
+      "file": "canary-qwen-2.5b-Q4_K_M.gguf",
+      "sha256": "db5162229d6fa22597d06a613bd9b543eddb3ee02e6afc5e759120fde02bebf7",
+      "sizeBytes": 1737575808,
+      "languages": ["en"],
+      "licence": "CC-BY-4.0",
+      "licenceUrl": "https://huggingface.co/nvidia/canary-qwen-2.5b",
+      "runsOn": "gpu",
+      "tier": "accuracy",
+      "wer": 5.63,
+      "note": "English only. Made by NVIDIA."
+    }
+  ],
+  "cloud": [
+    {
+      "kind": "cloud",
+      "id": "groq/whisper-large-v3-turbo",
+      "provider": "groq",
+      "model": "whisper-large-v3-turbo",
+      "name": "Whisper large-v3-turbo",
+      "description": "Lowest price; runs at 216x real time",
+      "pricePerHour": 0.04,
+      "recommended": true,
+      "hints": true,
+      "minBilledSeconds": 10,
+      "docsUrl": "https://console.groq.com/docs/speech-to-text"
+    },
+    {
+      "kind": "cloud",
+      "id": "groq/whisper-large-v3",
+      "provider": "groq",
+      "model": "whisper-large-v3",
+      "name": "Whisper large-v3",
+      "description": "Full-size Whisper; also translates to English",
+      "pricePerHour": 0.111,
+      "hints": true,
+      "minBilledSeconds": 10,
+      "docsUrl": "https://console.groq.com/docs/speech-to-text"
+    },
+    {
+      "kind": "cloud",
+      "id": "mistral/voxtral-mini-latest",
+      "provider": "mistral",
+      "model": "voxtral-mini-latest",
+      "name": "Voxtral Mini Transcribe 2",
+      "description": "Low-cost alternative to Whisper",
+      "pricePerHour": 0.18,
+      "hints": true,
+      "docsUrl": "https://mistral.ai/pricing/api"
+    },
+    {
+      "kind": "cloud",
+      "id": "openai/gpt-4o-mini-transcribe",
+      "provider": "openai",
+      "model": "gpt-4o-mini-transcribe",
+      "name": "gpt-4o-mini-transcribe",
+      "description": "Lowest-cost option on an existing OpenAI key",
+      "pricePerHour": 0.18,
+      "hints": true,
+      "docsUrl": "https://developers.openai.com/api/docs/pricing"
+    },
+    {
+      "kind": "cloud",
+      "id": "elevenlabs/scribe_v2",
+      "provider": "elevenlabs",
+      "model": "scribe_v2",
+      "name": "Scribe v2",
+      "description": "Names and jargon, with keyterm prompting for $0.05 more",
+      "pricePerHour": 0.22,
+      "hints": true,
+      "docsUrl": "https://elevenlabs.io/pricing/api"
+    },
+    {
+      "kind": "cloud",
+      "id": "deepgram/nova-3",
+      "provider": "deepgram",
+      "model": "nova-3",
+      "name": "Nova-3",
+      "description": "$200 starting credit, about 775 hours",
+      "pricePerHour": 0.26,
+      "hints": true,
+      "docsUrl": "https://deepgram.com/pricing"
+    },
+    {
+      "kind": "cloud",
+      "id": "openai/gpt-transcribe",
+      "provider": "openai",
+      "model": "gpt-transcribe",
+      "name": "gpt-transcribe",
+      "description": "OpenAI's mid-priced model",
+      "pricePerHour": 0.27,
+      "hints": true,
+      "docsUrl": "https://developers.openai.com/api/docs/pricing"
+    },
+    {
+      "kind": "cloud",
+      "id": "openai/gpt-4o-transcribe",
+      "provider": "openai",
+      "model": "gpt-4o-transcribe",
+      "name": "gpt-4o-transcribe",
+      "description": "OpenAI's highest-priced batch model",
+      "pricePerHour": 0.36,
+      "hints": true,
+      "docsUrl": "https://developers.openai.com/api/docs/pricing"
+    }
+  ],
+  "cleanup": [
+    {
+      "kind": "cleanup",
+      "id": "groq/openai/gpt-oss-20b",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "name": "gpt-oss-20b",
+      "description": "Speed: about 1,000 tokens a second",
+      "priceIn": 0.075,
+      "priceOut": 0.3,
+      "recommended": true
+    },
+    {
+      "kind": "cleanup",
+      "id": "openai/gpt-5-nano",
+      "provider": "openai",
+      "model": "gpt-5-nano",
+      "name": "gpt-5-nano",
+      "description": "Lowest input price",
+      "priceIn": 0.05,
+      "priceOut": 0.4
+    },
+    {
+      "kind": "cleanup",
+      "id": "mistral/ministral-3b-2512",
+      "provider": "mistral",
+      "model": "ministral-3b-2512",
+      "name": "Ministral 3 3B",
+      "description": "Lowest output price",
+      "priceIn": 0.1,
+      "priceOut": 0.1
+    },
+    {
+      "kind": "cleanup",
+      "id": "anthropic/claude-haiku-4-5",
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5",
+      "name": "Claude Haiku 4.5",
+      "description": "Best writing quality for heavier rewrites",
+      "priceIn": 1,
+      "priceOut": 5
+    }
+  ]
+}
