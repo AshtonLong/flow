@@ -191,6 +191,7 @@ Flow is MIT-licensed; see [LICENSE](LICENSE). It builds on:
 | [uiohook-napi](https://github.com/SnosMe/uiohook-napi)             | MIT     | Global key and mouse hook                             |
 | [koffi](https://koffi.dev/)                                        | MIT     | Win32 calls                                           |
 | [better-sqlite3](https://github.com/WiseLibs/better-sqlite3)       | MIT     | History store                                         |
+| [Recursive](https://www.recursive.design/)                         | OFL-1.1 | Typeface for the settings window and the overlay      |
 
 Speech models are downloaded separately and keep their own licences, shown in the catalog:
 

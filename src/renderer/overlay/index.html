@@ -11,26 +11,24 @@
   </head>
   <body>
     <div id="stage" data-phase="hidden" data-style="pill" data-size="medium">
+      <!-- The same pill the marketing site shows: cloud, wave or dots or mark, then a label. -->
       <div id="pill" role="status" aria-live="polite">
-        <span id="glyph" aria-hidden="true"></span>
-        <canvas id="wave" width="120" height="28" aria-hidden="true"></canvas>
+        <svg id="cloud" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 18a4 4 0 0 1-.6-7.96A5.5 5.5 0 0 1 17 9.5a4.25 4.25 0 0 1 .25 8.5z" />
+        </svg>
+        <canvas id="wave" width="69" height="21" aria-hidden="true"></canvas>
         <span id="dots" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span id="message"></span>
-        <span id="badges" aria-hidden="true">
-          <svg id="lock" viewBox="0 0 16 16" width="13" height="13">
-            <path
-              d="M4.5 7V5a3.5 3.5 0 1 1 7 0v2h.5A1.5 1.5 0 0 1 13.5 8.5v4A1.5 1.5 0 0 1 12 14H4a1.5 1.5 0 0 1-1.5-1.5v-4A1.5 1.5 0 0 1 4 7h.5Zm1.5 0h4V5a2 2 0 1 0-4 0v2Z"
-              fill="currentColor"
-            />
-          </svg>
-          <svg id="cloud" viewBox="0 0 16 16" width="14" height="14">
-            <path
-              d="M4.6 13A3.6 3.6 0 0 1 4 5.85 4.4 4.4 0 0 1 12.4 6.6 3.2 3.2 0 0 1 11.9 13H4.6Z"
-              fill="currentColor"
-            />
-          </svg>
-          <span id="queued"></span>
-        </span>
+        <svg id="ok" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 12.5l4.5 4.5L19 7.5" />
+        </svg>
+        <svg id="bang" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 6v7M12 17.5v.5" />
+        </svg>
+        <span id="label"></span>
+        <svg id="lock" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z" />
+        </svg>
+        <span id="queued" aria-hidden="true"></span>
       </div>
     </div>
     <script type="module" src="./main.ts"></script>

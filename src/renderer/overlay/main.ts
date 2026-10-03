@@ -10,7 +10,7 @@ const api = window.flowOverlay;
 const root = document.documentElement;
 const stage = document.getElementById('stage') as HTMLDivElement;
 const wave = document.getElementById('wave') as HTMLCanvasElement;
-const message = document.getElementById('message') as HTMLSpanElement;
+const label = document.getElementById('label') as HTMLSpanElement;
 const lock = document.getElementById('lock') as unknown as SVGElement;
 const cloud = document.getElementById('cloud') as unknown as SVGElement;
 const queued = document.getElementById('queued') as HTMLSpanElement;
@@ -114,7 +114,7 @@ navigator.mediaDevices.addEventListener('devicechange', () => {
 
 // ── Waveform ───────────────────────────────────────────────────────────────
 
-const BARS = 22;
+const BARS = 13;
 const levels = new Float32Array(BARS);
 let raf = 0;
 
@@ -150,13 +150,14 @@ function drawWave(): void {
     }
   }
 
-  const gap = 2;
+  // Thirteen bars, 3 px wide with a 2.5 px gap, in the voice colour: the site's pill.
+  const gap = (width / 69) * 2.5;
   const barWidth = (width - gap * (BARS - 1)) / BARS;
-  ctx.fillStyle = getComputedStyle(root).getPropertyValue('--accent').trim() || '#4f8cff';
+  ctx.fillStyle = getComputedStyle(root).getPropertyValue('--voice').trim() || '#ff5a1f';
   for (let i = 0; i < BARS; i++) {
     // Mirror around the centre so the shape reads as a voice, not a spectrum.
     const mirrored = levels[Math.abs(i - (BARS - 1) / 2) | 0]!;
-    const h = Math.max(2, mirrored * height);
+    const h = Math.max(height * 0.14, mirrored * height);
     const x = i * (barWidth + gap);
     ctx.beginPath();
     ctx.roundRect(x, (height - h) / 2, barWidth, h, barWidth / 2);
@@ -198,11 +199,22 @@ function playTransition(previous: OverlayPhase, next: OverlayPhase): void {
 
 // ── State ──────────────────────────────────────────────────────────────────
 
+/** What the pill says in each state when main sends no message of its own. */
+const LABELS: Record<OverlayPhase, string> = {
+  hidden: '',
+  listening: 'Listening',
+  transcribing: 'Transcribing',
+  done: 'Typed',
+  error: '',
+  notice: '',
+};
+
 function applyState(state: OverlayState): void {
   const previous = phase;
   phase = state.phase;
   stage.dataset.phase = state.phase;
-  message.textContent = state.message ?? '';
+  // While fading out, keep the last words so the pill does not collapse first.
+  if (state.phase !== 'hidden') label.textContent = state.message ?? LABELS[state.phase];
   lock.toggleAttribute('hidden', !(state.phase === 'listening' && state.locked));
   cloud.toggleAttribute('hidden', !state.cloud);
   const waiting = state.queued ?? 0;
@@ -214,31 +226,14 @@ function applyState(state: OverlayState): void {
   if (phase !== 'listening') levels.fill(0);
 }
 
-/** Mixes a `#rrggbb` colour toward white by `amount` (0..1). */
-function lighten(hex: string, amount: number): string {
-  const match = /^#?([0-9a-f]{6})$/i.exec(hex);
-  if (!match) return hex;
-  const value = parseInt(match[1]!, 16);
-  const mix = (channel: number) => Math.round(channel + (255 - channel) * amount);
-  const r = mix((value >> 16) & 0xff);
-  const g = mix((value >> 8) & 0xff);
-  const b = mix(value & 0xff);
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
-}
-
 function applyAppearance(next: OverlayAppearance): void {
   appearance = next;
   stage.dataset.style = next.style;
   stage.dataset.size = next.size;
   stage.dataset.waveform = String(next.showWaveform);
-  root.dataset.theme = next.theme.dark ? 'dark' : 'light';
+  // The pill is black in both themes, as on the site; only contrast and motion follow Windows.
   root.dataset.contrast = next.theme.highContrast ? 'high' : 'normal';
   root.dataset.motion = next.theme.reducedMotion ? 'reduced' : 'full';
-  // On the dark pill a saturated accent is hard to see, so lift it toward white.
-  root.style.setProperty(
-    '--accent',
-    next.theme.dark ? lighten(next.theme.accent, 0.45) : next.theme.accent,
-  );
 }
 
 api.onState(applyState);

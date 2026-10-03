@@ -32,7 +32,10 @@ export function useSystemTheme(): ThemeInfo {
   return theme;
 }
 
-/** Sets `data-theme`, `data-contrast`, `data-motion` and `--accent` on the root element. */
+/**
+ * Sets `data-theme`, `data-contrast` and `data-motion` on the root element. The colours are Flow's
+ * own (see `common/brand.css`), so the Windows accent colour is not applied.
+ */
 export function useApplyTheme(system: ThemeInfo, override: 'system' | 'light' | 'dark'): void {
   const dark = override === 'system' ? system.dark : override === 'dark';
   useEffect(() => {
@@ -42,7 +45,5 @@ export function useApplyTheme(system: ThemeInfo, override: 'system' | 'light' | 
     else delete root.dataset.contrast;
     if (system.reducedMotion) root.dataset.motion = 'reduced';
     else delete root.dataset.motion;
-    if (/^#[0-9a-f]{6}$/i.test(system.accent)) root.style.setProperty('--accent', system.accent);
-    else root.style.removeProperty('--accent');
-  }, [dark, system.highContrast, system.reducedMotion, system.accent]);
+  }, [dark, system.highContrast, system.reducedMotion]);
 }

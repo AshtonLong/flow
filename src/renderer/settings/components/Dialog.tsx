@@ -26,7 +26,7 @@ export function ConfirmDialog({
         <AlertDialog.Overlay className="dialog-smoke" />
         <AlertDialog.Content className="dialog">
           <div className="px-6 pt-6 pb-5">
-            <AlertDialog.Title className="font-display text-subtitle font-semibold">
+            <AlertDialog.Title className="font-display text-subtitle font-[760]">
               {title}
             </AlertDialog.Title>
             <AlertDialog.Description className="mt-2 text-fg-2">
@@ -80,9 +80,7 @@ export function Modal({
         >
           <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-3">
             <div>
-              <Dialog.Title className="font-display text-subtitle font-semibold">
-                {title}
-              </Dialog.Title>
+              <Dialog.Title className="font-display text-subtitle font-[760]">{title}</Dialog.Title>
               <Dialog.Description
                 className={description ? 'mt-0.5 text-caption text-fg-2' : 'sr-only'}
               >

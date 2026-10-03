@@ -1,0 +1,96 @@
+/*
+ * Flow's brand, shared by the settings window and the overlay. The values
+ * mirror the marketing site (Marketing-site/src/styles/base.css): keep the two
+ * in step when either changes.
+ */
+
+@font-face {
+  font-family: 'Recursive Variable';
+  font-style: oblique 0deg 15deg;
+  font-display: block;
+  font-weight: 300 1000;
+  src: url('@fontsource-variable/recursive/files/recursive-latin-full-normal.woff2')
+    format('woff2-variations');
+}
+
+/* Recursive's axes, registered so they inherit and one can change without restating the rest. */
+@property --mono {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+@property --casl {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+@property --slnt {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+@property --crsv {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0.5;
+}
+
+:root {
+  --brand-font:
+    'Recursive Variable', ui-sans-serif, system-ui, 'Segoe UI Variable Text', 'Segoe UI', sans-serif;
+
+  --paper: #e9ecf0;
+  --surface: #ffffff;
+  --ink: #000000;
+  --ink-2: #3b3f45;
+  --ink-3: #5b6068;
+  /* Live microphone. A fill only: never a text colour. */
+  --voice: #ff5a1f;
+  /* Audio leaving the PC. */
+  --cloud: #1f5eff;
+  --brand-ok: #37d67a;
+  --brand-err: #ff6b5e;
+  /* The side wall of a keycap. */
+  --wall: #b7bec8;
+}
+
+*,
+*::before,
+*::after {
+  /* Re-declared on every element so a change to one axis variable takes effect where it is set. */
+  font-variation-settings:
+    'MONO' var(--mono),
+    'CASL' var(--casl),
+    'slnt' var(--slnt),
+    'CRSV' var(--crsv);
+}
+
+code,
+pre,
+kbd,
+.font-mono {
+  font-family: var(--brand-font);
+  --mono: 1;
+}
+
+/* The mark: the word as spoken, then the cursor that types it. */
+.logo {
+  --casl: 1;
+  --slnt: -12;
+  --crsv: 1;
+  display: inline-flex;
+  align-items: baseline;
+  font-family: var(--brand-font);
+  font-weight: 880;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.logo-caret {
+  display: inline-block;
+  width: 0.11em;
+  min-width: 2px;
+  height: 0.78em;
+  margin-left: 0.09em;
+  background: currentColor;
+  vertical-align: -0.04em;
+}
