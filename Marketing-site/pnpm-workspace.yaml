@@ -1,0 +1,6 @@
+# The site is its own project: it installs and builds apart from the Electron app in the parent folder.
+packages:
+  - '.'
+
+allowBuilds:
+  esbuild: true
