@@ -46,6 +46,18 @@ jobs:
       # Type-checks, then bundles into out/.
       - run: pnpm build
 
+      # electron-builder uploads its files in parallel, and each upload creates the draft when it
+      # finds none, which left v0.1.0 with two drafts. Creating the draft first removes the race.
+      - name: Create the draft release
+        shell: pwsh
+        run: |
+          gh release view $env:GITHUB_REF_NAME 2>$null | Out-Null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $env:GITHUB_REF_NAME --draft --title ($env:GITHUB_REF_NAME -replace '^v', '')
+          }
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       # Signs when the certificate secrets exist; builds unsigned when they are empty.
       - name: Package and upload to a draft release
         run: pnpm exec electron-builder --win --publish always
