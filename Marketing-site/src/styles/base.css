@@ -1,0 +1,922 @@
+/* Tokens, type and the parts every section shares: keys, the pill, windows, controls. */
+
+@font-face {
+  font-family: 'Recursive Variable';
+  font-style: oblique 0deg 15deg;
+  font-display: swap;
+  font-weight: 300 1000;
+  src: url('@fontsource-variable/recursive/files/recursive-latin-full-normal.woff2')
+    format('woff2-variations');
+}
+
+/* Recursive's axes, registered so they inherit and can be animated. */
+@property --mono {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+@property --casl {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+@property --slnt {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+@property --crsv {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0.5;
+}
+
+:root {
+  --paper: #e9ecf0;
+  --surface: #fff;
+  --ink: #000;
+  --ink-2: #3b3f45;
+  --ink-3: #5b6068;
+  /* Live microphone. A fill only: never a text colour. */
+  --voice: #ff5a1f;
+  /* Audio leaving the PC. */
+  --cloud: #1f5eff;
+  --ok: #37d67a;
+  --err: #ff6b5e;
+  --line: rgb(0 0 0 / 0.12);
+
+  --font:
+    'Recursive Variable', ui-sans-serif, system-ui, 'Segoe UI Variable Text', 'Segoe UI', sans-serif;
+  --step--1: 0.875rem;
+  --step-0: 1.0625rem;
+  --step-1: 1.25rem;
+  --step-2: 1.5rem;
+  --step-3: clamp(2.2rem, 1rem + 4.4vw, 4.6rem);
+  /* Sized to the narrower of the viewport's width and height, so three lines always fit. */
+  --step-hero: clamp(3.1rem, min(16vw, 16.5svh), 9.5rem);
+
+  --wrap: 76rem;
+  --gut: clamp(1.25rem, 4.5vw, 4rem);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --shadow-win:
+    0 0 0 1px rgb(0 0 0 / 0.07), 0 1.9rem 3.75rem -1.25rem rgb(20 30 50 / 0.3),
+    0 0.5rem 1.1rem -0.5rem rgb(20 30 50 / 0.2);
+  --shadow-sm: 0 0 0 1px rgb(0 0 0 / 0.07), 0 0.4rem 0.9rem -0.4rem rgb(20 30 50 / 0.25);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  /* Re-declared on every element so a change to one axis variable takes effect where it is set. */
+  font-variation-settings:
+    'MONO' var(--mono),
+    'CASL' var(--casl),
+    'slnt' var(--slnt),
+    'CRSV' var(--crsv);
+}
+
+/* Beside the keys the headline has less room across. */
+@media (min-width: 901px) {
+  :root {
+    --step-hero: clamp(3.1rem, min(10.2vw, 16.5svh), 9.5rem);
+  }
+}
+
+html {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 100%;
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  scroll-padding-top: 4.5rem;
+}
+
+/* While the key is held the page is orange, so grey text goes to black to stay readable. */
+html.is-listening {
+  --ink-2: #000;
+  --ink-3: #000;
+}
+
+body {
+  margin: 0;
+  font-size: var(--step-0);
+  line-height: 1.55;
+  font-weight: 420;
+  overflow-x: clip;
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+ol,
+dl,
+dd,
+pre,
+fieldset {
+  margin: 0;
+  padding: 0;
+}
+
+fieldset {
+  border: 0;
+  min-width: 0;
+}
+
+h1,
+h2 {
+  font-weight: 840;
+  letter-spacing: -0.04em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+h2 {
+  font-size: var(--step-3);
+}
+
+h3 {
+  font-size: var(--step-1);
+  font-weight: 720;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+em {
+  font-style: normal;
+}
+
+code,
+pre,
+kbd {
+  font-family: var(--font);
+  --mono: 1;
+}
+
+:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--voice);
+  color: #000;
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 100;
+  padding: 0.6rem 1rem;
+  background: #000;
+  color: #fff;
+  border-radius: 0.5rem;
+  transform: translateY(-200%);
+}
+
+.skip:focus {
+  transform: none;
+}
+
+.wrap {
+  width: 100%;
+  max-width: calc(var(--wrap) + 2 * var(--gut));
+  margin-inline: auto;
+  padding-inline: var(--gut);
+}
+
+.band {
+  padding-block: clamp(5rem, 11vw, 9.5rem);
+}
+
+.band__head {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 54rem;
+  margin-bottom: clamp(2.5rem, 6vw, 4.5rem);
+}
+
+.lead {
+  font-size: var(--step-1);
+  line-height: 1.5;
+  color: var(--ink-2);
+  max-width: 38rem;
+  text-wrap: pretty;
+}
+
+.fine {
+  font-size: var(--step--1);
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+
+.link {
+  font-weight: 620;
+  text-decoration-thickness: 0.09em;
+  text-underline-offset: 0.22em;
+}
+
+.link:hover {
+  text-decoration-thickness: 0.16em;
+}
+
+.tag {
+  display: inline-block;
+  margin-left: 0.35em;
+  padding: 0.1em 0.55em;
+  font-size: 0.75rem;
+  font-weight: 650;
+  border-radius: 99rem;
+  background: #000;
+  color: #fff;
+  vertical-align: 0.12em;
+}
+
+/* The text cursor. It marks where typed text lands. */
+.caret {
+  display: inline-block;
+  width: 0.085em;
+  min-width: 2px;
+  height: 0.86em;
+  margin-left: 0.07em;
+  background: currentColor;
+  vertical-align: -0.08em;
+  animation: blink 1.1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Words of a heading while they land. */
+.lw {
+  display: inline-block;
+  white-space: pre;
+}
+
+/* ---------- The flood: the whole screen turns the voice colour while the key is held ---------- */
+
+.flood {
+  --p: 0;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--voice);
+  clip-path: circle(calc(var(--p) * 125vmax) at 50% calc(100% - 2.9rem));
+  pointer-events: none;
+}
+
+.intro .flood {
+  --p: 1;
+}
+
+/* ---------- Keys ---------- */
+
+.key {
+  --lift: 0.36em;
+  --top: #fff;
+  --wall: #b7bec8;
+  --legend: #000;
+  --shine: rgb(255 255 255 / 0.9);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  margin-bottom: var(--lift);
+  padding: 0.74em 1.2em;
+  border: 0;
+  border-radius: 0.6em;
+  background: linear-gradient(180deg, var(--top), color-mix(in oklab, var(--top) 91%, #000));
+  color: var(--legend);
+  font-weight: 660;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.07),
+    inset 0 0.07em 0 var(--shine),
+    0 var(--lift) 0 var(--wall),
+    0 calc(var(--lift) + 1px) 0 rgb(0 0 0 / 0.25),
+    0 calc(var(--lift) + 0.45em) 0.9em -0.2em rgb(15 25 45 / 0.38);
+  transition:
+    transform 0.13s var(--ease-out),
+    box-shadow 0.13s var(--ease-out);
+}
+
+a.key:hover {
+  transform: translateY(-0.05em);
+}
+
+a.key:active,
+.key.is-down,
+.keys.is-down > .key {
+  transform: translateY(calc(var(--lift) - 0.07em));
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.07),
+    inset 0 0.07em 0 var(--shine),
+    0 0.07em 0 var(--wall),
+    0 calc(0.07em + 1px) 0 rgb(0 0 0 / 0.25),
+    0 0.18em 0.3em -0.08em rgb(15 25 45 / 0.35);
+}
+
+.key--ink {
+  --top: #25282e;
+  --wall: #000;
+  --legend: #fff;
+  --shine: rgb(255 255 255 / 0.2);
+}
+
+.key--paper {
+  --wall: #c9ccd2;
+}
+
+.key--sm {
+  font-size: 0.9375rem;
+  padding: 0.62em 1em;
+}
+
+.key--cta {
+  font-size: 1.125rem;
+  padding: 0.9em 1.4em;
+}
+
+.key--giant {
+  --lift: 0.42em;
+  font-size: clamp(1.25rem, 2.3vw, 2rem);
+  padding: 1em 1.6em;
+  border-radius: 0.55em;
+}
+
+/* A pair of keycaps that works as one press-and-hold button. */
+.keys {
+  display: inline-flex;
+  gap: 0.5em;
+  padding: 0;
+  border: 0;
+  background: none;
+  line-height: 1;
+}
+
+button.keys {
+  cursor: pointer;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+button.keys:focus-visible {
+  outline-offset: 0.6em;
+  border-radius: 0.8em;
+}
+
+.key--cap {
+  width: 4.5em;
+  height: 4.1em;
+  padding: 0.55em 0.65em;
+  align-items: flex-start;
+  justify-content: flex-start;
+  border-radius: 0.72em;
+  font-weight: 620;
+}
+
+.key--cap:first-child {
+  width: 5.7em;
+}
+
+.key--cap svg {
+  width: 1.25em;
+  height: 1.25em;
+}
+
+.keys--xl {
+  font-size: clamp(1.15rem, 2.5vw, 2.15rem);
+}
+
+.keys--md {
+  font-size: 0.875rem;
+}
+
+.keys--sm {
+  font-size: 0.6875rem;
+}
+
+kbd {
+  display: inline-block;
+  padding: 0.05em 0.42em 0.1em;
+  font-size: 0.82em;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #000;
+  background: #fff;
+  border-radius: 0.36em;
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.08),
+    0 0.16em 0 #b7bec8,
+    0 calc(0.16em + 1px) 0 rgb(0 0 0 / 0.2);
+  vertical-align: 0.1em;
+}
+
+/* ---------- Header ---------- */
+
+.top {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.75rem var(--gut) 0.55rem;
+}
+
+.top::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in oklab, var(--paper) 70%, transparent);
+  backdrop-filter: blur(1.1rem) saturate(1.5);
+  -webkit-backdrop-filter: blur(1.1rem) saturate(1.5);
+  border-bottom: 1px solid var(--line);
+  opacity: 0;
+  transition:
+    opacity 0.3s,
+    background-color 0.3s;
+}
+
+.top.is-stuck::before {
+  opacity: 1;
+}
+
+/* During a flood the header takes the voice colour too, so it never sits on it as a pale band. */
+.is-listening .top::before,
+.top.on-voice::before {
+  background: color-mix(in oklab, var(--voice) 78%, transparent);
+  border-bottom-color: transparent;
+}
+
+/* The mark: the word as spoken, then the cursor that types it. */
+.logo {
+  --casl: 1;
+  --slnt: -12;
+  --crsv: 1;
+  display: inline-flex;
+  align-items: baseline;
+  font-size: 1.625rem;
+  font-weight: 880;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.logo .caret {
+  height: 0.78em;
+  width: 0.11em;
+  margin-left: 0.09em;
+  vertical-align: -0.04em;
+  animation: none;
+}
+
+.top__nav {
+  display: flex;
+  gap: clamp(1rem, 2.2vw, 2rem);
+  font-size: 0.9375rem;
+  font-weight: 560;
+}
+
+.top__nav a,
+.top__source {
+  text-decoration: none;
+  padding-block: 0.4rem;
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0 2px no-repeat;
+  transition: background-size 0.3s var(--ease-out);
+}
+
+.top__nav a:hover,
+.top__source:hover {
+  background-size: 100% 2px;
+}
+
+.top__end {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 560;
+}
+
+@media (max-width: 880px) {
+  .top__nav {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .top__source {
+    display: none;
+  }
+}
+
+/* ---------- The pill: Flow's whole day-to-day interface ---------- */
+
+.pill {
+  position: fixed;
+  left: 50%;
+  bottom: max(1.5rem, env(safe-area-inset-bottom));
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  height: 2.75rem;
+  padding: 0 1.05rem;
+  border-radius: 99rem;
+  background: #000;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.14),
+    0 0.9rem 2rem -0.6rem rgb(0 0 0 / 0.5),
+    0 0.15rem 0.4rem rgb(0 0 0 / 0.3);
+}
+
+.pill--inline {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  z-index: auto;
+}
+
+.pill svg {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pill__cloud,
+.pill__wave,
+.pill__dots,
+.pill__ok,
+.pill__bang {
+  display: none;
+}
+
+.pill.is-cloud .pill__cloud {
+  display: block;
+  color: color-mix(in oklab, var(--cloud) 55%, #fff);
+}
+
+.pill[data-state='listening'] .pill__wave,
+.pill[data-state='transcribing'] .pill__dots {
+  display: flex;
+}
+
+.pill[data-state='done'] .pill__ok {
+  display: block;
+  color: var(--ok);
+}
+
+.pill[data-state='error'] .pill__bang {
+  display: block;
+  color: var(--err);
+}
+
+.pill__wave {
+  align-items: center;
+  gap: 2.5px;
+  height: 1.3rem;
+}
+
+.pill__wave i {
+  width: 3px;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--voice);
+  transform: scaleY(0.14);
+}
+
+.pill__dots {
+  align-items: center;
+  gap: 4px;
+}
+
+.pill__dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fff;
+  animation: dot 0.9s ease-in-out infinite;
+}
+
+.pill__dots i:nth-child(2) {
+  animation-delay: 0.12s;
+}
+
+.pill__dots i:nth-child(3) {
+  animation-delay: 0.24s;
+}
+
+@keyframes dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.pill__label:empty {
+  display: none;
+}
+
+.pill[data-style='minimal'] {
+  height: 1.7rem;
+  padding: 0 0.7rem;
+}
+
+.pill[data-style='minimal'] .pill__label {
+  display: none;
+}
+
+.pill[data-style='minimal'] .pill__wave {
+  height: 0.8rem;
+}
+
+/* ---------- Windows ---------- */
+
+.win {
+  background: var(--surface);
+  border-radius: 0.65rem;
+  box-shadow: var(--shadow-win);
+  overflow: hidden;
+}
+
+.win__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 2.25rem;
+  padding-left: 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 520;
+  color: var(--ink-3);
+  background: #f3f4f6;
+  border-bottom: 1px solid rgb(0 0 0 / 0.08);
+}
+
+.win__ctl {
+  display: flex;
+  height: 100%;
+}
+
+.win__ctl i {
+  position: relative;
+  width: 2.5rem;
+}
+
+.win__ctl i::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0.6rem;
+  height: 0.6rem;
+  translate: -50% -50%;
+}
+
+.win__ctl i:nth-child(1)::before {
+  height: 1px;
+  background: currentColor;
+}
+
+.win__ctl i:nth-child(2)::before {
+  border: 1px solid currentColor;
+  border-radius: 1.5px;
+}
+
+.win__ctl i:nth-child(3)::before {
+  background:
+    linear-gradient(
+      45deg,
+      transparent calc(50% - 0.6px),
+      currentColor calc(50% - 0.6px) calc(50% + 0.6px),
+      transparent calc(50% + 0.6px)
+    ),
+    linear-gradient(
+      -45deg,
+      transparent calc(50% - 0.6px),
+      currentColor calc(50% - 0.6px) calc(50% + 0.6px),
+      transparent calc(50% + 0.6px)
+    );
+}
+
+.win__body {
+  padding: 1.1rem 1.25rem 1.4rem;
+}
+
+.app--dark {
+  background: #000;
+  color: #fff;
+}
+
+.app--dark .win__bar {
+  background: #1b1d21;
+  color: rgb(255 255 255 / 0.66);
+  border-bottom-color: rgb(255 255 255 / 0.08);
+}
+
+/* ---------- Config text ---------- */
+
+.toml {
+  font-size: 0.875rem;
+  line-height: 1.75;
+  white-space: pre;
+  overflow-x: auto;
+  tab-size: 2;
+}
+
+/* ---------- Controls ---------- */
+
+.seg {
+  display: inline-flex;
+  padding: 0.25rem;
+  gap: 0.15rem;
+  border-radius: 0.75rem;
+  background: rgb(0 0 0 / 0.08);
+}
+
+.seg input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.seg span {
+  display: block;
+  padding: 0.55rem 1.1rem;
+  border-radius: 0.55rem;
+  font-weight: 620;
+  line-height: 1.1;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.seg input:checked + span {
+  background: #000;
+  color: #fff;
+}
+
+.seg input:focus-visible + span {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.seg--sm {
+  border-radius: 0.6rem;
+}
+
+.seg--sm span {
+  padding: 0.4rem 0.7rem;
+  font-size: 0.875rem;
+  border-radius: 0.42rem;
+}
+
+.switch {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 2.75rem;
+  height: 1.6rem;
+  margin: 0;
+  border-radius: 99rem;
+  background: rgb(0 0 0 / 0.2);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.switch::before {
+  content: '';
+  position: absolute;
+  top: 0.2rem;
+  left: 0.2rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+  transition: transform 0.25s var(--ease-out);
+}
+
+.switch:checked {
+  background: #000;
+}
+
+.switch:checked::before {
+  transform: translateX(1.15rem);
+}
+
+.range {
+  --fill: 50%;
+  appearance: none;
+  width: 100%;
+  height: 1.75rem;
+  margin: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.range::-webkit-slider-runnable-track {
+  height: 0.3rem;
+  border-radius: 99rem;
+  background: linear-gradient(90deg, #000 var(--fill), rgb(0 0 0 / 0.16) var(--fill));
+}
+
+.range::-moz-range-track {
+  height: 0.3rem;
+  border-radius: 99rem;
+  background: linear-gradient(90deg, #000 var(--fill), rgb(0 0 0 / 0.16) var(--fill));
+}
+
+.range::-webkit-slider-thumb {
+  appearance: none;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-top: -0.525rem;
+  border-radius: 0.42rem;
+  background: #fff;
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.1),
+    0 0.16rem 0 #b7bec8,
+    0 0.35rem 0.6rem -0.1rem rgb(15 25 45 / 0.4);
+}
+
+.range::-moz-range-thumb {
+  width: 1.35rem;
+  height: 1.35rem;
+  border: 0;
+  border-radius: 0.42rem;
+  background: #fff;
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.1),
+    0 0.16rem 0 #b7bec8,
+    0 0.35rem 0.6rem -0.1rem rgb(15 25 45 / 0.4);
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

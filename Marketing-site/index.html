@@ -1,0 +1,1013 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Flow: free, open-source dictation for Windows</title>
+    <meta
+      name="description"
+      content="Hold a key, speak, release. Flow types what you said at the cursor in any Windows app. Free, MIT licensed, and it runs on your own PC."
+    />
+    <meta name="theme-color" content="#e9ecf0" />
+    <meta property="og:title" content="Flow: hold a key, say it, it's typed" />
+    <meta
+      property="og:description"
+      content="Free, open-source dictation for Windows. Runs on your own PC, in any app."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script>
+      // Runs before first paint. A fresh visit opens mid-recording; a reload, a deep link or
+      // reduced motion goes straight to the settled page.
+      (function () {
+        var root = document.documentElement;
+        var nav = performance.getEntriesByType('navigation')[0];
+        var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (!still && !location.hash && (!nav || nav.type === 'navigate'))
+          root.classList.add('intro');
+      })();
+    </script>
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <div class="flood" aria-hidden="true"></div>
+
+    <header class="top">
+      <a class="logo" href="#top" aria-label="Flow, back to top">flow<span class="caret"></span></a>
+      <nav class="top__nav" aria-label="Sections">
+        <a href="#how">How it works</a>
+        <a href="#apps">Any app</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#models">Models</a>
+        <a href="#config">Config</a>
+      </nav>
+      <div class="top__end">
+        <a class="top__source" href="%repo%">GitHub</a>
+        <a class="key key--ink key--sm" href="%download%">Download</a>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- Hero -->
+      <section class="hero" id="top" data-zone="hero">
+        <div class="hero__inner">
+          <h1 class="hero__title">
+            <span class="line">Hold a key.</span>
+            <span class="line">Say it.</span>
+            <span class="line">It’s typed.</span>
+          </h1>
+
+          <div class="hero__copy">
+            <p class="lead">
+              Flow is free, open-source dictation for Windows. Hold <kbd>Ctrl</kbd> <kbd>Win</kbd>,
+              talk, let go, and your words land at the cursor in whatever app you’re in. It runs on
+              your own PC, so what you say stays there.
+            </p>
+            <div class="actions">
+              <a class="key key--ink key--cta" href="%download%">Download for Windows</a>
+              <a class="link" href="%repo%">Read the source</a>
+            </div>
+            <p class="fine">Free and MIT licensed. No account. Windows 11.</p>
+          </div>
+
+          <div class="hero__try">
+            <button class="keys keys--xl" type="button" data-hold aria-describedby="try-note">
+              <span class="key key--cap"><span>Ctrl</span></span>
+              <span class="key key--cap">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M3 3h8.4v8.4H3zM12.6 3H21v8.4h-8.4zM3 12.6h8.4V21H3zM12.6 12.6H21V21h-8.4z"
+                  />
+                </svg>
+                <span class="sr">Win</span>
+              </span>
+            </button>
+            <p class="hero__hint" id="try-note">
+              <strong>Press and hold</strong> to dictate, or hold Ctrl on your keyboard. The demo is
+              scripted: this page can’t hear you.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- The second, slowed down -->
+      <section class="replay" id="how">
+        <div class="replay__pin">
+          <h2 class="replay__title" data-land>
+            That took about a second.<br />Here it is, slowed down.
+          </h2>
+
+          <ol class="replay__steps">
+            <li>
+              <h3>Key down</h3>
+              <p>
+                The microphone opens and the model starts loading while you take a breath. The pill
+                appears once audio is flowing, so seeing it means speak now.
+              </p>
+            </li>
+            <li>
+              <h3>You talk</h3>
+              <p>Audio is held in memory. It is never written to disk.</p>
+            </li>
+            <li>
+              <h3>Key up</h3>
+              <p>
+                Silence at both ends and long pauses are cut. If you said nothing, nothing is typed.
+              </p>
+            </li>
+            <li>
+              <h3>Transcribe</h3>
+              <p>
+                Parakeet turns the audio into punctuated, capitalised text on your processor. No
+                graphics card needed.
+              </p>
+            </li>
+            <li>
+              <h3>Clean up</h3>
+              <p>
+                Fillers and repeats go. Your dictionary fixes names. Saying “new line” makes one.
+              </p>
+            </li>
+            <li>
+              <h3>Insert</h3>
+              <p>
+                The text is pasted at your cursor, then your clipboard is put back the way it was.
+              </p>
+            </li>
+          </ol>
+
+          <div class="replay__stage" aria-hidden="true">
+            <div class="replay__bars"></div>
+            <p class="replay__raw"></p>
+            <div class="win replay__win">
+              <div class="win__bar">
+                <span>Message to Priya</span>
+                <span class="win__ctl"><i></i><i></i><i></i></span>
+              </div>
+              <div class="win__body">
+                <span class="caret replay__caret-a"></span>
+                <p class="replay__clean">
+                  Hey Priya, the draft is ready.<br />Can you review it by Friday?
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="replay__track" aria-hidden="true">
+            <div class="keys keys--sm replay__keys">
+              <span class="key key--cap"><span>Ctrl</span></span>
+              <span class="key key--cap">
+                <svg viewBox="0 0 24 24">
+                  <path
+                    fill="currentColor"
+                    d="M3 3h8.4v8.4H3zM12.6 3H21v8.4h-8.4zM3 12.6h8.4V21H3zM12.6 12.6H21V21h-8.4z"
+                  />
+                </svg>
+              </span>
+            </div>
+            <div class="track">
+              <div class="track__line"><i></i></div>
+              <ul class="track__stops">
+                <li>Key down</li>
+                <li>Talk</li>
+                <li>Key up</li>
+                <li>Transcribe</li>
+                <li>Clean up</li>
+                <li>Insert</li>
+              </ul>
+              <p class="track__budget">Target from key up to text: one second</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Any app -->
+      <section class="band apps" id="apps" data-zone="apps">
+        <div class="wrap">
+          <div class="band__head">
+            <h2 data-land>It types wherever your cursor is.</h2>
+            <p class="lead">
+              Flow sits in the tray and works in every app, full-screen ones included. A profile can
+              change the model, the cleanup and the paste shortcut to suit the app in front.
+            </p>
+          </div>
+
+          <div class="desk">
+            <div class="desk__tabs" role="tablist" aria-label="Focused app">
+              <button role="tab" id="tab-mail" aria-controls="app-mail" aria-selected="true">
+                Mail
+              </button>
+              <button
+                role="tab"
+                id="tab-chat"
+                aria-controls="app-chat"
+                aria-selected="false"
+                tabindex="-1"
+              >
+                Chat
+              </button>
+              <button
+                role="tab"
+                id="tab-editor"
+                aria-controls="app-editor"
+                aria-selected="false"
+                tabindex="-1"
+              >
+                Editor
+              </button>
+              <button
+                role="tab"
+                id="tab-terminal"
+                aria-controls="app-terminal"
+                aria-selected="false"
+                tabindex="-1"
+              >
+                Terminal
+              </button>
+              <button
+                role="tab"
+                id="tab-vault"
+                aria-controls="app-vault"
+                aria-selected="false"
+                tabindex="-1"
+              >
+                Password manager
+              </button>
+            </div>
+
+            <div class="desk__main">
+              <p class="said" aria-hidden="true"><span class="said__text"></span></p>
+
+              <div class="desk__stack">
+                <div
+                  class="win app is-on"
+                  id="app-mail"
+                  role="tabpanel"
+                  aria-labelledby="tab-mail"
+                  data-said="hey sam thanks for the notes um I'll send the revised quote tomorrow morning"
+                  data-typed="Hi Sam,&#10;&#10;Thanks for the notes. I’ll send the revised quote tomorrow morning."
+                >
+                  <div class="win__bar">
+                    <span>New message</span>
+                    <span class="win__ctl" aria-hidden="true"><i></i><i></i><i></i></span>
+                  </div>
+                  <div class="mail">
+                    <p class="mail__row"><span>To</span> Sam Okafor</p>
+                    <p class="mail__row"><span>Subject</span> Revised quote</p>
+                    <!-- prettier-ignore -->
+                    <p class="mail__body"><span data-slot>Hi Sam,&#10;&#10;Thanks for the notes. I’ll send the revised quote tomorrow morning.</span><span class="caret"></span></p>
+                  </div>
+                </div>
+
+                <div
+                  class="win app"
+                  id="app-chat"
+                  role="tabpanel"
+                  aria-labelledby="tab-chat"
+                  data-cloud
+                  data-said="yeah that works for me let's do two thirty"
+                  data-typed="yeah that works for me, let’s do 2:30"
+                  hidden
+                >
+                  <div class="win__bar">
+                    <span>launch-week</span>
+                    <span class="win__ctl" aria-hidden="true"><i></i><i></i><i></i></span>
+                  </div>
+                  <div class="chat">
+                    <div class="chat__msg">
+                      <b aria-hidden="true">S</b>
+                      <div>
+                        <p class="chat__who">Sam <span>2:04 PM</span></p>
+                        <p>Does half two work for a quick call about the launch page?</p>
+                      </div>
+                    </div>
+                    <p class="chat__input"><span data-slot></span><span class="caret"></span></p>
+                  </div>
+                </div>
+
+                <div
+                  class="win app"
+                  id="app-editor"
+                  role="tabpanel"
+                  aria-labelledby="tab-editor"
+                  data-said="retry the upload three times then fall back to the local model"
+                  data-typed="// Retry the upload three times, then fall back to the local model."
+                  hidden
+                >
+                  <div class="win__bar">
+                    <span>upload.ts</span>
+                    <span class="win__ctl" aria-hidden="true"><i></i><i></i><i></i></span>
+                  </div>
+                  <pre
+                    class="editor"
+                  ><code><span class="ln">12</span>export async function upload(clip: Clip) {
+<span class="ln">13</span>  <span data-slot></span><span class="caret"></span>
+<span class="ln">14</span>  for (let attempt = 1; attempt &lt;= 3; attempt++) {
+<span class="ln">15</span>    const res = await send(clip);
+<span class="ln">16</span>    if (res.ok) return res.text;
+<span class="ln">17</span>  }
+<span class="ln">18</span>  return local.transcribe(clip);
+<span class="ln">19</span>}</code></pre>
+                </div>
+
+                <div
+                  class="win app app--dark"
+                  id="app-terminal"
+                  role="tabpanel"
+                  aria-labelledby="tab-terminal"
+                  data-said="add a test for the clipboard restore path"
+                  data-typed="Add a test for the clipboard restore path."
+                  hidden
+                >
+                  <div class="win__bar">
+                    <span>Terminal</span>
+                    <span class="win__ctl" aria-hidden="true"><i></i><i></i><i></i></span>
+                  </div>
+                  <pre class="term"><code><span class="term__dim">PS C:\dev\flow&gt;</span> agent
+<span class="term__dim">Ready. Describe the change you want.</span>
+
+<span class="term__dim">&gt;</span> <span data-slot></span><span class="caret"></span></code></pre>
+                </div>
+
+                <div
+                  class="win app"
+                  id="app-vault"
+                  role="tabpanel"
+                  aria-labelledby="tab-vault"
+                  data-off
+                  hidden
+                >
+                  <div class="win__bar">
+                    <span>Vault</span>
+                    <span class="win__ctl" aria-hidden="true"><i></i><i></i><i></i></span>
+                  </div>
+                  <div class="vault">
+                    <p class="vault__label">Master password</p>
+                    <p class="vault__field">
+                      <span aria-hidden="true">••••••••••••</span><span class="caret"></span>
+                    </p>
+                    <p class="vault__off">
+                      Dictation is off in this app, so the pill never appears.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="desk__hold">
+                <button class="keys keys--md" type="button" data-hold>
+                  <span class="key key--cap"><span>Ctrl</span></span>
+                  <span class="key key--cap">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        fill="currentColor"
+                        d="M3 3h8.4v8.4H3zM12.6 3H21v8.4h-8.4zM3 12.6h8.4V21H3zM12.6 12.6H21V21h-8.4z"
+                      />
+                    </svg>
+                    <span class="sr">Win</span>
+                  </span>
+                </button>
+                <p class="fine">
+                  Hold to dictate into this app. Pick another app to see it behave differently.
+                </p>
+              </div>
+            </div>
+
+            <aside class="desk__profile" aria-live="polite">
+              <h3>The profile for this app</h3>
+              <div class="profile is-on" data-for="mail">
+                <pre class="toml"><code>[[profiles]]
+name = "Mail"
+match_process = ["olk.exe"]
+cleanup.llm_enabled = true
+cleanup.llm_prompt = "email"</code></pre>
+                <p>The Email prompt turns a spoken ramble into a greeting and full sentences.</p>
+              </div>
+              <div class="profile" data-for="chat" hidden>
+                <pre class="toml"><code>[[profiles]]
+name = "Slack"
+match_process = ["slack.exe"]
+model.active = "groq/whisper-large-v3-turbo"
+cleanup.llm_enabled = true
+cleanup.llm_prompt = "casual"</code></pre>
+                <p>
+                  A cloud model here, so the pill shows a cloud. The Casual prompt keeps your tone
+                  and writes the time as 2:30.
+                </p>
+              </div>
+              <div class="profile" data-for="editor" hidden>
+                <pre class="toml"><code>[[profiles]]
+name = "Code"
+match_process = ["Code.exe"]
+cleanup.filler_removal = false
+cleanup.llm_enabled = true
+cleanup.llm_prompt = "code_comment"</code></pre>
+                <p>The Code comment prompt keeps identifiers exactly as you said them.</p>
+              </div>
+              <div class="profile" data-for="terminal" hidden>
+                <pre class="toml"><code>[[profiles]]
+name = "Terminals"
+match_process = ["WindowsTerminal.exe", "wezterm-gui.exe"]
+insert.paste_shortcut = "Ctrl+Shift+V"
+cleanup.llm_enabled = false</code></pre>
+                <p>
+                  Terminals paste with Ctrl+Shift+V, and the text goes in as the model heard it.
+                </p>
+              </div>
+              <div class="profile" data-for="vault" hidden>
+                <pre class="toml"><code>[[profiles]]
+name = "Password managers"
+match_process = ["1Password.exe", "KeePassXC.exe"]
+enabled = false</code></pre>
+                <p>One line switches dictation off wherever you never want a microphone.</p>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <!-- Nothing is lost -->
+      <section class="band safety" id="safety">
+        <div class="wrap">
+          <div class="band__head">
+            <h2 data-land>A dictation is never lost.</h2>
+            <p class="lead">
+              Every failure ends in typed text, text on your clipboard, or an error you can retry.
+              Pick one and watch the pill.
+            </p>
+          </div>
+
+          <div class="cases">
+            <div class="cases__list" role="group" aria-label="What can go wrong">
+              <button type="button" class="case" data-case="cloud" aria-pressed="true">
+                <strong>The cloud model doesn’t answer</strong>
+                <span>Flow falls back to your local model and says so.</span>
+              </button>
+              <button type="button" class="case" data-case="focus" aria-pressed="false">
+                <strong>No text field is focused</strong>
+                <span>The transcript goes to your clipboard instead.</span>
+              </button>
+              <button type="button" class="case" data-case="mic" aria-pressed="false">
+                <strong>The microphone is unplugged</strong>
+                <span>You’re told the moment you press the key, not after you’ve spoken.</span>
+              </button>
+              <button type="button" class="case" data-case="esc" aria-pressed="false">
+                <strong>You change your mind</strong>
+                <span>Press Esc while recording or transcribing. Nothing is typed.</span>
+              </button>
+              <button type="button" class="case" data-case="retry" aria-pressed="false">
+                <strong>Something fails after you’ve spoken</strong>
+                <span>The audio is kept until your next dictation, so you can retry it.</span>
+              </button>
+            </div>
+
+            <div class="cases__stage" aria-hidden="true">
+              <div class="win cases__win">
+                <div class="win__bar">
+                  <span>Notes</span>
+                  <span class="win__ctl"><i></i><i></i><i></i></span>
+                </div>
+                <p class="win__body cases__body">
+                  <span class="cases__text"></span><span class="caret"></span>
+                </p>
+              </div>
+              <p class="cases__esc"><kbd>Esc</kbd></p>
+              <div class="pill pill--inline cases__pill"></div>
+              <p class="cases__note fine">The pill never takes focus and ignores clicks.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Privacy -->
+      <section class="band privacy" id="privacy">
+        <div class="wrap">
+          <div class="band__head">
+            <h2 data-land>What you say stays on your PC.</h2>
+            <p class="lead">
+              The built-in model runs on your processor, offline. Choose a cloud model and your
+              audio goes straight to that provider under your own key. There is no Flow server in
+              between.
+            </p>
+          </div>
+
+          <div class="route" data-mode="local">
+            <fieldset class="seg route__seg">
+              <legend class="sr">Where the speech model runs</legend>
+              <label
+                ><input type="radio" name="route" value="local" checked /><span
+                  >Local model</span
+                ></label
+              >
+              <label
+                ><input type="radio" name="route" value="cloud" /><span>Cloud model</span></label
+              >
+            </fieldset>
+
+            <div class="route__map" aria-hidden="true">
+              <div class="route__pc">
+                <p class="route__pc-name">Your PC</p>
+                <div class="route__row">
+                  <div class="node">
+                    <svg viewBox="0 0 24 24">
+                      <path
+                        d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM6 11v1a6 6 0 0 0 12 0v-1M12 18v3"
+                      />
+                    </svg>
+                    Microphone
+                  </div>
+                  <i class="wire wire--a"></i>
+                  <div class="node node--flow">
+                    <b>Flow</b>
+                    <span class="node__local">Parakeet runs here</span>
+                    <span class="node__cloud">Uploads the clip</span>
+                  </div>
+                  <i class="wire wire--b"></i>
+                  <div class="node">
+                    <svg viewBox="0 0 24 24"><path d="M9 4h6M12 4v16M9 20h6" /></svg>
+                    Your cursor
+                  </div>
+                </div>
+              </div>
+              <i class="wire wire--up"></i>
+              <div class="node node--provider">
+                <svg viewBox="0 0 24 24">
+                  <path d="M7 18a4 4 0 0 1-.6-7.96A5.5 5.5 0 0 1 17 9.5a4.25 4.25 0 0 1 .25 8.5z" />
+                </svg>
+                The provider you chose, with your key
+              </div>
+            </div>
+
+            <p class="route__caption" aria-live="polite">
+              Audio goes from the microphone to the model to your cursor, and never touches the
+              network.
+            </p>
+          </div>
+
+          <ul class="facts">
+            <li>No account, no telemetry and no analytics.</li>
+            <li>Audio is held in memory and never written to disk.</li>
+            <li>History is off until you switch it on, and stays on your PC.</li>
+            <li>API keys are encrypted by Windows and never written to the config file.</li>
+            <li>
+              The keyboard hook checks for your hotkeys and nothing else. It never logs what you
+              type.
+            </li>
+            <li>The pill shows a cloud on every dictation that leaves your machine.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Models -->
+      <section class="band models" id="models">
+        <div class="wrap">
+          <div class="band__head">
+            <h2 data-land>You choose the model. Flow adds no markup.</h2>
+            <p class="lead">
+              Five local models are free and work offline. Eight cloud models run on your own API
+              key at the provider’s price. Anything that speaks the OpenAI transcription API can be
+              added by URL.
+            </p>
+          </div>
+
+          <div class="catalog">
+            <div class="catalog__col">
+              <h3>On your PC, free</h3>
+              <ul class="mlist">
+                <li>
+                  <p><strong>Parakeet TDT 0.6B v2</strong> <em class="tag">Default</em></p>
+                  <p>Best English accuracy and speed, no graphics card needed</p>
+                  <p class="mlist__meta">473 MB, processor</p>
+                </li>
+                <li>
+                  <p><strong>Whisper large-v3-turbo</strong></p>
+                  <p>An alternative when Parakeet mishears a voice or microphone</p>
+                  <p class="mlist__meta">1.6 GB, graphics card</p>
+                </li>
+                <li>
+                  <p><strong>Whisper Small</strong></p>
+                  <p>A lighter Whisper for a modest graphics card</p>
+                  <p class="mlist__meta">487 MB, graphics card</p>
+                </li>
+                <li>
+                  <p><strong>Moonshine v2 Medium</strong></p>
+                  <p>Older or low-power PCs</p>
+                  <p class="mlist__meta">192 MB, processor</p>
+                </li>
+                <li>
+                  <p><strong>Moonshine v2 Tiny</strong></p>
+                  <p>The smallest footprint</p>
+                  <p class="mlist__meta">31 MB, processor</p>
+                </li>
+              </ul>
+              <p class="fine catalog__proof">
+                On the Open ASR Leaderboard, Parakeet v2 averages a 6.05% word error rate. Whisper
+                large-v3-turbo averages 7.75%.
+              </p>
+            </div>
+
+            <div class="catalog__col">
+              <h3>In the cloud, on your key</h3>
+              <div
+                class="mlist mlist--pick"
+                role="radiogroup"
+                aria-label="Cloud model for the cost estimate"
+              >
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked="true"
+                  data-price="0.04"
+                  data-name="Groq Whisper large-v3-turbo"
+                >
+                  <span
+                    ><strong>Groq Whisper large-v3-turbo</strong>
+                    <em class="tag">Recommended</em></span
+                  >
+                  <span>Lowest price, and 216 times faster than real time</span>
+                  <span class="mlist__meta">$0.04 an hour</span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked="false"
+                  tabindex="-1"
+                  data-price="0.111"
+                  data-name="Groq Whisper large-v3"
+                >
+                  <span><strong>Groq Whisper large-v3</strong></span>
+                  <span>Full-size Whisper</span>
+                  <span class="mlist__meta">$0.111 an hour</span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked="false"
+                  tabindex="-1"
+                  data-price="0.18"
+                  data-name="Mistral Voxtral Mini Transcribe 2"
+                >
+                  <span><strong>Mistral Voxtral Mini Transcribe 2</strong></span>
+                  <span>A low-cost alternative to Whisper</span>
+                  <span class="mlist__meta">$0.18 an hour</span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked="false"
+                  tabindex="-1"
+                  data-price="0.18"
+                  data-name="OpenAI gpt-4o-mini-transcribe"
+                >
+                  <span><strong>OpenAI gpt-4o-mini-transcribe</strong></span>
+                  <span>The cheapest option on an OpenAI key you already have</span>
+                  <span class="mlist__meta">$0.18 an hour</span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked="false"
+                  tabindex="-1"
+                  data-price="0.22"
+                  data-name="ElevenLabs Scribe v2"
+                >
+                  <span><strong>ElevenLabs Scribe v2</strong></span>
+                  <span>Names and jargon</span>
+                  <span class="mlist__meta">$0.22 an hour</span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked="false"
+                  tabindex="-1"
+                  data-price="0.26"
+                  data-name="Deepgram Nova-3"
+                >
+                  <span><strong>Deepgram Nova-3</strong></span>
+                  <span>Comes with $200 of starting credit</span>
+                  <span class="mlist__meta">$0.26 an hour</span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked="false"
+                  tabindex="-1"
+                  data-price="0.27"
+                  data-name="OpenAI gpt-transcribe"
+                >
+                  <span><strong>OpenAI gpt-transcribe</strong></span>
+                  <span>OpenAI’s mid-priced model</span>
+                  <span class="mlist__meta">$0.27 an hour</span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked="false"
+                  tabindex="-1"
+                  data-price="0.36"
+                  data-name="OpenAI gpt-4o-transcribe"
+                >
+                  <span><strong>OpenAI gpt-4o-transcribe</strong></span>
+                  <span>OpenAI’s highest-priced model</span>
+                  <span class="mlist__meta">$0.36 an hour</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="cost">
+            <h3>
+              <label for="cost-min">What a month costs if you dictate</label>
+              <output class="cost__min" for="cost-min">30 minutes</output> a day
+            </h3>
+            <input id="cost-min" class="range" type="range" min="5" max="120" step="5" value="30" />
+            <dl class="cost__rows">
+              <div class="cost__row cost__row--local">
+                <dt>A local model</dt>
+                <dd><i style="--w: 0"></i><b>$0.00</b></dd>
+              </div>
+              <div class="cost__row cost__row--cloud">
+                <dt data-cost-name>Groq Whisper large-v3-turbo</dt>
+                <dd><i style="--w: 0.04"></i><b data-cost-cloud>$0.60</b></dd>
+              </div>
+              <div class="cost__row cost__row--sub">
+                <dt>A $15-a-month dictation subscription</dt>
+                <dd><i style="--w: 1"></i><b>$15.00</b></dd>
+              </div>
+            </dl>
+            <p class="fine">
+              Thirty days at list prices read on 3 October 2026. Pick a cloud model above to compare
+              it. Groq bills at least 10 seconds per request, so many short dictations cost a little
+              more.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Config -->
+      <section class="band config" id="config">
+        <div class="wrap">
+          <div class="band__head">
+            <h2 data-land>Every setting lives in one text file.</h2>
+            <p class="lead">
+              The settings window is a view of config.toml. Change a control and the file changes.
+              Edit the file and the control follows within a second, with no restart. Try both
+              sides.
+            </p>
+          </div>
+
+          <div class="twin">
+            <div class="win twin__ui">
+              <div class="win__bar">
+                <span>Flow settings</span>
+                <span class="win__ctl" aria-hidden="true"><i></i><i></i><i></i></span>
+              </div>
+              <div class="settings">
+                <div class="set">
+                  <div>
+                    <p class="set__name" id="set-hotkey">Hold to talk</p>
+                    <p class="set__help">Records while held, transcribes on release.</p>
+                  </div>
+                  <button
+                    type="button"
+                    class="set__key"
+                    data-bind="hotkey"
+                    aria-describedby="set-hotkey"
+                  >
+                    Ctrl+Win
+                  </button>
+                </div>
+                <div class="set">
+                  <div>
+                    <label class="set__name" for="set-filler">Remove filler words</label>
+                    <p class="set__help">Strips um, uh and repeated words.</p>
+                  </div>
+                  <input
+                    id="set-filler"
+                    class="switch"
+                    type="checkbox"
+                    role="switch"
+                    data-bind="filler"
+                    checked
+                  />
+                </div>
+                <div class="set set--wide">
+                  <div>
+                    <label class="set__name" for="set-keep">Keep the model loaded</label>
+                    <p class="set__help">
+                      Minutes a local model stays in memory after you last used it.
+                    </p>
+                  </div>
+                  <div class="set__range">
+                    <input
+                      id="set-keep"
+                      class="range"
+                      type="range"
+                      min="0"
+                      max="30"
+                      step="5"
+                      value="10"
+                      data-bind="keep"
+                    />
+                    <output for="set-keep">10</output>
+                  </div>
+                </div>
+                <div class="set">
+                  <div>
+                    <p class="set__name" id="set-method">Insert method</p>
+                    <p class="set__help">Paste is fast. Type works where paste is blocked.</p>
+                  </div>
+                  <fieldset class="seg seg--sm" aria-labelledby="set-method">
+                    <label
+                      ><input
+                        type="radio"
+                        name="method"
+                        value="paste"
+                        data-bind="method"
+                        checked
+                      /><span>Paste</span></label
+                    >
+                    <label
+                      ><input type="radio" name="method" value="type" data-bind="method" /><span
+                        >Type</span
+                      ></label
+                    >
+                  </fieldset>
+                </div>
+                <div class="set">
+                  <div>
+                    <p class="set__name" id="set-style">Overlay style</p>
+                    <p class="set__help">How the recording indicator looks.</p>
+                  </div>
+                  <fieldset class="seg seg--sm" aria-labelledby="set-style">
+                    <label
+                      ><input
+                        type="radio"
+                        name="style"
+                        value="pill"
+                        data-bind="style"
+                        checked
+                      /><span>Pill</span></label
+                    >
+                    <label
+                      ><input type="radio" name="style" value="minimal" data-bind="style" /><span
+                        >Minimal</span
+                      ></label
+                    >
+                    <label
+                      ><input type="radio" name="style" value="none" data-bind="style" /><span
+                        >None</span
+                      ></label
+                    >
+                  </fieldset>
+                </div>
+                <div class="settings__preview" aria-hidden="true">
+                  <div class="pill pill--inline twin__pill"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="win app--dark twin__file">
+              <div class="win__bar">
+                <span>config.toml</span>
+                <span class="win__ctl" aria-hidden="true"><i></i><i></i><i></i></span>
+              </div>
+              <pre
+                class="toml toml--file"
+              ><code><span class="t-c"># %APPDATA%\Flow\config.toml</span>
+
+<span class="t-h">[hotkeys]</span>
+<span class="t-l" data-line="hotkey">hold_to_talk = <button type="button" class="t-v" data-edit="hotkey">"Ctrl+Win"</button></span>
+
+<span class="t-h">[cleanup]</span>
+<span class="t-l" data-line="filler">filler_removal = <button type="button" class="t-v" data-edit="filler">true</button></span>
+
+<span class="t-h">[model]</span>
+active = "parakeet-tdt-0.6b-v2"
+<span class="t-l" data-line="keep">keep_loaded_minutes = <button type="button" class="t-v" data-edit="keep">10</button></span>   <span class="t-c"># 0 = unload at once</span>
+
+<span class="t-h">[insert]</span>
+<span class="t-l" data-line="method">method = <button type="button" class="t-v" data-edit="method">"paste"</button></span>   <span class="t-c"># paste | type</span>
+
+<span class="t-h">[overlay]</span>
+<span class="t-l" data-line="style">style = <button type="button" class="t-v" data-edit="style">"pill"</button></span>   <span class="t-c"># pill | minimal | none</span></code></pre>
+              <p class="twin__hint">Click a highlighted value to edit the file.</p>
+            </div>
+          </div>
+
+          <p class="config__after">
+            Keep it in git. Share it with a teammate. A bad value falls back to its default, and the
+            settings window shows you which line is wrong.
+          </p>
+        </div>
+      </section>
+
+      <!-- Questions -->
+      <section class="band faq" id="faq">
+        <div class="wrap faq__wrap">
+          <h2 data-land>Before you download.</h2>
+          <div class="faq__list">
+            <details>
+              <summary>Is Flow really free?</summary>
+              <div class="faq__a">
+                <p>
+                  Yes. Flow is MIT licensed and has no paid tier. Local models cost nothing to run.
+                  Cloud models are billed by the provider to your own API key, at their list price,
+                  with no markup from Flow.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>What do I need to run it?</summary>
+              <div class="faq__a">
+                <p>
+                  A PC with Windows 11. The default model runs on the processor, so you don’t need a
+                  graphics card. It is a 473 MB download on first run. An optional download lets
+                  Flow use an NVIDIA graphics card for the larger models.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>Does it work offline?</summary>
+              <div class="faq__a">
+                <p>
+                  Yes. With a local model, nothing touches the network. If you use a cloud model and
+                  the connection drops, Flow falls back to your local model and says so in the pill.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>Which languages does it support?</summary>
+              <div class="faq__a">
+                <p>English only in version 1. More languages are planned.</p>
+              </div>
+            </details>
+            <details>
+              <summary>Is there a Mac version?</summary>
+              <div class="faq__a">
+                <p>Not yet. Windows 11 comes first, and macOS follows the Windows 1.0 release.</p>
+              </div>
+            </details>
+            <details>
+              <summary>Does the keyboard hook see what I type?</summary>
+              <div class="faq__a">
+                <p>
+                  It compares each key event with your hotkeys and discards it. Nothing is stored or
+                  logged. The code is open, so you can check.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>What does Flow send over the network?</summary>
+              <div class="faq__a">
+                <p>
+                  Model downloads, the catalog refresh, update checks, and calls to providers you
+                  have set up. That is the whole list.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>How is it different from Wispr Flow or Handy?</summary>
+              <div class="faq__a">
+                <p>
+                  Wispr Flow is a polished subscription product that chooses the model for you.
+                  Handy is free and runs local models only. Flow is free like Handy and reuses
+                  Handy’s open-source speech engine, then adds cloud models on your own key, per-app
+                  profiles and a config file you can edit by hand.
+                </p>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- Download -->
+      <section class="cta" id="download">
+        <div class="cta__fill" aria-hidden="true"></div>
+        <div class="wrap cta__wrap">
+          <h2 data-land>Stop typing what you could say.</h2>
+          <a class="key key--paper key--giant" href="%download%">Download for Windows</a>
+          <p class="cta__fine">Free and MIT licensed. No account. Windows 11, English for now.</p>
+        </div>
+        <footer class="foot">
+          <div class="wrap foot__wrap">
+            <p class="logo">flow<span class="caret"></span></p>
+            <nav class="foot__nav" aria-label="Project">
+              <a href="%repo%">GitHub</a>
+              <a href="%spec%">Spec</a>
+              <a href="%licence%">MIT licence</a>
+            </nav>
+            <p class="foot__credit">
+              The speech engine is transcribe.cpp from the Handy project. The default model is
+              Parakeet TDT 0.6B v2 by NVIDIA, licensed CC-BY-4.0. This site sets no cookies and
+              loads nothing from other domains.
+            </p>
+          </div>
+        </footer>
+      </section>
+    </main>
+
+    <div class="pill pill--global" aria-hidden="true"></div>
+  </body>
+</html>
