@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { Tabs, Tooltip } from 'radix-ui';
 import {
   AppWindow,
-  AudioLines,
   Boxes,
   History as HistoryIcon,
   Keyboard,
@@ -117,8 +116,10 @@ function Shell() {
       >
         <div className="flex min-h-0 flex-col">
           <div className="drag flex h-10 shrink-0 items-center gap-2 px-4 text-caption">
-            <AudioLines size={14} aria-hidden="true" className="text-accent-text" />
-            Flow
+            <span className="logo text-[19px]">
+              flow
+              <span className="logo-caret" aria-hidden="true" />
+            </span>
           </div>
           <Tabs.List
             aria-label="Settings"

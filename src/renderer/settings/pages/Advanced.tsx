@@ -34,7 +34,7 @@ function About() {
     <Group title="About">
       <div className="card px-4 py-3">
         <div className="flex items-baseline gap-3">
-          <span className="font-display text-subtitle font-semibold">Flow</span>
+          <span className="font-display text-subtitle font-[760]">Flow</span>
           <span className="selectable text-fg-2">
             {info ? `Version ${info.version}` : 'Version unknown'}
           </span>

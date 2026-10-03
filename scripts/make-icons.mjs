@@ -8,36 +8,26 @@ import { fileURLToPath } from 'node:url';
 
 const outDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../resources/icons');
 
-const BARS = [
-  { x: 64, h: 44 },
-  { x: 96, h: 104 },
-  { x: 128, h: 148 },
-  { x: 160, h: 84 },
-  { x: 192, h: 40 },
-];
+// The mark from the marketing site's favicon: three sound bars, then the text cursor.
+const MARK = `
+  <rect x="6" y="13" width="3" height="6" rx="1.5"/>
+  <rect x="11" y="9" width="3" height="14" rx="1.5"/>
+  <rect x="16" y="11" width="3" height="10" rx="1.5"/>
+  <rect x="22" y="7" width="4" height="18" rx="1"/>`;
 
-function svg({ background, bar, radius = 58, inset = 12, barWidth = 18 }) {
-  const size = 256 - inset * 2;
-  const bars = BARS.map(
-    ({ x, h }) =>
-      `<rect x="${x - barWidth / 2}" y="${128 - h / 2}" width="${barWidth}" height="${h}" rx="${barWidth / 2}" fill="${bar}"/>`,
-  ).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="100%" height="100%">
-    <rect x="${inset}" y="${inset}" width="${size}" height="${size}" rx="${radius}" fill="${background}"/>
-    ${bars}
+function svg({ background, mark = '#000000', inset = 0 }) {
+  const size = 32 - inset * 2;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="100%" height="100%">
+    <rect x="${inset}" y="${inset}" width="${size}" height="${size}" rx="${(8 * size) / 32}" fill="${background}"/>
+    <g fill="${mark}" transform="translate(${inset} ${inset}) scale(${size / 32})">${MARK}</g>
   </svg>`;
 }
 
-const APP = svg({ background: '#2563eb', bar: '#ffffff' });
-// Tray sizes are tiny: fill the square and thicken the bars so they survive at 16 px.
-const TRAY = svg({ background: '#2563eb', bar: '#ffffff', inset: 0, radius: 60, barWidth: 24 });
-const TRAY_PAUSED = svg({
-  background: '#6b7280',
-  bar: '#d1d5db',
-  inset: 0,
-  radius: 60,
-  barWidth: 24,
-});
+const VOICE = '#ff5a1f';
+const APP = svg({ background: VOICE, inset: 1 });
+// Tray sizes are tiny, so the square runs to the edge.
+const TRAY = svg({ background: VOICE });
+const TRAY_PAUSED = svg({ background: '#9aa0a9', mark: '#3b3f45' });
 
 async function render(markup, size) {
   const win = new BrowserWindow({

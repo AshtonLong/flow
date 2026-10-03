@@ -198,7 +198,7 @@ test('the overlay shows each state without taking focus', async () => {
   await expect(overlay.locator('#cloud')).toBeVisible();
   await overlay.screenshot({ path: path.join(SHOTS, 'overlay-transcribing.png') });
   await show({ phase: 'error', cloud: false, message: 'Groq rejected the API key' });
-  await expect(overlay.locator('#message')).toHaveText('Groq rejected the API key');
+  await expect(overlay.locator('#label')).toHaveText('Groq rejected the API key');
   await overlay.screenshot({ path: path.join(SHOTS, 'overlay-error.png') });
   await show({
     phase: 'notice',
@@ -207,6 +207,8 @@ test('the overlay shows each state without taking focus', async () => {
   });
   await overlay.screenshot({ path: path.join(SHOTS, 'overlay-notice.png') });
   await show({ phase: 'done', cloud: false });
+  await expect(overlay.locator('#label')).toHaveText('Typed');
+  await overlay.screenshot({ path: path.join(SHOTS, 'overlay-done.png') });
   await show({ phase: 'hidden', cloud: false });
 });
 

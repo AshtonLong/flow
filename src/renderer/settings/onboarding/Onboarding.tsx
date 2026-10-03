@@ -4,7 +4,7 @@
  */
 import { useEffect, useId, useRef, useState } from 'react';
 import { RadioGroup } from 'radix-ui';
-import { AudioLines, Download, Mic, Square } from 'lucide-react';
+import { Download, Mic, Square } from 'lucide-react';
 import type { CloudModelEntry, LocalModelEntry } from '@shared/catalog';
 import { DEFAULT_CONFIG, DEFAULT_LOCAL_MODEL } from '@shared/config';
 import type { KeyTestResult } from '@shared/ipc';
@@ -29,7 +29,7 @@ function StepMicrophone() {
   const { mics, refresh } = useMicrophones();
   return (
     <>
-      <h2 className="font-display text-subtitle font-semibold">Pick your microphone</h2>
+      <h2 className="font-display text-subtitle font-[760]">Pick your microphone</h2>
       <p className="mt-1 text-fg-2">Say something. The bar should move as you speak.</p>
       <div className="card mt-5 px-4 py-4">
         <MicSelect
@@ -54,7 +54,7 @@ function StepHotkey() {
   const { config, set } = useConfig();
   return (
     <>
-      <h2 className="font-display text-subtitle font-semibold">Set your hotkey</h2>
+      <h2 className="font-display text-subtitle font-[760]">Set your hotkey</h2>
       <p className="mt-1 text-fg-2">
         Hold it to talk, release it and the text is typed wherever your cursor is.
       </p>
@@ -352,7 +352,7 @@ function StepModel() {
 
   return (
     <>
-      <h2 className="font-display text-subtitle font-semibold">Choose a model</h2>
+      <h2 className="font-display text-subtitle font-[760]">Choose a model</h2>
       <p className="mt-1 text-fg-2">
         The model turns your voice into text. You can switch at any time on the Models page.
       </p>
@@ -432,13 +432,15 @@ export function Onboarding() {
   return (
     <div className="flex h-full flex-col">
       <div className="drag flex h-10 shrink-0 items-center gap-2 px-4 text-caption">
-        <AudioLines size={14} aria-hidden="true" className="text-accent-text" />
-        Flow
+        <span className="logo text-[19px]">
+          flow
+          <span className="logo-caret" aria-hidden="true" />
+        </span>
       </div>
       <main className="relative min-h-0 flex-1 overflow-y-auto px-6 pb-6">
         <div className="mx-auto flex min-h-full max-w-[560px] flex-col">
           <header className="pt-4 pb-6">
-            <h1 className="font-display text-title font-semibold">Set up Flow</h1>
+            <h1 className="font-display text-title font-[840]">Set up Flow</h1>
             <ol className="mt-4 grid grid-cols-3 gap-2" aria-label="Setup steps">
               {STEPS.map((name, i) => (
                 <li key={name} aria-current={i === step ? 'step' : undefined}>
