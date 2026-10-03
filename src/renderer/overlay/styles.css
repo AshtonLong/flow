@@ -1,12 +1,16 @@
+@import '../common/brand.css';
+
+/*
+ * The recording pill. It looks the same as the pill on the marketing site:
+ * black, with the waveform in the voice colour while the microphone is live.
+ */
+
 :root {
-  --accent: #4f8cff;
   --scale: 1;
-  --pill-bg: rgba(28, 28, 30, 0.9);
-  --pill-border: rgba(255, 255, 255, 0.14);
-  --pill-fg: rgba(255, 255, 255, 0.94);
-  --pill-dim: rgba(255, 255, 255, 0.6);
-  --error: #ff6b5e;
-  --ok: #5fd68a;
+  --pill-bg: #000000;
+  --pill-fg: #ffffff;
+  --pill-dim: rgb(255 255 255 / 0.66);
+  --pill-edge: rgb(255 255 255 / 0.14);
 }
 
 * {
@@ -24,9 +28,10 @@ body {
   height: 100%;
   overflow: hidden;
   background: transparent;
-  font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--brand-font);
   user-select: none;
   -webkit-user-select: none;
+  -webkit-font-smoothing: antialiased;
 }
 
 #stage {
@@ -48,25 +53,25 @@ body {
   display: inline-flex;
   align-items: center;
   gap: calc(9px * var(--scale));
-  height: calc(40px * var(--scale));
-  min-width: calc(40px * var(--scale));
+  height: calc(44px * var(--scale));
   max-width: calc(100vw - 16px);
-  padding: 0 calc(15px * var(--scale));
+  padding: 0 calc(17px * var(--scale));
   border-radius: 999px;
   background: var(--pill-bg);
-  border: 1px solid var(--pill-border);
   color: var(--pill-fg);
-  font-size: calc(13px * var(--scale));
+  font-size: calc(14px * var(--scale));
+  font-weight: 600;
   line-height: 1;
-  letter-spacing: 0.01em;
+  white-space: nowrap;
   box-shadow:
-    0 6px 20px rgba(0, 0, 0, 0.28),
-    0 1px 2px rgba(0, 0, 0, 0.3);
+    inset 0 0 0 1px var(--pill-edge),
+    0 10px 22px -8px rgb(0 0 0 / 0.5),
+    0 2px 6px rgb(0 0 0 / 0.3);
   opacity: 0;
-  transform: translateY(8px) scale(0.96);
+  transform: translateY(12px) scale(0.92);
   transition:
-    opacity 140ms ease,
-    transform 180ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    opacity 180ms ease,
+    transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 #stage:not([data-phase='hidden']) #pill {
@@ -78,179 +83,130 @@ body {
   display: none;
 }
 
-/* The leading glyph: a dot whose colour and motion carry the state. */
-#glyph {
+#pill svg {
   flex: none;
-  width: calc(9px * var(--scale));
-  height: calc(9px * var(--scale));
-  border-radius: 50%;
-  background: var(--accent);
+  width: calc(18px * var(--scale));
+  height: calc(18px * var(--scale));
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-#stage[data-phase='listening'] #glyph {
-  animation: pulse 1.5s ease-in-out infinite;
+/* Audio is leaving the PC. */
+#cloud {
+  color: color-mix(in oklab, var(--cloud) 55%, #fff);
 }
-#stage[data-phase='transcribing'] #glyph {
+
+#wave,
+#dots,
+#ok,
+#bang {
   display: none;
-}
-#stage[data-phase='done'] #glyph {
-  background: var(--ok);
-}
-#stage[data-phase='error'] #glyph {
-  background: var(--error);
-}
-#stage[data-phase='notice'] #glyph {
-  background: var(--pill-dim);
 }
 
 #wave {
-  display: none;
-  width: calc(120px * var(--scale));
-  height: calc(28px * var(--scale));
+  width: calc(69px * var(--scale));
+  height: calc(21px * var(--scale));
 }
 #stage[data-phase='listening'][data-waveform='true'] #wave {
   display: block;
 }
 
 #dots {
-  display: none;
   align-items: center;
-  gap: calc(5px * var(--scale));
-  padding: 0 calc(4px * var(--scale));
+  gap: calc(4px * var(--scale));
 }
 #stage[data-phase='transcribing'] #dots {
   display: inline-flex;
 }
 #dots i {
-  width: calc(6px * var(--scale));
-  height: calc(6px * var(--scale));
+  width: calc(5px * var(--scale));
+  height: calc(5px * var(--scale));
   border-radius: 50%;
   background: var(--pill-fg);
-  opacity: 0.35;
-  animation: step 1.05s ease-in-out infinite;
+  animation: dot 0.9s ease-in-out infinite;
 }
 #dots i:nth-child(2) {
-  animation-delay: 0.15s;
+  animation-delay: 0.12s;
 }
 #dots i:nth-child(3) {
-  animation-delay: 0.3s;
+  animation-delay: 0.24s;
 }
 
-#message {
-  display: none;
-  white-space: nowrap;
+#stage[data-phase='done'] #ok {
+  display: block;
+  color: var(--brand-ok);
+}
+#stage[data-phase='error'] #bang {
+  display: block;
+  color: var(--brand-err);
+}
+
+#label {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-#stage[data-phase='error'] #message,
-#stage[data-phase='notice'] #message,
-#stage[data-phase='done'] #message:not(:empty) {
-  display: block;
-}
-
-#badges {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(6px * var(--scale));
-  color: var(--pill-dim);
-}
-#badges:not(:has(> :not([hidden]))) {
+#label:empty {
   display: none;
 }
-#badges svg {
-  width: calc(14px * var(--scale));
-  height: calc(14px * var(--scale));
+
+#lock {
+  color: var(--pill-dim);
 }
 #queued {
-  font-size: calc(11px * var(--scale));
+  color: var(--pill-dim);
+  font-size: calc(12px * var(--scale));
   font-variant-numeric: tabular-nums;
 }
 
-/* Minimal: a small bar that only shows colour. */
+/* Minimal: a short pill with no words, unless there is something to say. */
 #stage[data-style='minimal'] #pill {
-  height: calc(12px * var(--scale));
-  min-width: calc(44px * var(--scale));
-  padding: 0 calc(5px * var(--scale));
-  gap: calc(4px * var(--scale));
-  justify-content: center;
+  height: calc(27px * var(--scale));
+  padding: 0 calc(11px * var(--scale));
 }
-#stage[data-style='minimal'] #wave,
-#stage[data-style='minimal'] #dots,
+#stage[data-style='minimal'] #wave {
+  height: calc(13px * var(--scale));
+}
+#stage[data-style='minimal']:not([data-phase='error'], [data-phase='notice']) #label,
 #stage[data-style='minimal'] #lock,
 #stage[data-style='minimal'] #queued {
-  display: none !important;
+  display: none;
 }
-#stage[data-style='minimal'] #glyph {
-  display: block;
-  width: calc(22px * var(--scale));
-  height: calc(4px * var(--scale));
-  border-radius: 2px;
-}
-#stage[data-style='minimal'][data-phase='transcribing'] #glyph {
-  background: var(--pill-dim);
-  animation: pulse 0.9s ease-in-out infinite;
-}
-#stage[data-style='minimal'] #badges svg {
-  width: calc(9px * var(--scale));
-  height: calc(9px * var(--scale));
-}
-#stage[data-style='minimal'][data-phase='error'] #pill,
-#stage[data-style='minimal'][data-phase='notice'] #pill {
-  height: calc(30px * var(--scale));
-  padding: 0 calc(12px * var(--scale));
-}
-#stage[data-style='minimal'][data-phase='error'] #glyph,
-#stage[data-style='minimal'][data-phase='notice'] #glyph {
-  width: calc(8px * var(--scale));
-  height: calc(8px * var(--scale));
-  border-radius: 50%;
-}
-
-/* Light theme: a light capsule so it reads on dark and light desktops alike. */
-:root[data-theme='light'] {
-  --pill-bg: rgba(250, 250, 250, 0.94);
-  --pill-border: rgba(0, 0, 0, 0.1);
-  --pill-fg: rgba(0, 0, 0, 0.88);
-  --pill-dim: rgba(0, 0, 0, 0.55);
-  --error: #c42b1c;
-  --ok: #0f7b3f;
+#stage[data-style='minimal'] #pill svg {
+  width: calc(14px * var(--scale));
+  height: calc(14px * var(--scale));
 }
 
 :root[data-contrast='high'] {
   --pill-bg: Canvas;
-  --pill-border: CanvasText;
   --pill-fg: CanvasText;
   --pill-dim: CanvasText;
+  --pill-edge: CanvasText;
+  --voice: Highlight;
+  --cloud: CanvasText;
+  --brand-ok: CanvasText;
+  --brand-err: CanvasText;
 }
 :root[data-contrast='high'] #pill {
-  border-width: 2px;
-  box-shadow: none;
+  box-shadow: inset 0 0 0 2px CanvasText;
 }
 
-@keyframes pulse {
+@keyframes dot {
   0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.45;
-  }
-}
-
-@keyframes step {
-  0%,
+  60%,
   100% {
     opacity: 0.3;
     transform: translateY(0);
   }
-  40% {
+  30% {
     opacity: 1;
-    transform: translateY(calc(-2px * var(--scale)));
+    transform: translateY(calc(-3px * var(--scale)));
   }
 }
 
 :root[data-motion='reduced'] #pill,
-:root[data-motion='reduced'] #glyph,
 :root[data-motion='reduced'] #dots i {
   transition: none;
   animation: none;

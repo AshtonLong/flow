@@ -35,7 +35,7 @@ export function useFieldProps(own: {
 export function PageHeader({ title, lead }: { title: string; lead?: ReactNode }) {
   return (
     <header className="mb-6">
-      <h1 className="font-display text-title font-semibold">{title}</h1>
+      <h1 className="font-display text-title font-[840]">{title}</h1>
       {lead && <p className="mt-1 max-w-[72ch] text-fg-2">{lead}</p>}
     </header>
   );

@@ -1,17 +1,19 @@
 @import 'tailwindcss';
+@import '../common/brand.css';
 @source './';
 
 /*
- * Flow settings window. Windows 11 look: Mica shows through the navigation
- * rail, content sits on a translucent layer, each setting is a hairline card.
+ * Flow settings window, in the marketing site's dress: paper and ink, the
+ * Recursive typeface, keycap buttons. Black is the control colour; orange is
+ * kept for a live microphone and blue for audio leaving the PC.
  * Every colour is a variable so light, dark and high contrast are one switch.
  */
 
 @theme inline {
-  --font-sans: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
-  --font-display:
-    'Segoe UI Variable Display', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
-  --font-mono: 'Cascadia Mono', 'Cascadia Code', Consolas, monospace;
+  --font-sans: var(--brand-font);
+  --font-display: var(--brand-font);
+  /* Recursive carries its own monospace on the MONO axis (see brand.css). */
+  --font-mono: var(--brand-font);
 
   --color-fg: var(--fg);
   --color-fg-2: var(--fg-2);
@@ -47,102 +49,112 @@
 }
 
 :root {
-  /* Replaced at runtime with the Windows accent colour. */
-  --accent: #0067c0;
+  --mica: var(--paper);
+  --fg: var(--ink);
+  --fg-2: var(--ink-2);
+  --fg-3: var(--ink-3);
+  --fg-disabled: rgb(0 0 0 / 0.38);
+  --focus: var(--ink);
 
-  --mica: #f3f3f3;
-  --fg: rgb(0 0 0 / 0.9);
-  --fg-2: rgb(0 0 0 / 0.64);
-  --fg-3: rgb(0 0 0 / 0.56);
-  --fg-disabled: rgb(0 0 0 / 0.36);
-  --focus: rgb(0 0 0 / 0.9);
+  --layer: rgb(255 255 255 / 0.34);
+  --card: var(--surface);
+  --inset: rgb(0 0 0 / 0.045);
+  --flyout: #ffffff;
+  --line: rgb(0 0 0 / 0.1);
+  --line-strong: rgb(0 0 0 / 0.2);
 
-  --layer: rgb(255 255 255 / 0.5);
-  --card: rgb(255 255 255 / 0.7);
-  --inset: rgb(0 0 0 / 0.028);
-  --flyout: #fbfbfb;
-  --line: rgb(0 0 0 / 0.075);
-  --line-strong: rgb(0 0 0 / 0.16);
-
-  --ctl: rgb(255 255 255 / 0.7);
-  --ctl-hover: rgb(249 249 249 / 0.5);
-  --ctl-press: rgb(249 249 249 / 0.3);
-  --ctl-disabled: rgb(249 249 249 / 0.3);
-  --ctl-line: rgb(0 0 0 / 0.075);
-  --ctl-line-top: rgb(0 0 0 / 0.075);
-  --ctl-line-bottom: rgb(0 0 0 / 0.17);
-  --input-line: rgb(0 0 0 / 0.5);
+  --ctl: #ffffff;
+  --ctl-hover: #f6f7f9;
+  --ctl-press: #eceef1;
+  --ctl-disabled: rgb(255 255 255 / 0.5);
+  --ctl-line: rgb(0 0 0 / 0.1);
+  --ctl-line-top: rgb(0 0 0 / 0.1);
+  --ctl-line-bottom: rgb(0 0 0 / 0.1);
+  --ctl-wall: var(--wall);
+  --input-line: rgb(0 0 0 / 0.45);
   --input-focus: #ffffff;
-  --subtle-hover: rgb(0 0 0 / 0.04);
-  --subtle-press: rgb(0 0 0 / 0.026);
-  --switch-line: rgb(0 0 0 / 0.56);
-  --switch-knob: rgb(0 0 0 / 0.62);
-  --smoke: rgb(0 0 0 / 0.3);
-  --shadow-flyout: 0 8px 16px rgb(0 0 0 / 0.14), 0 0 0 1px rgb(0 0 0 / 0.06);
-  --shadow-dialog: 0 32px 64px rgb(0 0 0 / 0.19), 0 2px 21px rgb(0 0 0 / 0.15);
+  --subtle-hover: rgb(0 0 0 / 0.06);
+  --subtle-press: rgb(0 0 0 / 0.1);
+  --switch-off: rgb(0 0 0 / 0.2);
+  --switch-line: rgb(0 0 0 / 0.5);
+  --switch-knob: #ffffff;
+  --smoke: rgb(20 30 50 / 0.35);
+  --shadow-card: 0 0 0 1px rgb(0 0 0 / 0.07), 0 0.4rem 0.9rem -0.55rem rgb(20 30 50 / 0.3);
+  --shadow-flyout: 0 0 0 1px rgb(0 0 0 / 0.07), 0 0.6rem 1.4rem -0.4rem rgb(20 30 50 / 0.35);
+  --shadow-dialog:
+    0 0 0 1px rgb(0 0 0 / 0.07), 0 1.9rem 3.75rem -1.25rem rgb(20 30 50 / 0.45),
+    0 0.5rem 1.1rem -0.5rem rgb(20 30 50 / 0.25);
 
   --danger: #b3261a;
-  --danger-bg: #fde7e9;
-  --warn: #8a5100;
-  --warn-bg: #fff4ce;
-  --ok: #0f6d0f;
-  --ok-bg: #dff6dd;
+  --danger-bg: #fde4e1;
+  --warn: #7a4a00;
+  --warn-bg: #fdeccb;
+  --ok: #0c6b32;
+  --ok-bg: #d9f6e4;
 
-  /* White text needs a dark enough fill, whatever the system accent is. */
-  --accent-fill: oklch(from var(--accent) min(l, 0.54) c h);
+  /* Controls are ink, as on the site: a checked switch and the selected page are black. */
+  --accent-fill: var(--ink);
   --on-accent: #ffffff;
-  --accent-text: oklch(from var(--accent) min(l, 0.46) c h);
-  --accent-hover: color-mix(in oklab, var(--accent-fill) 90%, white);
-  --accent-press: color-mix(in oklab, var(--accent-fill) 80%, white);
-  --accent-soft: color-mix(in oklab, var(--accent-fill) 11%, transparent);
+  --accent-text: var(--ink);
+  --accent-hover: #25282e;
+  --accent-press: #3b3f45;
+  --accent-soft: rgb(0 0 0 / 0.08);
+  /* The primary button is the site's dark keycap. */
+  --key-ink-top: #25282e;
+  --key-ink-wall: #000000;
 }
 
+/* The site is light only; dark follows its black app windows. */
 html[data-theme='dark'] {
-  --mica: #202020;
+  --mica: #0e0f11;
   --fg: #ffffff;
-  --fg-2: rgb(255 255 255 / 0.79);
+  --fg-2: rgb(255 255 255 / 0.8);
   --fg-3: rgb(255 255 255 / 0.62);
   --fg-disabled: rgb(255 255 255 / 0.36);
   --focus: #ffffff;
 
-  --layer: rgb(58 58 58 / 0.3);
-  --card: rgb(255 255 255 / 0.051);
-  --inset: rgb(0 0 0 / 0.16);
-  --flyout: #2c2c2c;
-  --line: rgb(255 255 255 / 0.075);
-  --line-strong: rgb(255 255 255 / 0.16);
+  --layer: rgb(255 255 255 / 0.025);
+  --card: #1b1d21;
+  --inset: rgb(0 0 0 / 0.3);
+  --flyout: #25282e;
+  --line: rgb(255 255 255 / 0.1);
+  --line-strong: rgb(255 255 255 / 0.2);
 
-  --ctl: rgb(255 255 255 / 0.06);
-  --ctl-hover: rgb(255 255 255 / 0.085);
-  --ctl-press: rgb(255 255 255 / 0.034);
-  --ctl-disabled: rgb(255 255 255 / 0.04);
-  --ctl-line: rgb(255 255 255 / 0.07);
-  --ctl-line-top: rgb(255 255 255 / 0.1);
-  --ctl-line-bottom: rgb(255 255 255 / 0.07);
-  --input-line: rgb(255 255 255 / 0.54);
-  --input-focus: rgb(30 30 30 / 0.7);
-  --subtle-hover: rgb(255 255 255 / 0.06);
-  --subtle-press: rgb(255 255 255 / 0.04);
+  --ctl: #2b2e34;
+  --ctl-hover: #33363d;
+  --ctl-press: #25282e;
+  --ctl-disabled: rgb(255 255 255 / 0.05);
+  --ctl-line: rgb(255 255 255 / 0.1);
+  --ctl-line-top: rgb(255 255 255 / 0.14);
+  --ctl-line-bottom: rgb(255 255 255 / 0.1);
+  --ctl-wall: #000000;
+  --input-line: rgb(255 255 255 / 0.5);
+  --input-focus: #0e0f11;
+  --subtle-hover: rgb(255 255 255 / 0.08);
+  --subtle-press: rgb(255 255 255 / 0.05);
+  --switch-off: rgb(255 255 255 / 0.22);
   --switch-line: rgb(255 255 255 / 0.6);
-  --switch-knob: rgb(255 255 255 / 0.79);
-  --smoke: rgb(0 0 0 / 0.45);
-  --shadow-flyout: 0 8px 16px rgb(0 0 0 / 0.26), 0 0 0 1px rgb(255 255 255 / 0.08);
-  --shadow-dialog: 0 32px 64px rgb(0 0 0 / 0.4), 0 0 0 1px rgb(255 255 255 / 0.08);
+  --switch-knob: #ffffff;
+  --smoke: rgb(0 0 0 / 0.55);
+  --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.08);
+  --shadow-flyout: 0 0 0 1px rgb(255 255 255 / 0.1), 0 0.6rem 1.4rem -0.4rem rgb(0 0 0 / 0.6);
+  --shadow-dialog: 0 0 0 1px rgb(255 255 255 / 0.1), 0 1.9rem 3.75rem -1.25rem rgb(0 0 0 / 0.7);
 
-  --danger: #ff99a4;
-  --danger-bg: #442726;
-  --warn: #fce100;
-  --warn-bg: #433519;
-  --ok: #6ccb5f;
-  --ok-bg: #2b3a22;
+  --danger: #ff9d94;
+  --danger-bg: #44211e;
+  --warn: #ffd166;
+  --warn-bg: #40300f;
+  --ok: #37d67a;
+  --ok-bg: #153524;
 
-  /* Dark mode uses a light tint of the accent with dark text, as Windows does. */
-  --accent-fill: oklch(from var(--accent) max(l, 0.78) min(c, 0.13) h);
+  --accent-fill: #ffffff;
   --on-accent: #000000;
-  --accent-text: oklch(from var(--accent) max(l, 0.83) min(c, 0.11) h);
-  --accent-hover: color-mix(in oklab, var(--accent-fill) 90%, black);
-  --accent-press: color-mix(in oklab, var(--accent-fill) 80%, black);
-  --accent-soft: color-mix(in oklab, var(--accent-fill) 14%, transparent);
+  --accent-text: #ffffff;
+  --accent-hover: #e9ecf0;
+  --accent-press: #c9ccd2;
+  --accent-soft: rgb(255 255 255 / 0.12);
+  --key-ink-top: #ffffff;
+  --key-ink-wall: var(--wall);
 }
 
 /* Windows high contrast: solid system colours and visible borders everywhere. */
@@ -170,9 +182,15 @@ html[data-contrast='high'] {
   --input-focus: Canvas;
   --subtle-hover: transparent;
   --subtle-press: transparent;
+  --ctl-wall: transparent;
+  --switch-off: Canvas;
   --switch-line: CanvasText;
   --switch-knob: CanvasText;
   --smoke: rgb(0 0 0 / 0.6);
+  --shadow-card: none;
+  --key-ink-top: Highlight;
+  --key-ink-wall: transparent;
+  --voice: Highlight;
   --shadow-flyout: 0 0 0 1px CanvasText;
   --shadow-dialog: 0 0 0 2px CanvasText;
   --danger: CanvasText;
@@ -192,7 +210,8 @@ html[data-contrast='high'] {
 /* In the base layer so utilities such as `outline-none` can override these. */
 @layer base {
   html {
-    background: transparent;
+    /* Paper, slightly see-through so the Windows Mica backdrop still tints it. */
+    background: color-mix(in srgb, var(--mica) 84%, transparent);
     color-scheme: light;
   }
   html[data-theme='dark'] {
@@ -213,6 +232,7 @@ html[data-contrast='high'] {
     font-family: var(--font-sans);
     font-size: 14px;
     line-height: 20px;
+    font-weight: 440;
     cursor: default;
     user-select: none;
     -webkit-font-smoothing: antialiased;
@@ -231,6 +251,15 @@ html[data-contrast='high'] {
   .selectable {
     user-select: text;
     cursor: text;
+  }
+
+  h1,
+  h2 {
+    letter-spacing: -0.03em;
+  }
+  ::selection {
+    background: var(--voice);
+    color: #000;
   }
 
   /* Focus rings for keyboard focus only. */
@@ -269,8 +298,8 @@ html[data-contrast='high'] {
 @layer components {
   .card {
     background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 6px;
+    border-radius: 10px;
+    box-shadow: var(--shadow-card);
   }
 
   /* Buttons */
@@ -282,62 +311,71 @@ html[data-contrast='high'] {
     height: 32px;
     padding: 0 12px;
     flex-shrink: 0;
-    border-radius: 4px;
-    border: 1px solid var(--ctl-line);
-    border-top-color: var(--ctl-line-top);
-    border-bottom-color: var(--ctl-line-bottom);
-    background: var(--ctl);
+    /* A keycap, as on the site: a top face and a side wall that it presses into. */
+    --btn-top: var(--ctl);
+    --btn-wall: var(--ctl-wall);
+    --btn-lift: 3px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--btn-top);
     color: var(--fg);
     font-size: 14px;
     line-height: 20px;
+    font-weight: 620;
     white-space: nowrap;
+    box-shadow:
+      inset 0 0 0 1px var(--ctl-line),
+      0 var(--btn-lift) 0 var(--btn-wall),
+      0 calc(var(--btn-lift) + 1px) 0 rgb(0 0 0 / 0.22);
     transition:
-      background-color 83ms linear,
-      color 83ms linear;
+      transform 110ms cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 110ms cubic-bezier(0.16, 1, 0.3, 1),
+      background-color 83ms linear;
   }
   .btn:hover {
-    background: var(--ctl-hover);
+    --btn-top: var(--ctl-hover);
   }
   .btn:active {
-    background: var(--ctl-press);
-    color: var(--fg-2);
+    --btn-lift: 1px;
+    transform: translateY(2px);
   }
   .btn:disabled,
   .btn[data-disabled] {
-    background: var(--ctl-disabled);
+    --btn-top: var(--ctl-disabled);
+    --btn-lift: 0px;
     color: var(--fg-disabled);
-    border-color: var(--ctl-line);
+    box-shadow: inset 0 0 0 1px var(--ctl-line);
+    transform: none;
   }
   .btn-accent {
-    background: var(--accent-fill);
+    --btn-top: var(--key-ink-top);
+    --btn-wall: var(--key-ink-wall);
     color: var(--on-accent);
-    border-color: transparent;
   }
   .btn-accent:hover {
-    background: var(--accent-hover);
-  }
-  .btn-accent:active {
-    background: var(--accent-press);
-    color: var(--on-accent);
+    --btn-top: color-mix(in oklab, var(--key-ink-top) 88%, var(--on-accent));
   }
   .btn-accent:disabled {
-    background: var(--fg-disabled);
+    --btn-top: var(--fg-disabled);
     color: var(--mica);
-    border-color: transparent;
+    box-shadow: none;
   }
+  /* Quiet actions stay flat: only real buttons are keys. */
   .btn-subtle {
     background: transparent;
-    border-color: transparent;
+    box-shadow: none;
+    font-weight: 560;
   }
   .btn-subtle:hover {
     background: var(--subtle-hover);
   }
   .btn-subtle:active {
     background: var(--subtle-press);
+    transform: none;
   }
   .btn-subtle:disabled {
     background: transparent;
-    border-color: transparent;
+    box-shadow: none;
   }
   .btn-danger {
     color: var(--danger);
@@ -356,20 +394,24 @@ html[data-contrast='high'] {
   }
 
   .link {
-    color: var(--accent-text);
+    color: inherit;
+    font-weight: 620;
+    text-decoration: underline;
+    text-decoration-thickness: 0.09em;
+    text-underline-offset: 0.22em;
     border-radius: 2px;
     cursor: pointer;
   }
   .link:hover {
-    text-decoration: underline;
+    text-decoration-thickness: 0.16em;
   }
 
   /* Text boxes */
   .input {
     height: 32px;
     padding: 0 10px;
-    border-radius: 4px;
-    border: 1px solid var(--ctl-line);
+    border-radius: 8px;
+    border: 1px solid var(--line-strong);
     border-bottom-color: var(--input-line);
     background: var(--ctl);
     color: var(--fg);
@@ -410,63 +452,33 @@ html[data-contrast='high'] {
   /* Toggle switch */
   .switch {
     position: relative;
-    width: 40px;
-    height: 20px;
+    width: 42px;
+    height: 24px;
     flex-shrink: 0;
-    border-radius: 10px;
-    border: 1px solid var(--switch-line);
-    background: transparent;
-    transition:
-      background-color 83ms linear,
-      border-color 83ms linear;
-  }
-  .switch:hover {
-    background: var(--subtle-hover);
+    border-radius: 12px;
+    border: 1px solid transparent;
+    background: var(--switch-off);
+    transition: background-color 200ms;
   }
   .switch-thumb {
     display: block;
-    width: 12px;
-    height: 12px;
-    border-radius: 6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 9px;
     background: var(--switch-knob);
-    transform: translateX(3px);
-    transition:
-      transform 160ms cubic-bezier(0.2, 0, 0, 1),
-      width 100ms linear;
-  }
-  .switch:hover .switch-thumb {
-    width: 14px;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+    transform: translateX(2px);
+    transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1);
   }
   .switch[data-state='checked'] {
     background: var(--accent-fill);
-    border-color: var(--accent-fill);
-  }
-  .switch[data-state='checked']:hover {
-    background: var(--accent-hover);
-    border-color: var(--accent-hover);
   }
   .switch[data-state='checked'] .switch-thumb {
     background: var(--on-accent);
-    transform: translateX(23px);
-  }
-  .switch[data-state='checked']:hover .switch-thumb {
-    transform: translateX(21px);
+    transform: translateX(20px);
   }
   .switch[data-disabled] {
-    border-color: var(--fg-disabled);
-    background: transparent;
-  }
-  .switch[data-disabled] .switch-thumb {
-    background: var(--fg-disabled);
-    width: 12px;
-  }
-  .switch[data-disabled][data-state='checked'] {
-    background: var(--fg-disabled);
-    border-color: transparent;
-  }
-  .switch[data-disabled][data-state='checked'] .switch-thumb {
-    background: var(--mica);
-    transform: translateX(23px);
+    opacity: 0.45;
   }
 
   /* Checkbox */
@@ -522,7 +534,7 @@ html[data-contrast='high'] {
   /* Flyouts: select menus, tooltips */
   .flyout {
     background: var(--flyout);
-    border-radius: 8px;
+    border-radius: 10px;
     box-shadow: var(--shadow-flyout);
     padding: 4px;
     z-index: 60;
@@ -534,7 +546,7 @@ html[data-contrast='high'] {
     gap: 8px;
     min-height: 34px;
     padding: 6px 12px 6px 12px;
-    border-radius: 4px;
+    border-radius: 7px;
     font-size: 14px;
     line-height: 20px;
     color: var(--fg);
@@ -580,31 +592,22 @@ html[data-contrast='high'] {
     width: 100%;
     height: 36px;
     padding: 0 12px;
-    border-radius: 4px;
+    border-radius: 9px;
     color: var(--fg);
+    font-weight: 560;
     text-align: left;
-    transition: background-color 83ms linear;
+    transition:
+      background-color 200ms,
+      color 200ms;
   }
   .nav-item:hover {
     background: var(--subtle-hover);
   }
+  /* The selected page is an ink block, like the site's segmented control. */
   .nav-item[data-state='active'] {
-    background: var(--subtle-hover);
-  }
-  .nav-item::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    width: 3px;
-    height: 0;
-    border-radius: 2px;
     background: var(--accent-fill);
-    transform: translateY(-50%);
-    transition: height 160ms cubic-bezier(0.2, 0, 0, 1);
-  }
-  .nav-item[data-state='active']::before {
-    height: 16px;
+    color: var(--on-accent);
+    font-weight: 620;
   }
 
   /* Key caps */
@@ -615,15 +618,19 @@ html[data-contrast='high'] {
     min-width: 28px;
     height: 26px;
     padding: 0 8px;
-    border-radius: 4px;
-    border: 1px solid var(--line-strong);
-    border-bottom-width: 2px;
-    background: var(--ctl);
-    color: var(--fg);
+    margin-bottom: 3px;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #000000;
+    --mono: 1;
     font-size: 12px;
     line-height: 16px;
-    font-weight: 600;
+    font-weight: 620;
     white-space: nowrap;
+    box-shadow:
+      inset 0 0 0 1px rgb(0 0 0 / 0.08),
+      0 3px 0 var(--wall),
+      0 4px 0 rgb(0 0 0 / 0.2);
   }
 
   .badge {
@@ -631,18 +638,19 @@ html[data-contrast='high'] {
     align-items: center;
     gap: 4px;
     height: 20px;
-    padding: 0 7px;
-    border-radius: 4px;
+    padding: 0 8px;
+    border-radius: 99rem;
     font-size: 12px;
     line-height: 16px;
+    font-weight: 600;
     white-space: nowrap;
     background: var(--subtle-hover);
     color: var(--fg-2);
     border: 1px solid transparent;
   }
   .badge-accent {
-    background: var(--accent-soft);
-    color: var(--accent-text);
+    background: var(--accent-fill);
+    color: var(--on-accent);
   }
   .badge-ok {
     background: var(--ok-bg);
@@ -663,7 +671,8 @@ html[data-contrast='high'] {
     height: 100%;
     width: 100%;
     border-radius: 3px;
-    background: var(--accent-fill);
+    /* The one place the settings window is orange: a live microphone. */
+    background: var(--voice);
     transform-origin: left center;
     transform: scaleX(0);
   }
@@ -684,7 +693,7 @@ html[data-contrast='high'] {
     display: flex;
     flex-direction: column;
     background: var(--flyout);
-    border-radius: 8px;
+    border-radius: 12px;
     box-shadow: var(--shadow-dialog);
     z-index: 50;
     overflow: hidden;
