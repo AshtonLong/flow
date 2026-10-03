@@ -1,0 +1,8 @@
+* text=auto
+resources/catalog.json text eol=lf
+resources/catalog.json.sig text eol=lf
+*.gguf binary
+*.onnx binary
+*.ico binary
+*.png binary
+*.wav binary

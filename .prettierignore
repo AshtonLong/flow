@@ -1,0 +1,13 @@
+out
+dist
+release
+node_modules
+pnpm-lock.yaml
+SPEC.md
+ARCHITECTURE.md
+Marketing-site
+test-results
+playwright-report
+screenshots
+resources/catalog.json
+resources/catalog.json.sig

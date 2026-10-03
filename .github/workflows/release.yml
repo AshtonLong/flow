@@ -1,0 +1,111 @@
+name: Release
+
+# Pushing a tag `vX.Y.Z` builds the installer and uploads it to a DRAFT GitHub Release.
+# Publishing that draft by hand is what makes electron-updater offer the update.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      # resources/catalog.json is signed byte for byte; keep it as committed (LF).
+      - name: Keep LF line endings
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check the tag matches package.json
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ("v$version" -ne $env:GITHUB_REF_NAME) {
+            throw "Tag $env:GITHUB_REF_NAME does not match package.json version $version"
+          }
+
+      - run: pnpm lint
+      - run: pnpm test
+      # Type-checks, then bundles into out/.
+      - run: pnpm build
+
+      # Signs when the certificate secrets exist; builds unsigned when they are empty.
+      - name: Package and upload to a draft release
+        run: pnpm exec electron-builder --win --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+
+      # If this step fails, do not publish the draft release.
+      - name: Smoke-test the packaged app
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem release -Filter 'Flow-Setup-*.exe' | Select-Object -First 1
+          if (-not $installer) { throw 'No installer was produced' }
+          $mb = [math]::Round($installer.Length / 1MB, 1)
+          Write-Host "Installer: $($installer.Name), $mb MB"
+          if ($installer.Length -gt 120MB) {
+            Write-Host "::warning::The installer is $mb MB; the budget in SPEC.md is 120 MB"
+          }
+
+          $signature = Get-AuthenticodeSignature $installer.FullName
+          if ($signature.Status -ne 'Valid') {
+            Write-Host "::warning::The installer is not code-signed (status: $($signature.Status))"
+          }
+
+          $resources = 'release/win-unpacked/resources'
+          $required = @(
+            'release/latest.yml',
+            "$resources/app.asar",
+            "$resources/app-update.yml",
+            "$resources/resources/catalog.json",
+            "$resources/resources/catalog.json.sig",
+            "$resources/resources/silero_vad.onnx",
+            "$resources/app.asar.unpacked/node_modules/@transcribe-cpp/win32-x64-cpu-vulkan/transcribe.dll",
+            "$resources/app.asar.unpacked/node_modules/@koromix/koffi-win32-x64/win32_x64/koffi.node",
+            "$resources/app.asar.unpacked/node_modules/uiohook-napi/prebuilds/win32-x64/uiohook-napi.node",
+            "$resources/app.asar.unpacked/node_modules/better-sqlite3/prebuilds/win32-x64.node",
+            "$resources/app.asar.unpacked/node_modules/onnxruntime-node/bin/napi-v6/win32/x64/onnxruntime_binding.node"
+          )
+          $missing = $required | Where-Object { -not (Test-Path $_) }
+          if ($missing) { throw "Missing from the package: $($missing -join ', ')" }
+
+          # Launch against a throwaway profile. `--smoke-test` asks the app to start up, load
+          # its native modules and exit 0. A non-zero exit fails the job.
+          $env:FLOW_USER_DATA = Join-Path $env:RUNNER_TEMP 'flow-smoke'
+          $app = Start-Process 'release/win-unpacked/Flow.exe' -ArgumentList '--smoke-test', '--hidden' -PassThru
+          if ($app.WaitForExit(90000)) {
+            if ($app.ExitCode -ne 0) { throw "Flow exited with code $($app.ExitCode)" }
+            Write-Host 'Flow started and exited cleanly.'
+          } else {
+            Stop-Process -Id $app.Id -Force
+            Write-Host '::warning::Flow was still running after 90 s; --smoke-test may not be implemented'
+          }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: flow-windows-${{ github.ref_name }}
+          path: |
+            release/Flow-Setup-*.exe
+            release/Flow-Setup-*.exe.blockmap
+            release/latest.yml
+          if-no-files-found: warn
