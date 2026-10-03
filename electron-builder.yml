@@ -1,0 +1,101 @@
+# Packaging for Flow. Run through `pnpm dist` (local, never publishes) or `pnpm release` (CI).
+appId: computer.flow.dictation
+productName: Flow
+copyright: Copyright © 2026 Flow contributors
+
+directories:
+  output: release
+
+# The app is the electron-vite output plus production dependencies. electron-builder adds the
+# node_modules of `dependencies` itself; only the `!` patterns below apply to them.
+files:
+  - out/**
+  - package.json
+
+  # Prebuilt binaries for other platforms and architectures. Only win32-x64 ships.
+  - '!**/node_modules/onnxruntime-node/bin/napi-v6/{darwin,linux}{,/**}'
+  - '!**/node_modules/onnxruntime-node/bin/napi-v6/win32/arm64{,/**}'
+  - '!**/node_modules/uiohook-napi/prebuilds/{darwin-arm64,darwin-x64,linux-arm64,linux-loong64,linux-x64,win32-arm64}{,/**}'
+  - '!**/node_modules/better-sqlite3/prebuilds/{darwin,linux,linuxmusl}-*.node'
+  - '!**/node_modules/better-sqlite3/prebuilds/win32-arm64.node'
+
+  # Silero VAD runs on the CPU execution provider, so the DirectML provider and its shader
+  # compiler (38 MB) are dead weight. Restore these three lines' files if a DirectML session
+  # is ever created.
+  - '!**/node_modules/onnxruntime-node/bin/napi-v6/win32/x64/{DirectML,dxcompiler,dxil}.dll'
+
+  # Sources, build scripts and docs that are only needed to compile the native modules.
+  - '!**/node_modules/onnxruntime-node/script{,/**}'
+  - '!**/node_modules/better-sqlite3/{deps,src}{,/**}'
+  - '!**/node_modules/uiohook-napi/{libuiohook,src}{,/**}'
+  - '!**/node_modules/koffi/{doc,vendor}{,/**}'
+  - '!**/node_modules/transcribe-cpp/scripts{,/**}'
+  - '!**/node_modules/**/*.map'
+
+# Read at runtime from `process.resourcesPath/resources/…`:
+# catalog.json, catalog.json.sig, silero_vad.onnx, icons, sounds.
+extraResources:
+  - from: resources
+    to: resources
+    filter:
+      - '**/*'
+
+# Maximum compression keeps the installer inside the 120 MB budget at the cost of build time.
+compression: maximum
+
+asar: true
+# Native libraries must be real files on disk: Windows cannot load a DLL from inside an archive.
+# transcribe-cpp itself is plain JavaScript and stays packed. It would resolve its DLL to a path
+# inside app.asar, so the main process hands the engine the unpacked path through
+# TRANSCRIBE_LIBRARY (`packagedLibraryPath` in src/main/windows/paths.ts).
+asarUnpack:
+  - '**/node_modules/@transcribe-cpp/**'
+  - '**/node_modules/@koromix/**'
+  - '**/node_modules/koffi/**'
+  - '**/node_modules/uiohook-napi/**'
+  - '**/node_modules/better-sqlite3/**'
+  - '**/node_modules/onnxruntime-node/**'
+
+# koffi, uiohook-napi, better-sqlite3 13 and onnxruntime-node all ship prebuilt N-API binaries
+# that load in Electron 44 unchanged, so nothing is compiled at package time (and CI needs no
+# C++ toolchain). Revisit if a dependency drops its prebuilds.
+npmRebuild: false
+nodeGypRebuild: false
+
+# v1 is English only; dropping Chromium's other locale packs helps the 120 MB installer budget.
+# If the installer still runs over, `compression: maximum` trades build time for size.
+electronLanguages:
+  - en-US
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: resources/icons/icon.ico
+  executableName: Flow
+  # Signed when CSC_LINK and CSC_KEY_PASSWORD are set in the environment (a .pfx as a path, URL
+  # or base64); unsigned otherwise. A public release must be signed: see SPEC.md, "Security".
+
+nsis:
+  oneClick: false
+  # Offers "only for me" (preselected, no admin rights needed) or "all users".
+  perMachine: false
+  selectPerMachineByDefault: false
+  allowToChangeInstallationDirectory: true
+  runAfterFinish: true
+  createDesktopShortcut: false
+  createStartMenuShortcut: true
+  shortcutName: Flow
+  uninstallDisplayName: Flow
+  # Settings, keys and history in %APPDATA%\Flow survive an uninstall or update.
+  deleteAppDataOnUninstall: false
+  artifactName: Flow-Setup-${version}.${ext}
+
+# electron-updater reads this feed (latest.yml on the newest published GitHub Release).
+# CI uploads to a draft release; publishing the draft is what rolls the update out.
+publish:
+  provider: github
+  owner: AshtonLong
+  repo: flow
+  releaseType: draft

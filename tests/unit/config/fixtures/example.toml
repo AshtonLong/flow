@@ -1,0 +1,79 @@
+version = 1
+
+[general]
+launch_at_login = true
+theme = "system"              # system | light | dark
+language = "en"               # v1 supports English only
+
+[hotkeys]
+hold_to_talk = "Ctrl+Win"     # key, combo, lone modifier or mouse button
+toggle = "Ctrl+Win+Space"
+cancel = "Esc"
+paste_last = "Alt+Shift+V"
+double_tap_lock = true
+
+[audio]
+input_device = "default"
+keep_mic_warm = false         # true = faster start, mic indicator stays on
+sounds = true
+max_recording_seconds = 300
+
+[model]
+active = "parakeet-tdt-0.6b-v2"
+fallback = "parakeet-tdt-0.6b-v2"   # used when a cloud model fails
+device = "auto"               # auto | cpu | gpu; auto uses CUDA when present
+keep_loaded_minutes = 10      # 0 = unload at once, -1 = never unload
+
+[providers.groq]
+api_key = "secret:groq"
+
+[providers.custom-lan]
+base_url = "http://192.168.1.20:8000/v1"
+api_key = "secret:custom-lan"
+
+[cleanup]
+filler_removal = true
+spoken_formatting = true
+llm_enabled = false
+llm_model = "groq/openai/gpt-oss-20b"
+llm_prompt = "clean"
+llm_timeout_ms = 3000
+
+[prompts.clean]
+text = "Fix grammar and punctuation. Remove false starts. Keep the speaker's words and tone."
+
+[insert]
+method = "paste"              # paste | type
+paste_shortcut = "Ctrl+V"
+restore_clipboard = true
+trailing_space = true
+
+[overlay]
+style = "pill"                # pill | minimal | none
+position = "bottom-center"
+show_waveform = true
+
+[history]
+enabled = false
+retention_days = 30
+
+[[dictionary]]
+heard = ["tory", "towery"]
+write = "Tauri"
+
+[[snippets]]
+trigger = "my address"
+text = "221B Baker Street, London"
+
+[[profiles]]
+name = "Terminals"
+match_process = ["WindowsTerminal.exe", "wezterm-gui.exe"]
+insert.paste_shortcut = "Ctrl+Shift+V"
+cleanup.llm_enabled = false
+
+[[profiles]]
+name = "Slack"
+match_process = ["slack.exe"]
+model.active = "groq/whisper-large-v3-turbo"
+cleanup.llm_enabled = true
+cleanup.llm_prompt = "casual"
