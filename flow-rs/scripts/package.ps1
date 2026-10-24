@@ -45,9 +45,13 @@ New-Item -ItemType Directory -Force (Join-Path $stage 'licenses') | Out-Null
 Copy-Item (Join-Path $root 'resources\fonts\OFL.txt') (Join-Path $stage 'licenses\Recursive-OFL.txt')
 Copy-Item (Join-Path $root 'resources\icons\lucide\LICENSE') (Join-Path $stage 'licenses\lucide-LICENSE.txt')
 
-# NSIS: on PATH, in its default folder, or under NSIS_HOME.
+# NSIS: on PATH, in its default folder, under NSIS_HOME, or the copy
+# electron-builder caches when the Electron build has been packaged here.
 $makensis = (Get-Command makensis -ErrorAction SilentlyContinue).Source
-foreach ($candidate in @("$env:NSIS_HOME\makensis.exe", 'C:\Program Files (x86)\NSIS\makensis.exe', 'C:\Program Files\NSIS\makensis.exe')) {
+$cached = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'electron-builder\Cache') -Filter 'nsis-3*' -Directory -ErrorAction SilentlyContinue |
+  ForEach-Object { Get-ChildItem $_.FullName -Filter makensis.exe -Recurse } |
+  Where-Object { $_.Directory.Name -ne 'Bin' } | Select-Object -First 1
+foreach ($candidate in @("$env:NSIS_HOME\makensis.exe", 'C:\Program Files (x86)\NSIS\makensis.exe', 'C:\Program Files\NSIS\makensis.exe', $cached.FullName)) {
   if (-not $makensis -and $candidate -and (Test-Path $candidate)) { $makensis = $candidate }
 }
 if (-not $makensis) { throw 'makensis not found: install NSIS 3 or set NSIS_HOME' }
