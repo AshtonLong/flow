@@ -34,6 +34,20 @@ fn strip_usb_suffix(label: &str) -> &str {
     }
 }
 
+/// Chromium's label suffix for a USB device, from the instance id of the
+/// controller the endpoint is connected to: `USB\VID_1532&PID_0531&MI_00\…`
+/// gives `" (1532:0531)"`. Other buses get none.
+fn usb_suffix(instance_id: &str) -> Option<String> {
+    let id = instance_id.to_ascii_uppercase();
+    let rest = id.strip_prefix("USB\\")?;
+    let field = |prefix: &str| {
+        let start = rest.find(prefix)? + prefix.len();
+        let value = rest.get(start..start + 4)?;
+        value.bytes().all(|b| b.is_ascii_hexdigit()).then(|| value.to_ascii_lowercase())
+    };
+    Some(format!(" ({}:{})", field("VID_")?, field("PID_")?))
+}
+
 /// True when two microphone labels name the same device. Labels written by the
 /// Electron build carry Chromium's USB `(vid:pid)` suffix; the native names do
 /// not, so the suffix is ignored on both sides.
@@ -46,8 +60,9 @@ pub(crate) fn device_key(label: &str) -> String {
     strip_usb_suffix(label).to_string()
 }
 
-/// Lists the active microphones in the order Windows reports them. Never fails;
-/// an enumeration error yields an empty list.
+/// Lists the active microphones in the order Windows reports them, labelled as
+/// Chromium labels them (with the USB `(vid:pid)`). Never fails; an enumeration
+/// error yields an empty list.
 pub fn list_microphones() -> Vec<Microphone> {
     match endpoints::capture_endpoints() {
         Ok(list) => list,
@@ -128,8 +143,8 @@ mod endpoints {
 
     use windows::Win32::Foundation::PROPERTYKEY;
     use windows::Win32::Media::Audio::{
-        DEVICE_STATE, DEVICE_STATE_ACTIVE, EDataFlow, ERole, IMMDeviceEnumerator, IMMNotificationClient,
-        IMMNotificationClient_Impl, MMDeviceEnumerator, eCapture,
+        DEVICE_STATE, DEVICE_STATE_ACTIVE, EDataFlow, ERole, IDeviceTopology, IMMDevice, IMMDeviceEnumerator,
+        IMMNotificationClient, IMMNotificationClient_Impl, MMDeviceEnumerator, eCapture,
     };
     use windows::Win32::System::Com::StructuredStorage::{PropVariantClear, PropVariantToStringAlloc};
     use windows::Win32::System::Com::{CLSCTX_ALL, CoCreateInstance, CoTaskMemFree, STGM_READ};
@@ -140,6 +155,41 @@ mod endpoints {
     /// `PKEY_Device_FriendlyName`, e.g. "Microphone (Razer Seiren Mini)".
     const FRIENDLY_NAME: PROPERTYKEY =
         PROPERTYKEY { fmtid: GUID::from_u128(0xa45c254e_df1c_4efd_8020_67d146a850e0), pid: 14 };
+    /// `PKEY_Device_InstanceId`, e.g. `USB\VID_1532&PID_0531&MI_00\7&…`.
+    const INSTANCE_ID: PROPERTYKEY =
+        PROPERTYKEY { fmtid: GUID::from_u128(0x78c34fc8_104a_4aca_9ea4_524d52996e57), pid: 256 };
+
+    /// A string property of a device, or `None`.
+    ///
+    /// # Safety
+    /// COM must be initialised on this thread.
+    unsafe fn string_property(device: &IMMDevice, key: &PROPERTYKEY) -> Option<String> {
+        unsafe {
+            let mut value = device.OpenPropertyStore(STGM_READ).and_then(|store| store.GetValue(key)).ok()?;
+            let text = PropVariantToStringAlloc(&value).ok().map(|s| {
+                let text = s.to_string().unwrap_or_default();
+                CoTaskMemFree(Some(s.0 as *const _));
+                text
+            });
+            let _ = PropVariantClear(&mut value);
+            text
+        }
+    }
+
+    /// Chromium's USB suffix: the instance id of the controller (KS filter) the
+    /// endpoint's first connector leads to, as `CoreAudioUtil::GetAudioControllerID`.
+    ///
+    /// # Safety
+    /// COM must be initialised on this thread.
+    unsafe fn usb_suffix(enumerator: &IMMDeviceEnumerator, device: &IMMDevice) -> Option<String> {
+        unsafe {
+            let topology: IDeviceTopology = device.Activate(CLSCTX_ALL, None).ok()?;
+            let filter = topology.GetConnector(0).ok()?.GetDeviceIdConnectedTo().ok()?;
+            let node = enumerator.GetDevice(PCWSTR(filter.0));
+            CoTaskMemFree(Some(filter.0 as *const _));
+            super::usb_suffix(&string_property(&node.ok()?, &INSTANCE_ID)?)
+        }
+    }
 
     fn enumerator() -> windows::core::Result<IMMDeviceEnumerator> {
         crate::com::ensure();
@@ -159,22 +209,10 @@ mod endpoints {
                 let Ok(raw_id) = device.GetId() else { continue };
                 let id = raw_id.to_string().unwrap_or_default();
                 CoTaskMemFree(Some(raw_id.0 as *const _));
-                let label = device
-                    .OpenPropertyStore(STGM_READ)
-                    .and_then(|store| store.GetValue(&FRIENDLY_NAME))
-                    .ok()
-                    .and_then(|mut value| {
-                        let text = PropVariantToStringAlloc(&value).ok().map(|s| {
-                            let text = s.to_string().unwrap_or_default();
-                            CoTaskMemFree(Some(s.0 as *const _));
-                            text
-                        });
-                        let _ = PropVariantClear(&mut value);
-                        text
-                    })
-                    .unwrap_or_default();
+                let mut label = string_property(&device, &FRIENDLY_NAME).unwrap_or_default();
                 // Like Chromium, a device without a name is not offered.
                 if !label.is_empty() && !id.is_empty() {
+                    label.extend(usb_suffix(&enumerator, &device));
                     out.push(Microphone { label, id });
                 }
             }
@@ -274,6 +312,15 @@ mod tests {
         assert_eq!(strip_usb_suffix("Mikrofon (Blue Yeti) (046d:0ab7)"), "Mikrofon (Blue Yeti)");
         assert_eq!(strip_usb_suffix("Ünïcode (1234:5678)"), "Ünïcode");
         assert_eq!(strip_usb_suffix("é(1234:5678)"), "é(1234:5678)");
+    }
+
+    #[test]
+    fn usb_suffix_matches_chromium() {
+        assert_eq!(usb_suffix(r"USB\VID_1532&PID_0531&MI_00\7&2A8B0F1&0&0000").as_deref(), Some(" (1532:0531)"));
+        assert_eq!(usb_suffix(r"usb\vid_046D&pid_0AB7\5&1").as_deref(), Some(" (046d:0ab7)"));
+        assert_eq!(usb_suffix(r"HDAUDIO\FUNC_01&VEN_10EC&DEV_0897\4&1"), None);
+        assert_eq!(usb_suffix(r"BTHENUM\{0000111e}_VID&0002054c_PID&0d58\8&1"), None);
+        assert_eq!(usb_suffix(r"USB\VID_12&PID_0531"), None);
     }
 
     #[test]
