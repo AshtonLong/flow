@@ -55,7 +55,7 @@ pub struct App {
     pub http: reqwest::Client,
     pub config: Arc<ConfigStore>,
     pub secrets: Arc<SecretStore>,
-    pub history: Option<Arc<Mutex<HistoryStore>>>,
+    pub history: Option<Arc<HistoryStore>>,
     pub models: Arc<ModelManager>,
     pub engine: Arc<EngineClient>,
     pub router: Arc<Router>,
@@ -149,7 +149,7 @@ impl App {
         }
         if cfg.history.enabled {
             if let Some(history) = &self.history {
-                if let Err(err) = history.lock().prune(cfg.history.retention_days) {
+                if let Err(err) = history.prune(cfg.history.retention_days) {
                     log::warn!(target: "history", "prune failed: {err}");
                 }
             }
@@ -183,7 +183,7 @@ impl App {
         self.overlay.destroy();
         self.tray.destroy();
         if let Some(history) = &self.history {
-            history.lock().close();
+            history.close();
         }
         self.config.close();
         system::quit();
@@ -421,7 +421,7 @@ async fn build(paths: Paths, rt: tokio::runtime::Handle, tx: mpsc::UnboundedSend
     secrets.load();
 
     let history = match HistoryStore::open(&paths.user_data.join("history.db")) {
-        Ok(store) => Some(Arc::new(Mutex::new(store))),
+        Ok(store) => Some(Arc::new(store)),
         Err(err) => {
             log::error!(target: "history", "unavailable: {err}");
             degraded.push(DegradedModule { module: "SQLite".into(), effect: "History is disabled".into() });
@@ -604,7 +604,7 @@ async fn build(paths: Paths, rt: tokio::runtime::Handle, tx: mpsc::UnboundedSend
             let history = history.clone();
             Arc::new(move |entry: flow_core::types::NewHistoryEntry| {
                 if let Some(history) = &history {
-                    if let Err(err) = history.lock().add(&entry) {
+                    if let Err(err) = history.add(&entry) {
                         log::warn!(target: "session", "history write failed: {err}");
                     }
                 }

@@ -207,14 +207,14 @@ async fn handle(app: Arc<App>, request: Request) -> Reply {
                 return Reply::err("Invalid search");
             }
             let Some(history) = &app.history else { return Reply::ok(&Vec::<()>::new()) };
-            match history.lock().search(&query, limit, offset) {
+            match history.search(&query, limit.into(), offset.into()) {
                 Ok(rows) => Reply::ok(&rows),
                 Err(err) => Reply::err(err.to_string()),
             }
         }
         Request::HistoryDelete(id) => {
             if let Some(history) = &app.history {
-                if let Err(err) = history.lock().delete(id) {
+                if let Err(err) = history.delete(id) {
                     return Reply::err(err.to_string());
                 }
             }
@@ -222,7 +222,7 @@ async fn handle(app: Arc<App>, request: Request) -> Reply {
         }
         Request::HistoryClear => {
             if let Some(history) = &app.history {
-                if let Err(err) = history.lock().clear() {
+                if let Err(err) = history.clear() {
                     return Reply::err(err.to_string());
                 }
             }
@@ -230,10 +230,10 @@ async fn handle(app: Arc<App>, request: Request) -> Reply {
         }
         Request::HistoryRerun(id) => {
             let Some(history) = app.history.clone() else { return Reply::ok(&Option::<()>::None) };
-            let entry = history.lock().get(id).ok().flatten();
+            let entry = history.get(id).ok().flatten();
             let Some(entry) = entry else { return Reply::ok(&Option::<()>::None) };
             let text = app.session.clean_up(&entry.raw_text, app.config.get(), None).await;
-            match history.lock().update_text(id, &text) {
+            match history.update(id, Some(&text)) {
                 Ok(updated) => Reply::ok(&updated),
                 Err(err) => Reply::err(err.to_string()),
             }

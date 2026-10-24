@@ -230,6 +230,7 @@ impl EngineClient {
     pub fn new(opts: EngineOptions) -> Arc<Self>;
     pub fn loaded_model_id(&self) -> Option<String>;
     pub fn running(&self) -> bool;
+    pub fn pid(&self) -> Option<u32>;
     pub fn devices(&self) -> Vec<BackendDevice>;
     pub fn vad(&self) -> Option<VadKind>;
     pub fn set_keep_loaded_minutes(&self, minutes: f64);
@@ -246,8 +247,10 @@ impl EngineClient {
 The engine loads `transcribe.dll` at runtime (libloading) with a hand-written
 FFI layer for the transcribe.cpp **0.3.0** C ABI (see the npm package
 `transcribe-cpp@0.3.0`, `dist/ffi.js` and `dist/_generated.js`, for every
-signature and struct layout). VAD uses `silero-vad-pure` (pure Rust Silero),
-with the TS energy detector as the fallback.
+signature and struct layout). VAD is a small pure-Rust Silero (`silero.rs`)
+running the weights of `resources/silero_vad.onnx`, embedded at build time; it
+matches onnxruntime to ~1e-6. The TS energy detector is the fallback.
+Parakeet ignores cancellation in transcribe.cpp 0.3.0 (as it did in Electron).
 
 ### `flow-win`
 
