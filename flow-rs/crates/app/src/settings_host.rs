@@ -85,6 +85,7 @@ impl SettingsHost {
         *slot = Some(Child { pid, out: out_tx.clone(), kill: kill_tx });
         drop(slot);
         log::info!(target: "settings", "window opened (pid {pid})");
+        crate::test_mode::settings_opened(pid);
 
         // Writer: queued lines to the window's stdin.
         if let Some(mut stdin) = stdin {

@@ -333,6 +333,14 @@ pub fn run(args: Vec<String>) -> i32 {
         let commands = app.clone();
         crate::test_mode::spawn_reader(tx.clone(), move |command| match command {
             crate::test_mode::Command::OpenSettings(page) => commands.settings.open(page.as_deref()),
+            crate::test_mode::Command::Ipc(envelope) => {
+                let handler = crate::ipc::handler(Arc::downgrade(&commands));
+                commands.rt.spawn(async move {
+                    let id = envelope.id;
+                    let reply = handler(envelope).await;
+                    crate::test_mode::reply(id, &reply);
+                });
+            }
             crate::test_mode::Command::Quit => commands.quit(),
         });
     }
