@@ -39,7 +39,7 @@ app info have loaded, at the window's own size (1000×700 at 100 %).
 | `pages/<page>.rs` | `pages/*.tsx` | one module per page; `pages/models/*` for the Models sections |
 | `onboarding/` | `onboarding/Onboarding.tsx` | the first-run flow (stub) |
 | `shell/` | `App.tsx`, `main.tsx` | the eframe app: title strip, caption buttons, nav rail, status footer, content panel, Boot/Onboarding/Shell |
-| `adapters/` | — | thin wrappers over APIs still being ported (`flow_audio`, `flow_core::hotkeys`); fix-up spots are marked `ADAPTER:` |
+| `adapters/` | `common/capture.ts`, `shared/hotkeys.ts` | the window's view of `flow_audio` (microphone list, level monitor) and the hotkey grammar from `flow_core::hotkeys` |
 | `platform.rs` | — | Win32: system theme fallback, high-contrast colours, DWM, clipboard |
 
 ## Writing a page
