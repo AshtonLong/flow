@@ -61,8 +61,7 @@ pub fn enabled(ui: &Ui) -> bool {
 /// 0 → 1 as `value` turns on, over `ms` milliseconds with `easing`.
 pub fn toggle(ui: &Ui, id: Id, value: bool, ms: f32, easing: fn(f32) -> f32) -> f32 {
     let time = if enabled(ui) { ms / 1000.0 } else { 0.0 };
-    ui.ctx()
-        .animate_bool_with_time_and_easing(id, value, time, easing)
+    ui.ctx().animate_bool_with_time_and_easing(id, value, time, easing)
 }
 
 /// A number that glides to `target` over `ms` (linear).

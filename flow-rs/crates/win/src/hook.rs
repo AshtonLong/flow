@@ -25,9 +25,9 @@ use windows::Win32::Foundation::{HINSTANCE, LPARAM, LRESULT, WPARAM};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::System::Threading::GetCurrentThreadId;
 use windows::Win32::UI::WindowsAndMessaging::{
-    CallNextHookEx, DispatchMessageW, GetMessageW, HC_ACTION, HHOOK, KBDLLHOOKSTRUCT, MSG, MSLLHOOKSTRUCT,
-    PM_NOREMOVE, PeekMessageW, PostThreadMessageW, SetWindowsHookExW, TranslateMessage, UnhookWindowsHookEx,
-    WH_KEYBOARD_LL, WH_MOUSE_LL, WM_QUIT,
+    CallNextHookEx, DispatchMessageW, GetMessageW, HC_ACTION, HHOOK, KBDLLHOOKSTRUCT, MSG, MSLLHOOKSTRUCT, PM_NOREMOVE,
+    PeekMessageW, PostThreadMessageW, SetWindowsHookExW, TranslateMessage, UnhookWindowsHookEx, WH_KEYBOARD_LL,
+    WH_MOUSE_LL, WM_QUIT,
 };
 use windows::core::PCWSTR;
 
@@ -522,10 +522,8 @@ fn hook_thread(sink: InputSink, ready: Sender<Result<u32, String>>) {
         let (keyboard, mouse): (HHOOK, HHOOK) = match (keyboard, mouse) {
             (Ok(keyboard), Ok(mouse)) => (keyboard, mouse),
             (keyboard, mouse) => {
-                let message = [&keyboard, &mouse]
-                    .iter()
-                    .find_map(|r| r.as_ref().err().map(|e| e.message()))
-                    .unwrap_or_default();
+                let message =
+                    [&keyboard, &mouse].iter().find_map(|r| r.as_ref().err().map(|e| e.message())).unwrap_or_default();
                 for hook in [keyboard, mouse].into_iter().flatten() {
                     let _ = UnhookWindowsHookEx(hook);
                 }

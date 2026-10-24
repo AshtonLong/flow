@@ -5,10 +5,7 @@
 //! the window edges. Dragging and resizing hand over to Windows
 //! (`WM_NCLBUTTONDOWN`), so Aero Snap works.
 
-use egui::{
-    Color32, CursorIcon, Id, Pos2, Rect, ResizeDirection, Sense, Stroke, Ui, ViewportCommand, pos2,
-    vec2,
-};
+use egui::{Color32, CursorIcon, Id, Pos2, Rect, ResizeDirection, Sense, Stroke, Ui, ViewportCommand, pos2, vec2};
 
 /// Height of the title strip (`h-10`).
 pub const TITLE_H: f32 = 40.0;
@@ -53,45 +50,25 @@ pub fn caption_buttons(ui: &Ui, window: Rect, dark: bool) -> Rect {
         pos2(window.right() - 3.0 * BUTTON_W, window.top()),
         pos2(window.right(), window.top() + TITLE_H),
     );
-    let symbol = if dark {
-        Color32::WHITE
-    } else {
-        Color32::from_rgb(0x1b, 0x1b, 0x1b)
-    };
-    for (i, kind) in [Caption::Minimize, Caption::Maximize, Caption::Close]
-        .into_iter()
-        .enumerate()
-    {
-        let rect = Rect::from_min_size(
-            pos2(all.left() + i as f32 * BUTTON_W, all.top()),
-            vec2(BUTTON_W, TITLE_H),
-        );
+    let symbol = if dark { Color32::WHITE } else { Color32::from_rgb(0x1b, 0x1b, 0x1b) };
+    for (i, kind) in [Caption::Minimize, Caption::Maximize, Caption::Close].into_iter().enumerate() {
+        let rect = Rect::from_min_size(pos2(all.left() + i as f32 * BUTTON_W, all.top()), vec2(BUTTON_W, TITLE_H));
         let response = ui.interact(rect, Id::unique(("flow-caption", i)), Sense::click());
         let pressed = response.is_pointer_button_down_on();
         let hovered = response.hovered();
         // Windows 11 caption colours (SubtleFillColorSecondary / Tertiary; close is #c42b1c).
         let (fill, mut color) = match (kind, pressed, hovered) {
-            (Caption::Close, true, _) => (
-                Color32::from_rgba_unmultiplied(0xc4, 0x2b, 0x1c, 230),
-                Color32::from_white_alpha(179),
-            ),
+            (Caption::Close, true, _) => {
+                (Color32::from_rgba_unmultiplied(0xc4, 0x2b, 0x1c, 230), Color32::from_white_alpha(179))
+            }
             (Caption::Close, false, true) => (Color32::from_rgb(0xc4, 0x2b, 0x1c), Color32::WHITE),
             (_, true, _) => (
-                if dark {
-                    Color32::from_white_alpha(11)
-                } else {
-                    Color32::from_black_alpha(6)
-                },
+                if dark { Color32::from_white_alpha(11) } else { Color32::from_black_alpha(6) },
                 symbol.gamma_multiply(0.6),
             ),
-            (_, false, true) => (
-                if dark {
-                    Color32::from_white_alpha(15)
-                } else {
-                    Color32::from_black_alpha(10)
-                },
-                symbol,
-            ),
+            (_, false, true) => {
+                (if dark { Color32::from_white_alpha(15) } else { Color32::from_black_alpha(10) }, symbol)
+            }
             _ => (Color32::TRANSPARENT, symbol),
         };
         if !focused && !hovered {
@@ -148,9 +125,7 @@ fn paint_symbol(ui: &Ui, center: Pos2, kind: Caption, maximized: bool, color: Co
 /// over whatever lies beneath them.
 pub fn resize_edges(ui: &Ui, window: Rect) {
     let ctx = ui.ctx().clone();
-    if ctx.input(|i| {
-        i.viewport().maximized.unwrap_or(false) || i.viewport().fullscreen.unwrap_or(false)
-    }) {
+    if ctx.input(|i| i.viewport().maximized.unwrap_or(false) || i.viewport().fullscreen.unwrap_or(false)) {
         return;
     }
     let Some(pointer) = ctx.input(|i| i.pointer.hover_pos()) else {

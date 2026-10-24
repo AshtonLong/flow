@@ -127,7 +127,8 @@ mod openai_compatible {
     #[tokio::test]
     async fn uploads_a_real_wav_of_the_audio() {
         let (server, result) =
-            transcribe_once("groq/whisper-large-v3-turbo", Reply::json(json!({ "text": "x" })), json!({}), options()).await;
+            transcribe_once("groq/whisper-large-v3-turbo", Reply::json(json!({ "text": "x" })), json!({}), options())
+                .await;
         result.unwrap();
         let bytes = server.call(0).form().part("file").unwrap().data.clone();
         assert_eq!(&bytes[0..4], b"RIFF");
@@ -139,16 +140,21 @@ mod openai_compatible {
     #[tokio::test]
     async fn sends_no_prompt_without_hints() {
         let (server, result) =
-            transcribe_once("groq/whisper-large-v3-turbo", Reply::json(json!({ "text": "x" })), json!({}), options()).await;
+            transcribe_once("groq/whisper-large-v3-turbo", Reply::json(json!({ "text": "x" })), json!({}), options())
+                .await;
         result.unwrap();
         assert!(!server.call(0).form().has("prompt"));
     }
 
     #[tokio::test]
     async fn sends_no_hints_to_a_model_the_catalog_marks_hints_false() {
-        let (server, result) =
-            transcribe_once("groq/whisper-large-v3", Reply::json(json!({ "text": "x" })), json!({}), hinted(&["Tauri"]))
-                .await;
+        let (server, result) = transcribe_once(
+            "groq/whisper-large-v3",
+            Reply::json(json!({ "text": "x" })),
+            json!({}),
+            hinted(&["Tauri"]),
+        )
+        .await;
         result.unwrap();
         assert!(!server.call(0).form().has("prompt"));
     }
@@ -264,10 +270,7 @@ mod mistral {
 
     #[tokio::test]
     async fn voxtral_multipart_upload_with_context_bias_terms() {
-        let opts = TranscribeOptions {
-            language: "en-US".into(),
-            ..hinted(&["Tauri", "Baker Street", "a,b", "tauri"])
-        };
+        let opts = TranscribeOptions { language: "en-US".into(), ..hinted(&["Tauri", "Baker Street", "a,b", "tauri"]) };
         let (server, result) = transcribe_once(
             "mistral/voxtral-mini-transcribe-2",
             Reply::json(json!({ "model": "voxtral-mini-2602", "text": " Bonjour. " })),
@@ -362,10 +365,7 @@ mod deepgram {
         assert_eq!(call.query_all("keyterm"), ["Tauri", "Baker Street"]);
         assert!(call.target.contains("keyterm=Baker+Street"), "{}", call.target);
         assert_eq!(call.method, "POST");
-        assert_eq!(
-            call.sent_headers(),
-            headers(&[("Authorization", "Token dg-test"), ("Content-Type", "audio/wav")])
-        );
+        assert_eq!(call.sent_headers(), headers(&[("Authorization", "Token dg-test"), ("Content-Type", "audio/wav")]));
         assert_eq!(call.body.len(), WAV_BYTES);
         assert_eq!(&call.body[0..4], b"RIFF");
     }
@@ -481,8 +481,18 @@ mod failures {
             ),
             ("500", Reply::status_text(500, "oops"), TranscribeErrorCode::Http, Some(500)),
             ("a rejected fetch", Reply::Fail, TranscribeErrorCode::Network, None),
-            ("a body that is not JSON", Reply::text("<html>gateway</html>"), TranscribeErrorCode::BadResponse, Some(200)),
-            ("JSON without a transcript", Reply::json(json!({ "unexpected": true })), TranscribeErrorCode::BadResponse, None),
+            (
+                "a body that is not JSON",
+                Reply::text("<html>gateway</html>"),
+                TranscribeErrorCode::BadResponse,
+                Some(200),
+            ),
+            (
+                "JSON without a transcript",
+                Reply::json(json!({ "unexpected": true })),
+                TranscribeErrorCode::BadResponse,
+                None,
+            ),
         ];
         for id in IDS {
             for (name, reply, code, status) in &cases {
@@ -538,8 +548,7 @@ mod failures {
     #[tokio::test(start_paused = true)]
     async fn gives_up_on_a_provider_that_never_answers() {
         let server = Server::start(vec![Reply::Hang]);
-        let transcriber =
-            create_cloud_transcriber("groq/whisper-large-v3-turbo", &deps(&server, json!({}))).unwrap();
+        let transcriber = create_cloud_transcriber("groq/whisper-large-v3-turbo", &deps(&server, json!({}))).unwrap();
         let started = tokio::time::Instant::now();
         let pending = tokio::spawn(async move { transcriber.transcribe(&audio(), &options()).await });
         assert!(server.wait_for_calls(1).await);

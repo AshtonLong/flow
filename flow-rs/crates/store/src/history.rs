@@ -75,8 +75,7 @@ fn to_entry(row: &Row<'_>) -> rusqlite::Result<HistoryEntry> {
 /// prefix. Words are quoted, so FTS operators and punctuation in the input are
 /// inert. Returns `None` when the input has no searchable word.
 pub fn fts_query(query: &str) -> Option<String> {
-    static WORD: LazyLock<regex::Regex> =
-        LazyLock::new(|| regex::Regex::new(r"[\p{L}\p{N}]+").expect("valid pattern"));
+    static WORD: LazyLock<regex::Regex> = LazyLock::new(|| regex::Regex::new(r"[\p{L}\p{N}]+").expect("valid pattern"));
     let words: Vec<String> = WORD.find_iter(query).map(|word| format!("\"{}\"*", word.as_str())).collect();
     (!words.is_empty()).then(|| words.join(" "))
 }

@@ -14,10 +14,8 @@ const MAX_CONTEXT_BIAS: usize = 100;
 /// The API schema only accepts bias terms without spaces or commas
 /// (`^[^,\s]+$`), so a multi-word hint is sent as its separate words.
 pub fn context_bias<S: AsRef<str>>(hints: &[S]) -> Vec<String> {
-    let words: Vec<&str> = hints
-        .iter()
-        .flat_map(|hint| hint.as_ref().split(|c: char| c == ',' || is_js_space(c)))
-        .collect();
+    let words: Vec<&str> =
+        hints.iter().flat_map(|hint| hint.as_ref().split(|c: char| c == ',' || is_js_space(c))).collect();
     limit_hints(&words, HintLimits { max_terms: Some(MAX_CONTEXT_BIAS), ..HintLimits::default() })
 }
 

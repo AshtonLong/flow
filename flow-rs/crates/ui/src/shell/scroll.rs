@@ -56,10 +56,7 @@ impl PageScroll {
         let thumb_len = (view_h / content_h * track.height()).max(28.0);
         let travel = (track.height() - thumb_len).max(1.0);
         let thumb_top = track.top() + travel * (offset / max_offset).clamp(0.0, 1.0);
-        let slot = Rect::from_min_max(
-            pos2(track.left(), thumb_top),
-            pos2(track.right(), thumb_top + thumb_len),
-        );
+        let slot = Rect::from_min_max(pos2(track.left(), thumb_top), pos2(track.right(), thumb_top + thumb_len));
         let response = ui.interact(track, id.with("scrollbar"), Sense::click_and_drag());
         let pointer = ui.input(|i| i.pointer.interact_pos());
         if response.drag_started()
@@ -77,18 +74,15 @@ impl PageScroll {
         if response.dragged()
             && let (Some((from_y, from_offset)), Some(p)) = (self.drag_from, pointer)
         {
-            self.set =
-                Some((from_offset + (p.y - from_y) * max_offset / travel).clamp(0.0, max_offset));
+            self.set = Some((from_offset + (p.y - from_y) * max_offset / travel).clamp(0.0, max_offset));
             ui.ctx().request_repaint();
         }
         if response.drag_stopped() {
             self.drag_from = None;
         }
-        let hot = self.drag_from.is_some()
-            || pointer.is_some_and(|p| slot.contains(p) && response.hovered());
+        let hot = self.drag_from.is_some() || pointer.is_some_and(|p| slot.contains(p) && response.hovered());
         let border = if hot { 4.0 } else { 5.0 };
         let thumb = slot.shrink(border);
-        ui.painter()
-            .rect_filled(thumb, CornerRadius::from(thumb.width() / 2.0), t.fg_3);
+        ui.painter().rect_filled(thumb, CornerRadius::from(thumb.width() / 2.0), t.fg_3);
     }
 }

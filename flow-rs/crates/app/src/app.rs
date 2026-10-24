@@ -36,7 +36,9 @@ use crate::settings_host::SettingsHost;
 use crate::system::{self, SystemEvent};
 use crate::updater::Updater;
 
-/// Everything that reaches the dispatcher.
+/// Everything that reaches the dispatcher. Variants are moved, not stored, so
+/// their sizes needn't match.
+#[allow(clippy::large_enum_variant)]
 pub enum AppMsg {
     Hotkey(HotkeyEvent),
     Capture(CaptureEvent),
@@ -64,6 +66,8 @@ pub struct App {
     pub hook_started: AtomicBool,
     pub platform: Arc<dyn Platform>,
     pub inserter: Arc<Inserter>,
+    /// Owned here: in test mode the session gets the fake microphone instead.
+    #[allow(dead_code)]
     pub capture: Arc<DictationCapture>,
     pub overlay: Arc<Overlay>,
     pub tray: Arc<Tray>,
@@ -84,12 +88,7 @@ impl App {
     }
 
     pub fn cloud_deps(&self, config: Arc<Config>) -> CloudDeps {
-        CloudDeps {
-            catalog: self.models.catalog(),
-            config,
-            get_secret: self.secret_getter(),
-            http: self.http.clone(),
-        }
+        CloudDeps { catalog: self.models.catalog(), config, get_secret: self.secret_getter(), http: self.http.clone() }
     }
 
     pub fn theme(&self) -> ThemeInfo {
@@ -142,17 +141,16 @@ impl App {
         self.hook.set_bindings(&cfg.hotkeys);
         self.engine.set_keep_loaded_minutes(cfg.model.keep_loaded_minutes);
         self.overlay.configure(self.overlay_appearance(cfg), cfg.overlay.position);
-        if self.paths.packaged {
-            if let Err(err) = system::set_launch_at_login(cfg.general.launch_at_login, &self.paths.exe) {
-                log::warn!(target: "app", "launch at login: {err}");
-            }
+        if self.paths.packaged
+            && let Err(err) = system::set_launch_at_login(cfg.general.launch_at_login, &self.paths.exe)
+        {
+            log::warn!(target: "app", "launch at login: {err}");
         }
-        if cfg.history.enabled {
-            if let Some(history) = &self.history {
-                if let Err(err) = history.prune(cfg.history.retention_days) {
-                    log::warn!(target: "history", "prune failed: {err}");
-                }
-            }
+        if cfg.history.enabled
+            && let Some(history) = &self.history
+            && let Err(err) = history.prune(cfg.history.retention_days)
+        {
+            log::warn!(target: "history", "prune failed: {err}");
         }
         // "Always loaded" keeps the model in memory from launch.
         if cfg.model.keep_loaded_minutes < 0.0 {
@@ -292,18 +290,15 @@ pub fn run(args: Vec<String>) -> i32 {
     log::info!(target: "app", "Flow {} starting (Rust)", env!("CARGO_PKG_VERSION"));
     let started = Instant::now();
 
-    let runtime = match tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(2)
-        .thread_name("flow-rt")
-        .enable_all()
-        .build()
-    {
-        Ok(runtime) => runtime,
-        Err(err) => {
-            log::error!(target: "app", "could not start the runtime: {err}");
-            return 1;
-        }
-    };
+    let runtime =
+        match tokio::runtime::Builder::new_multi_thread().worker_threads(2).thread_name("flow-rt").enable_all().build()
+        {
+            Ok(runtime) => runtime,
+            Err(err) => {
+                log::error!(target: "app", "could not start the runtime: {err}");
+                return 1;
+            }
+        };
     let rt = runtime.handle().clone();
     let (tx, mut rx) = mpsc::unbounded_channel::<AppMsg>();
 
@@ -326,12 +321,9 @@ pub fn run(args: Vec<String>) -> i32 {
     }
 
     let window_tx = tx.clone();
-    if let Err(err) = system::create_main_window(
-        Arc::new(move |event| {
-            let _ = window_tx.send(AppMsg::System(event));
-        }),
-        Box::new(|| {}),
-    ) {
+    if let Err(err) = system::create_main_window(Arc::new(move |event| {
+        let _ = window_tx.send(AppMsg::System(event));
+    })) {
         log::error!(target: "app", "could not create the main window: {err}");
     }
 
@@ -349,7 +341,9 @@ pub fn run(args: Vec<String>) -> i32 {
     app.hook_started.store(hook_started, Ordering::Relaxed);
     if !hook_started {
         log::error!(target: "input", "the global input hook failed to start; hotkeys are unavailable");
-        app.degraded.lock().push(DegradedModule { module: "input hook".into(), effect: "Hotkeys are unavailable".into() });
+        app.degraded
+            .lock()
+            .push(DegradedModule { module: "input hook".into(), effect: "Hotkeys are unavailable".into() });
     }
     app.update_tray();
 
@@ -408,7 +402,11 @@ pub fn run(args: Vec<String>) -> i32 {
     0
 }
 
-async fn build(paths: Paths, rt: tokio::runtime::Handle, tx: mpsc::UnboundedSender<AppMsg>) -> anyhow::Result<Arc<App>> {
+async fn build(
+    paths: Paths,
+    rt: tokio::runtime::Handle,
+    tx: mpsc::UnboundedSender<AppMsg>,
+) -> anyhow::Result<Arc<App>> {
     let mut degraded = Vec::new();
     let http = reqwest::Client::builder().user_agent(concat!("Flow/", env!("CARGO_PKG_VERSION"))).no_proxy().build()?;
 
@@ -417,7 +415,8 @@ async fn build(paths: Paths, rt: tokio::runtime::Handle, tx: mpsc::UnboundedSend
     config.load();
     config.watch();
 
-    let secrets = Arc::new(SecretStore::new(paths.user_data.join("secrets.bin"), flow_store::system_cipher(&paths.user_data)));
+    let secrets =
+        Arc::new(SecretStore::new(paths.user_data.join("secrets.bin"), flow_store::system_cipher(&paths.user_data)));
     secrets.load();
 
     let history = match HistoryStore::open(&paths.user_data.join("history.db")) {
@@ -560,9 +559,9 @@ async fn build(paths: Paths, rt: tokio::runtime::Handle, tx: mpsc::UnboundedSend
                         cancel: None,
                     };
                     // Insertion can wait seconds for modifiers to be released: keep it off the runtime.
-                    tokio::task::spawn_blocking(move || inserter.insert(&text, &options)).await.unwrap_or_else(|_| {
-                        InsertResult::clipboard(flow_core::types::InsertFailure::Failed)
-                    })
+                    tokio::task::spawn_blocking(move || inserter.insert(&text, &options))
+                        .await
+                        .unwrap_or_else(|_| InsertResult::clipboard(flow_core::types::InsertFailure::Failed))
                 })
             })
         };
@@ -581,16 +580,16 @@ async fn build(paths: Paths, rt: tokio::runtime::Handle, tx: mpsc::UnboundedSend
             let secrets = secrets.clone();
             let http = http.clone();
             Arc::new(
-                move |text: String, config: Arc<Config>, catalog: Arc<flow_core::catalog::Catalog>, cancel: CancellationToken| -> BoxFuture<Result<String, String>> {
+                move |text: String,
+                      config: Arc<Config>,
+                      catalog: Arc<flow_core::catalog::Catalog>,
+                      cancel: CancellationToken|
+                      -> BoxFuture<Result<String, String>> {
                     let secrets = secrets.clone();
                     let http = http.clone();
                     Box::pin(async move {
-                        let deps = CloudDeps {
-                            catalog,
-                            config,
-                            get_secret: Arc::new(move |id: &str| secrets.get(id)),
-                            http,
-                        };
+                        let deps =
+                            CloudDeps { catalog, config, get_secret: Arc::new(move |id: &str| secrets.get(id)), http };
                         flow_cloud::cleanup_with_llm(&text, &deps, Some(&cancel)).await.map_err(|e| e.to_string())
                     })
                 },
@@ -603,10 +602,10 @@ async fn build(paths: Paths, rt: tokio::runtime::Handle, tx: mpsc::UnboundedSend
         let add_history = {
             let history = history.clone();
             Arc::new(move |entry: flow_core::types::NewHistoryEntry| {
-                if let Some(history) = &history {
-                    if let Err(err) = history.add(&entry) {
-                        log::warn!(target: "session", "history write failed: {err}");
-                    }
+                if let Some(history) = &history
+                    && let Err(err) = history.add(&entry)
+                {
+                    log::warn!(target: "session", "history write failed: {err}");
                 }
             })
         };

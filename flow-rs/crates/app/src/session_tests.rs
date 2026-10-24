@@ -17,10 +17,22 @@ use tokio::sync::oneshot;
 use super::*;
 
 fn notepad() -> FocusedApp {
-    FocusedApp { window_id: "100".into(), process_name: "notepad.exe".into(), title: "Notes".into(), pid: 1, elevated: false }
+    FocusedApp {
+        window_id: "100".into(),
+        process_name: "notepad.exe".into(),
+        title: "Notes".into(),
+        pid: 1,
+        elevated: false,
+    }
 }
 fn slack() -> FocusedApp {
-    FocusedApp { window_id: "200".into(), process_name: "slack.exe".into(), title: "Slack".into(), pid: 2, elevated: false }
+    FocusedApp {
+        window_id: "200".into(),
+        process_name: "slack.exe".into(),
+        title: "Slack".into(),
+        pid: 2,
+        elevated: false,
+    }
 }
 
 fn seconds(n: f64) -> Vec<f32> {
@@ -29,7 +41,12 @@ fn seconds(n: f64) -> Vec<f32> {
 
 fn route(text: &str) -> RouteResult {
     RouteResult {
-        transcript: Transcript { text: text.into(), model: "parakeet-tdt-0.6b-v2".into(), audio_ms: 1000.0, elapsed_ms: 5.0 },
+        transcript: Transcript {
+            text: text.into(),
+            model: "parakeet-tdt-0.6b-v2".into(),
+            audio_ms: 1000.0,
+            elapsed_ms: 5.0,
+        },
         cloud: false,
         fell_back: false,
         fallback_reason: None,
@@ -37,7 +54,12 @@ fn route(text: &str) -> RouteResult {
 }
 
 fn failure(code: &str, message: &str) -> TranscribeFailure {
-    TranscribeFailure { aborted: code == "aborted", code: code.into(), message: message.into(), user_message: message.into() }
+    TranscribeFailure {
+        aborted: code == "aborted",
+        code: code.into(),
+        message: message.into(),
+        user_message: message.into(),
+    }
 }
 
 enum Behaviour {

@@ -78,10 +78,10 @@ pub fn segments_from_probs(probs: &[f32], total_ms: f64, o: &SegmentOptions) -> 
         raw.push(Segment { start_ms: start, end_ms: if silence_start >= 0.0 { silence_start } else { total_ms } });
     }
 
-    let padded = raw.into_iter().filter(|s| s.end_ms - s.start_ms >= o.min_speech_ms).map(|s| Segment {
-        start_ms: (s.start_ms - o.pad_ms).max(0.0),
-        end_ms: (s.end_ms + o.pad_ms).min(total_ms),
-    });
+    let padded = raw
+        .into_iter()
+        .filter(|s| s.end_ms - s.start_ms >= o.min_speech_ms)
+        .map(|s| Segment { start_ms: (s.start_ms - o.pad_ms).max(0.0), end_ms: (s.end_ms + o.pad_ms).min(total_ms) });
 
     let mut merged: Vec<Segment> = Vec::new();
     for seg in padded {

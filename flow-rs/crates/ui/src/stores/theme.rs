@@ -16,10 +16,7 @@ pub struct SystemTheme {
 
 impl SystemTheme {
     pub(crate) fn new(link: &Link) -> Self {
-        Self {
-            theme: crate::platform::system_theme(),
-            loading: Some(link.call(Request::ThemeGet)),
-        }
+        Self { theme: crate::platform::system_theme(), loading: Some(link.call(Request::ThemeGet)) }
     }
 
     pub(crate) fn pump(&mut self, events: &[Event]) {
@@ -58,11 +55,7 @@ pub fn appearance(system: &ThemeInfo, setting: ThemeSetting) -> Appearance {
         ThemeSetting::Dark => true,
         ThemeSetting::Light => false,
     };
-    Appearance {
-        dark,
-        high_contrast: system.high_contrast,
-        reduced_motion: system.reduced_motion,
-    }
+    Appearance { dark, high_contrast: system.high_contrast, reduced_motion: system.reduced_motion }
 }
 
 #[cfg(test)]
@@ -71,10 +64,7 @@ mod tests {
 
     #[test]
     fn the_override_wins_over_the_system() {
-        let system = ThemeInfo {
-            dark: true,
-            ..ThemeInfo::default()
-        };
+        let system = ThemeInfo { dark: true, ..ThemeInfo::default() };
         assert!(appearance(&system, ThemeSetting::System).dark);
         assert!(!appearance(&system, ThemeSetting::Light).dark);
         assert!(appearance(&ThemeInfo::default(), ThemeSetting::Dark).dark);

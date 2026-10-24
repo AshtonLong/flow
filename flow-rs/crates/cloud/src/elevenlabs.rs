@@ -15,7 +15,12 @@ const MAX_KEYTERMS: usize = 100;
 pub fn keyterms<S: AsRef<str>>(hints: &[S]) -> Vec<String> {
     limit_hints(
         hints,
-        HintLimits { max_terms: Some(MAX_KEYTERMS), max_term_chars: Some(49), max_words: Some(5), ..HintLimits::default() },
+        HintLimits {
+            max_terms: Some(MAX_KEYTERMS),
+            max_term_chars: Some(49),
+            max_words: Some(5),
+            ..HintLimits::default()
+        },
     )
 }
 

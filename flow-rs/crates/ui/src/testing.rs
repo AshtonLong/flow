@@ -24,19 +24,12 @@ pub(crate) struct Instant {
 
 impl Instant {
     pub(crate) fn new(raw: Value) -> Arc<Self> {
-        Arc::new(Self {
-            raw: Mutex::new(raw),
-            requests: Mutex::new(Vec::new()),
-        })
+        Arc::new(Self { raw: Mutex::new(raw), requests: Mutex::new(Vec::new()) })
     }
 
     fn snapshot(&self) -> ConfigSnapshot {
         let validated = validate_config(&self.raw.lock());
-        ConfigSnapshot {
-            config: validated.config,
-            issues: validated.issues,
-            path: "config.toml".into(),
-        }
+        ConfigSnapshot { config: validated.config, issues: validated.issues, path: "config.toml".into() }
     }
 
     pub(crate) fn raw(&self) -> Value {
@@ -76,21 +69,9 @@ impl Harness {
     pub(crate) fn new() -> Self {
         let ctx = egui::Context::default();
         design::fonts::install(&ctx);
-        let appearance = Appearance {
-            dark: false,
-            high_contrast: false,
-            reduced_motion: true,
-        };
-        design::apply(
-            &ctx,
-            Tokens::new(appearance, &crate::platform::system_colors()),
-        );
-        Self {
-            ctx,
-            time: 0.0,
-            pending: Vec::new(),
-            pointer: Pos2::ZERO,
-        }
+        let appearance = Appearance { dark: false, high_contrast: false, reduced_motion: true };
+        design::apply(&ctx, Tokens::new(appearance, &crate::platform::system_colors()));
+        Self { ctx, time: 0.0, pending: Vec::new(), pointer: Pos2::ZERO }
     }
 
     /// Runs one frame (egui may run extra passes for measured rows).
@@ -103,9 +84,7 @@ impl Harness {
             events: std::mem::take(&mut self.pending),
             ..RawInput::default()
         };
-        self.ctx
-            .run_ui(input, |ui| ui_fn(ui))
-            .drop_without_applying_deltas();
+        self.ctx.run_ui(input, |ui| ui_fn(ui)).drop_without_applying_deltas();
     }
 
     pub(crate) fn wait(&mut self, seconds: f64) {
@@ -190,17 +169,7 @@ impl PageHarness {
     }
 
     pub(crate) fn frame(&mut self) {
-        let Self {
-            h,
-            config,
-            catalog,
-            app_info,
-            mics,
-            page,
-            link,
-            nav,
-            ..
-        } = self;
+        let Self { h, config, catalog, app_info, mics, page, link, nav, .. } = self;
         h.frame(|ui| {
             config.pump(&[]);
             catalog.pump(&[]);
@@ -210,15 +179,7 @@ impl PageHarness {
             }
             let column = Rect::from_min_size(pos2(0.0, 0.0), vec2(696.0, 5000.0));
             let mut col = ui.new_child(egui::UiBuilder::new().max_rect(column));
-            let mut cx = Cx {
-                config,
-                catalog,
-                app_info,
-                mics,
-                link,
-                events: &[],
-                nav,
-            };
+            let mut cx = Cx { config, catalog, app_info, mics, link, events: &[], nav };
             page.ui(&mut col, &mut cx);
         });
     }
@@ -268,10 +229,7 @@ mod tests {
         let mut draw = |ui: &mut Ui| {
             ui.add_space(100.0);
             let current = value.get();
-            if let Some(v) = Select::new("test.select", Some(&current), &options)
-                .show(ui)
-                .changed
-            {
+            if let Some(v) = Select::new("test.select", Some(&current), &options).show(ui).changed {
                 value.set(v);
             }
         };
@@ -302,11 +260,7 @@ mod tests {
         let mut h = Harness::new();
         let mut value = 300i64;
         let mut draw = |ui: &mut Ui| {
-            if let Some(v) = NumberField::new("test.number", value, 5..=3600)
-                .unit("seconds")
-                .show(ui)
-                .committed
-            {
+            if let Some(v) = NumberField::new("test.number", value, 5..=3600).unit("seconds").show(ui).committed {
                 value = v;
             }
         };
@@ -330,10 +284,7 @@ mod tests {
         let commits = std::cell::Cell::new(0);
         let mut draw = |ui: &mut Ui| {
             let current = value.borrow().clone();
-            if let Some(v) = crate::components::TextField::new("test.text", &current)
-                .show(ui)
-                .committed
-            {
+            if let Some(v) = crate::components::TextField::new("test.text", &current).show(ui).committed {
                 *value.borrow_mut() = v;
                 commits.set(commits.get() + 1);
             }
@@ -365,10 +316,7 @@ mod tests {
         h.frame(&mut draw);
         h.key(Key::Enter);
         h.frame(&mut draw);
-        assert_eq!(
-            *values.borrow(),
-            vec!["tory".to_string(), "towery".to_string()]
-        );
+        assert_eq!(*values.borrow(), vec!["tory".to_string(), "towery".to_string()]);
         h.type_text("a,b");
         h.frame(&mut draw);
         h.frame(&mut draw);
@@ -400,15 +348,9 @@ mod tests {
         assert!(!p.config().general.launch_at_login);
         // Title 36 + 24, group heading 32 + 8, card padding 12, row 40: the first toggle
         // is centred 20 px into the row, its track ending 16 px from the card's edge.
-        let toggle = pos2(
-            696.0 - 16.0 - 21.0,
-            24.0 + 36.0 + 24.0 + 32.0 + 8.0 + 12.0 + 20.0 - 24.0,
-        );
+        let toggle = pos2(696.0 - 16.0 - 21.0, 24.0 + 36.0 + 24.0 + 32.0 + 8.0 + 12.0 + 20.0 - 24.0);
         p.click(toggle);
-        assert!(
-            p.config().general.launch_at_login,
-            "the optimistic state shows at once"
-        );
+        assert!(p.config().general.launch_at_login, "the optimistic state shows at once");
         assert_eq!(p.backend.raw()["general"]["launch_at_login"], json!(true));
     }
 }

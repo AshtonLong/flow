@@ -97,8 +97,8 @@ const NUMPAD: [&str; 10] =
     ["Numpad0", "Numpad1", "Numpad2", "Numpad3", "Numpad4", "Numpad5", "Numpad6", "Numpad7", "Numpad8", "Numpad9"];
 
 const FUNCTION: [&str; 24] = [
-    "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "F13", "F14", "F15", "F16", "F17", "F18",
-    "F19", "F20", "F21", "F22", "F23", "F24",
+    "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "F13", "F14", "F15", "F16", "F17",
+    "F18", "F19", "F20", "F21", "F22", "F23", "F24",
 ];
 
 /// The key for a mouse button number (3 middle, 4 back, 5 forward). Left (1) and right (2) are not bindable.
@@ -295,10 +295,7 @@ mod tests {
     fn maps_key_messages_to_downs_and_ups() {
         let ext = LLKHF_EXTENDED.0;
         assert_eq!(map_keyboard_event(WM_KEYDOWN, 0x41, 0x1e, 0, 0), Some(InputEvent { key: "A", down: true }));
-        assert_eq!(
-            map_keyboard_event(WM_KEYUP, 0x41, 0x1e, LLKHF_UP.0, 0),
-            Some(InputEvent { key: "A", down: false })
-        );
+        assert_eq!(map_keyboard_event(WM_KEYUP, 0x41, 0x1e, LLKHF_UP.0, 0), Some(InputEvent { key: "A", down: false }));
         // Alt chords arrive as WM_SYSKEY*.
         assert_eq!(map_keyboard_event(WM_SYSKEYDOWN, 0xa5, 0x38, ext, 0), Some(InputEvent { key: "RAlt", down: true }));
         assert_eq!(
@@ -315,10 +312,7 @@ mod tests {
         assert_eq!(map_keyboard_event(WM_KEYDOWN, 0x56, 0x2f, injected, INJECT_TAG), None);
         assert_eq!(map_keyboard_event(WM_KEYDOWN, 0xe8, 0, injected, INJECT_TAG), None);
         assert_eq!(map_mouse_event(WM_MBUTTONDOWN, 0, INJECT_TAG), None);
-        assert_eq!(
-            map_keyboard_event(WM_KEYDOWN, 0x56, 0x2f, injected, 0),
-            Some(InputEvent { key: "V", down: true })
-        );
+        assert_eq!(map_keyboard_event(WM_KEYDOWN, 0x56, 0x2f, injected, 0), Some(InputEvent { key: "V", down: true }));
         assert_eq!(
             map_keyboard_event(WM_KEYDOWN, 0x56, 0x2f, injected, 0xFFC3_C3C3),
             Some(InputEvent { key: "V", down: true })

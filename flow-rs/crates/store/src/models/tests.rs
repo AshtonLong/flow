@@ -698,7 +698,8 @@ async fn reports_local_cloud_and_key_status() {
     assert!(snapshot.custom.is_empty());
     let mut ids: Vec<&str> = snapshot.status.keys().map(String::as_str).collect();
     ids.sort();
-    let mut expected: Vec<&str> = ["alpha", "beta"].into_iter().chain(f.base_catalog.cloud.iter().map(|e| e.id.as_str())).collect();
+    let mut expected: Vec<&str> =
+        ["alpha", "beta"].into_iter().chain(f.base_catalog.cloud.iter().map(|e| e.id.as_str())).collect();
     expected.sort();
     assert_eq!(ids, expected);
     assert_eq!(snapshot.status["alpha"], status("alpha", true, true, true));

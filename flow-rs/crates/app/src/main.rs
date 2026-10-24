@@ -8,6 +8,8 @@
 //!   by the tray app while it is open.
 
 #![windows_subsystem = "windows"]
+// Callbacks between services are spelled out where they are wired.
+#![allow(clippy::type_complexity)]
 
 mod app;
 mod ipc;

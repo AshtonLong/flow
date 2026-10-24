@@ -87,7 +87,8 @@ impl Updater {
         if let Some((version, _)) = self.pending.lock().clone() {
             return Ok(Some(version));
         }
-        let text = self.http.get(FEED_URL).timeout(Duration::from_secs(20)).send().await?.error_for_status()?.text().await?;
+        let text =
+            self.http.get(FEED_URL).timeout(Duration::from_secs(20)).send().await?.error_for_status()?.text().await?;
         let release = parse_feed(&text).ok_or_else(|| anyhow::anyhow!("unreadable update feed"))?;
         if !is_newer(&release.version, Self::current()) {
             return Ok(None);

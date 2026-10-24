@@ -4,7 +4,7 @@
 
 use serde_json::Value;
 
-use crate::config::{validate_config, Config, PathSeg, Profile, PROFILE_SECTIONS};
+use crate::config::{Config, PROFILE_SECTIONS, PathSeg, Profile, validate_config};
 use crate::types::FocusedApp;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -102,7 +102,8 @@ pub fn resolve_profile(config: &Config, app: Option<&FocusedApp>) -> ResolvedPro
     let Some(profile) = match_profile(&config.profiles, app) else {
         return ResolvedProfile { config: config.clone(), profile: None, disabled: false };
     };
-    let resolved = ResolvedProfile { config: config.clone(), profile: Some(profile.name.clone()), disabled: !profile.enabled };
+    let resolved =
+        ResolvedProfile { config: config.clone(), profile: Some(profile.name.clone()), disabled: !profile.enabled };
 
     let base = config.to_value();
     let mut merged = base.clone();

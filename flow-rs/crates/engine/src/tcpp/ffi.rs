@@ -211,7 +211,12 @@ const ABI_STRUCTS: &[(&str, c_int, usize, usize)] = &[
         size_of::<ModelLoadParams>(),
         align_of::<ModelLoadParams>(),
     ),
-    ("transcribe_session_params", TRANSCRIBE_ABI_SESSION_PARAMS, size_of::<SessionParams>(), align_of::<SessionParams>()),
+    (
+        "transcribe_session_params",
+        TRANSCRIBE_ABI_SESSION_PARAMS,
+        size_of::<SessionParams>(),
+        align_of::<SessionParams>(),
+    ),
     ("transcribe_run_params", TRANSCRIBE_ABI_RUN_PARAMS, size_of::<RunParams>(), align_of::<RunParams>()),
     ("transcribe_timings", TRANSCRIBE_ABI_TIMINGS, size_of::<Timings>(), align_of::<Timings>()),
 ];

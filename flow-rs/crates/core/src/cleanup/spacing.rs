@@ -48,8 +48,7 @@ fn joins_directly(preceding: &str) -> bool {
     false
 }
 
-static FIRST_WORD: LazyLock<Regex> =
-    LazyLock::new(|| js::fixed_plain(r#"^(["'“‘(\[]*)(\p{Lu})([\p{L}\p{N}'’]*)"#));
+static FIRST_WORD: LazyLock<Regex> = LazyLock::new(|| js::fixed_plain(r#"^(["'“‘(\[]*)(\p{Lu})([\p{L}\p{N}'’]*)"#));
 static INNER_CAPITAL: LazyLock<Regex> = LazyLock::new(|| js::fixed_plain(r"[\p{Lu}\p{N}]"));
 static WORD_CHAR_FIRST: LazyLock<Regex> = LazyLock::new(|| js::fixed_plain(r"^[\p{L}\p{N}_]"));
 
@@ -79,8 +78,7 @@ fn lower_first(text: &str, keep_case: &[String]) -> String {
     format!("{lead}{}{}", first.to_lowercase(), &text[lead.len() + first.len()..])
 }
 
-static ATTACHES: LazyLock<Regex> =
-    LazyLock::new(|| js::fixed_plain(&format!(r"^[{},.;:!?…)\]}}]", js::SPACE)));
+static ATTACHES: LazyLock<Regex> = LazyLock::new(|| js::fixed_plain(&format!(r"^[{},.;:!?…)\]}}]", js::SPACE)));
 
 /// Applies `match_case` and `trailing_space`. With no `preceding_text` the casing
 /// is left alone: the model's capital is the best guess when the context is unknown.

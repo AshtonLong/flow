@@ -1,10 +1,8 @@
 //! PORT: tests/unit/shared/config.test.ts
 
-use flow_core::config::{
-    prompt_names, resolve_prompt, validate_config, Config, ConfigIssue, PathSeg, ProviderConfig,
-};
+use flow_core::config::{Config, ConfigIssue, PathSeg, ProviderConfig, prompt_names, resolve_prompt, validate_config};
 use flow_core::path;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 fn joined(path: &[PathSeg]) -> String {
     path.iter().map(ToString::to_string).collect::<Vec<_>>().join(".")
@@ -123,9 +121,15 @@ mod zod_messages {
         assert_eq!(one(json!({ "audio": { "sounds": "loud" } })), "Invalid input: expected boolean, received string");
         assert_eq!(one(json!({ "audio": { "max_recording_seconds": 2 } })), "Too small: expected number to be >=5");
         assert_eq!(one(json!({ "audio": { "max_recording_seconds": 3601 } })), "Too big: expected number to be <=3600");
-        assert_eq!(one(json!({ "audio": { "max_recording_seconds": 2.5 } })), "Invalid input: expected int, received number");
+        assert_eq!(
+            one(json!({ "audio": { "max_recording_seconds": 2.5 } })),
+            "Invalid input: expected int, received number"
+        );
         assert_eq!(one(json!({ "model": { "keep_loaded_minutes": -2 } })), "Too small: expected number to be >=-1");
-        assert_eq!(one(json!({ "model": { "keep_loaded_minutes": [] } })), "Invalid input: expected number, received array");
+        assert_eq!(
+            one(json!({ "model": { "keep_loaded_minutes": [] } })),
+            "Invalid input: expected number, received array"
+        );
         assert_eq!(one(json!({ "version": 1.5 })), "Invalid input: expected int, received number");
         assert_eq!(one(json!({ "version": 1e300 })), "Too big: expected int to be <=9007199254740991");
         assert_eq!(

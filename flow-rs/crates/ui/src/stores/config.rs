@@ -35,16 +35,7 @@ pub struct ConfigStore {
 impl ConfigStore {
     pub(crate) fn new(link: Link) -> Self {
         let initial = Some(link.call(Request::ConfigGet));
-        Self {
-            link,
-            snapshot: None,
-            error: None,
-            pending: 0,
-            sequence: 0,
-            initial,
-            writes: Vec::new(),
-            refetch: None,
-        }
+        Self { link, snapshot: None, error: None, pending: 0, sequence: 0, initial, writes: Vec::new(), refetch: None }
     }
 
     /// Applies replies and `ConfigChanged` events. The app calls this once per frame.
@@ -122,10 +113,7 @@ impl ConfigStore {
     pub fn set<T: Serialize>(&mut self, path: ConfigPath, value: T) {
         match serde_json::to_value(value) {
             Ok(value) => {
-                self.patch(vec![ConfigPatch {
-                    path,
-                    value: Some(value),
-                }]);
+                self.patch(vec![ConfigPatch { path, value: Some(value) }]);
             }
             Err(err) => self.error = Some(format!("The change was not saved: {err}")),
         }

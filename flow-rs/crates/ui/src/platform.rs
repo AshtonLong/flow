@@ -44,10 +44,7 @@ fn high_contrast_on() -> bool {
     use windows::Win32::UI::WindowsAndMessaging::{
         SPI_GETHIGHCONTRAST, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, SystemParametersInfoW,
     };
-    let mut hc = HIGHCONTRASTW {
-        cbSize: std::mem::size_of::<HIGHCONTRASTW>() as u32,
-        ..Default::default()
-    };
+    let mut hc = HIGHCONTRASTW { cbSize: std::mem::size_of::<HIGHCONTRASTW>() as u32, ..Default::default() };
     // SAFETY: `hc` is a correctly sized HIGHCONTRASTW.
     let ok = unsafe {
         SystemParametersInfoW(
@@ -107,8 +104,8 @@ pub struct SystemColors {
 #[cfg(windows)]
 pub fn system_colors() -> SystemColors {
     use windows::Win32::Graphics::Gdi::{
-        COLOR_BTNFACE, COLOR_BTNTEXT, COLOR_GRAYTEXT, COLOR_HIGHLIGHT, COLOR_HIGHLIGHTTEXT,
-        COLOR_HOTLIGHT, COLOR_WINDOW, COLOR_WINDOWTEXT, GetSysColor, SYS_COLOR_INDEX,
+        COLOR_BTNFACE, COLOR_BTNTEXT, COLOR_GRAYTEXT, COLOR_HIGHLIGHT, COLOR_HIGHLIGHTTEXT, COLOR_HOTLIGHT,
+        COLOR_WINDOW, COLOR_WINDOWTEXT, GetSysColor, SYS_COLOR_INDEX,
     };
     // GetSysColor returns 0x00BBGGRR.
     let get = |index: SYS_COLOR_INDEX| {
@@ -147,13 +144,11 @@ pub fn system_colors() -> SystemColors {
 pub mod window {
     use windows::Win32::Foundation::{HWND, LPARAM};
     use windows::Win32::Graphics::Dwm::{
-        DWMWA_USE_IMMERSIVE_DARK_MODE, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND,
-        DwmSetWindowAttribute,
+        DWMWA_USE_IMMERSIVE_DARK_MODE, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND, DwmSetWindowAttribute,
     };
     use windows::Win32::System::Threading::GetCurrentThreadId;
     use windows::Win32::UI::WindowsAndMessaging::{
-        EnumThreadWindows, GetClassNameW, IsIconic, IsWindowVisible, SW_RESTORE,
-        SetForegroundWindow, ShowWindow,
+        EnumThreadWindows, GetClassNameW, IsIconic, IsWindowVisible, SW_RESTORE, SetForegroundWindow, ShowWindow,
     };
     use windows::core::BOOL;
 
@@ -179,11 +174,7 @@ pub mod window {
         let mut found: Vec<HWND> = Vec::new();
         // SAFETY: the callback only pushes into `found`, which outlives the call.
         unsafe {
-            let _ = EnumThreadWindows(
-                GetCurrentThreadId(),
-                Some(collect),
-                LPARAM((&raw mut found) as isize),
-            );
+            let _ = EnumThreadWindows(GetCurrentThreadId(), Some(collect), LPARAM((&raw mut found) as isize));
         }
         let mut class = [0u16; 64];
         found
@@ -334,18 +325,16 @@ pub mod clipboard {
 pub fn keys_down() -> Vec<&'static str> {
     use windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState;
     const LETTERS: [&str; 26] = [
-        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R",
-        "S", "T", "U", "V", "W", "X", "Y", "Z",
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V",
+        "W", "X", "Y", "Z",
     ];
     const DIGITS: [&str; 10] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
     const FKEYS: [&str; 24] = [
-        "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "F13", "F14",
-        "F15", "F16", "F17", "F18", "F19", "F20", "F21", "F22", "F23", "F24",
+        "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "F13", "F14", "F15", "F16", "F17",
+        "F18", "F19", "F20", "F21", "F22", "F23", "F24",
     ];
-    const NUMPAD: [&str; 10] = [
-        "Numpad0", "Numpad1", "Numpad2", "Numpad3", "Numpad4", "Numpad5", "Numpad6", "Numpad7",
-        "Numpad8", "Numpad9",
-    ];
+    const NUMPAD: [&str; 10] =
+        ["Numpad0", "Numpad1", "Numpad2", "Numpad3", "Numpad4", "Numpad5", "Numpad6", "Numpad7", "Numpad8", "Numpad9"];
     const NAMED: [(i32, &str); 42] = [
         (0xA2, "LCtrl"),
         (0xA3, "RCtrl"),

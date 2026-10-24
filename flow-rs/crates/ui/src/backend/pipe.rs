@@ -22,10 +22,7 @@ const CLOSED: &str = "Flow is not running";
 
 /// Requests on stdout, responses and events from stdin. EOF on stdin closes the window.
 pub fn pipe_backend() -> Arc<dyn Backend> {
-    Arc::new(PipeBackend::start(
-        BufReader::new(std::io::stdin()),
-        std::io::stdout(),
-    ))
+    Arc::new(PipeBackend::start(BufReader::new(std::io::stdin()), std::io::stdout()))
 }
 
 #[derive(Default)]
@@ -68,24 +65,15 @@ pub(crate) struct PipeBackend {
 }
 
 impl PipeBackend {
-    pub(crate) fn start(
-        input: impl BufRead + Send + 'static,
-        output: impl Write + Send + 'static,
-    ) -> Self {
+    pub(crate) fn start(input: impl BufRead + Send + 'static, output: impl Write + Send + 'static) -> Self {
         let shared = Arc::new(Shared::default());
         let reader = Arc::clone(&shared);
-        let spawned = std::thread::Builder::new()
-            .name("settings-pipe".into())
-            .spawn(move || read_loop(input, &reader));
+        let spawned = std::thread::Builder::new().name("settings-pipe".into()).spawn(move || read_loop(input, &reader));
         if let Err(err) = spawned {
             log::error!(target: "settings", "could not start the pipe reader: {err}");
             shared.close();
         }
-        Self {
-            next_id: AtomicU64::new(1),
-            out: Mutex::new(Box::new(output)),
-            shared,
-        }
+        Self { next_id: AtomicU64::new(1), out: Mutex::new(Box::new(output)), shared }
     }
 }
 
@@ -137,9 +125,7 @@ impl Backend for PipeBackend {
         self.shared.pending.lock().insert(id, reply);
         let written = {
             let mut out = self.out.lock();
-            out.write_all(line.as_bytes())
-                .and_then(|()| out.write_all(b"\n"))
-                .and_then(|()| out.flush())
+            out.write_all(line.as_bytes()).and_then(|()| out.write_all(b"\n")).and_then(|()| out.flush())
         };
         if let Err(err) = written {
             log::warn!(target: "settings", "stdout write failed: {err}");
@@ -188,10 +174,7 @@ mod tests {
         pipe.subscribe(Box::new(move |event| {
             let _ = ready_tx.send(event);
         }));
-        assert_eq!(
-            ready_rx.recv_timeout(Duration::from_secs(2)).unwrap(),
-            Event::Quit
-        );
+        assert_eq!(ready_rx.recv_timeout(Duration::from_secs(2)).unwrap(), Event::Quit);
         let (tx, rx) = mpsc::channel();
         pipe.request(Request::ConfigGet, Box::new(move |r| tx.send(r).unwrap()));
         assert_eq!(rx.recv().unwrap(), Reply::err(CLOSED));
@@ -208,53 +191,30 @@ mod tests {
         }));
 
         let (tx, rx) = mpsc::channel();
-        pipe.request(
-            Request::AppSetPaused(true),
-            Box::new(move |r| tx.send(r).unwrap()),
-        );
+        pipe.request(Request::AppSetPaused(true), Box::new(move |r| tx.send(r).unwrap()));
         let written = String::from_utf8(sink.0.lock().clone()).unwrap();
         let envelope: RequestEnvelope = serde_json::from_str(written.trim()).unwrap();
         assert_eq!(envelope.request, Request::AppSetPaused(true));
 
-        let response = serde_json::to_string(&Downstream::Response {
-            id: envelope.id,
-            result: Reply::ok(&()),
-        })
-        .unwrap();
-        let event = serde_json::to_string(&Downstream::Event(Event::Focus {
-            page: Some("models".into()),
-        }))
-        .unwrap();
+        let response =
+            serde_json::to_string(&Downstream::Response { id: envelope.id, result: Reply::ok(&()) }).unwrap();
+        let event = serde_json::to_string(&Downstream::Event(Event::Focus { page: Some("models".into()) })).unwrap();
         writeln!(writer, "{response}\n{event}").unwrap();
         drop(writer);
 
-        assert_eq!(
-            rx.recv_timeout(Duration::from_secs(2)).unwrap(),
-            Reply::ok(&())
-        );
+        assert_eq!(rx.recv_timeout(Duration::from_secs(2)).unwrap(), Reply::ok(&()));
         assert_eq!(
             event_rx.recv_timeout(Duration::from_secs(2)).unwrap(),
-            Event::Focus {
-                page: Some("models".into())
-            }
+            Event::Focus { page: Some("models".into()) }
         );
         // EOF after the writer is dropped.
-        assert_eq!(
-            event_rx.recv_timeout(Duration::from_secs(2)).unwrap(),
-            Event::Quit
-        );
+        assert_eq!(event_rx.recv_timeout(Duration::from_secs(2)).unwrap(), Event::Quit);
     }
 
     /// An in-memory pipe: lines written to the first half are read from the second.
     fn pipe_pair() -> (PipeWriter, BufReader<PipeReader>) {
         let (tx, rx) = mpsc::channel::<Vec<u8>>();
-        (
-            PipeWriter(tx),
-            BufReader::new(PipeReader {
-                rx,
-                buf: Vec::new(),
-            }),
-        )
+        (PipeWriter(tx), BufReader::new(PipeReader { rx, buf: Vec::new() }))
     }
     struct PipeWriter(mpsc::Sender<Vec<u8>>);
     impl Write for PipeWriter {

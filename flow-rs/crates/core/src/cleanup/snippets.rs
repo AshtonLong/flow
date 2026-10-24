@@ -88,8 +88,7 @@ pub(crate) fn try_expand_snippets(text: &str, snippets: &[Snippet]) -> Result<Ex
     };
 
     let alternatives: Vec<String> = rules.iter().map(|r| format!("({})", r.source)).collect();
-    let inline_source =
-        format!(r"(?i){PHRASE_START}(?:{}){PHRASE_END}([.,!?;:…]*)([ \t]*)", alternatives.join("|"));
+    let inline_source = format!(r"(?i){PHRASE_START}(?:{}){PHRASE_END}([.,!?;:…]*)([ \t]*)", alternatives.join("|"));
     let patterns = PATTERNS.get(&inline_source, || -> Result<Patterns, js::RuleError> {
         let whole = rules
             .iter()
@@ -130,11 +129,7 @@ pub fn restore_snippets(text: &str, slots: &[String]) -> String {
     }
     SLOT.replace_all(text, |c: &regex::Captures<'_>| {
         // `slots[Number(index)] ?? ''`: an index too large to parse is out of range too.
-        c.get(1)
-            .and_then(|m| m.as_str().parse::<usize>().ok())
-            .and_then(|i| slots.get(i))
-            .cloned()
-            .unwrap_or_default()
+        c.get(1).and_then(|m| m.as_str().parse::<usize>().ok()).and_then(|i| slots.get(i)).cloned().unwrap_or_default()
     })
     .into_owned()
 }

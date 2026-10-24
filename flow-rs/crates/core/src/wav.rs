@@ -90,10 +90,7 @@ mod tests {
 
     #[test]
     fn scales_clamps_and_silences_bad_samples() {
-        let wav = encode_wav(
-            &[0.0, 1.0, -1.0, 0.5, -0.5, 2.0, -2.0, f32::NAN, f32::INFINITY],
-            SAMPLE_RATE,
-        );
+        let wav = encode_wav(&[0.0, 1.0, -1.0, 0.5, -0.5, 2.0, -2.0, f32::NAN, f32::INFINITY], SAMPLE_RATE);
         let samples: Vec<i16> = (0..9).map(|i| i16_at(&wav, 44 + i * 2)).collect();
         assert_eq!(samples, [0, 32767, -32768, 16384, -16384, 32767, -32768, 0, 32767]);
     }

@@ -31,11 +31,7 @@ pub fn logo(ui: &Ui, left: f32, center_y: f32) {
     let caret_h = 0.78 * em;
     let x = left + word_w + 0.09 * em;
     let bottom = baseline + 0.04 * em;
-    ui.painter().rect_filled(
-        Rect::from_min_max(pos2(x, bottom - caret_h), pos2(x + caret_w, bottom)),
-        0.0,
-        t.fg,
-    );
+    ui.painter().rect_filled(Rect::from_min_max(pos2(x, bottom - caret_h), pos2(x + caret_w, bottom)), 0.0, t.fg);
 }
 
 /// The page list. Returns the page to open when one was picked.
@@ -47,19 +43,9 @@ pub fn nav_items(ui: &mut Ui, rect: Rect, current: PageId) -> Option<PageId> {
     let mut responses = Vec::new();
     for (i, page) in PageId::ALL.into_iter().enumerate() {
         let item = Rect::from_min_size(pos2(rect.left() + 8.0, y), vec2(rect.width() - 16.0, 36.0));
-        let response = ui.interact(
-            item,
-            Id::unique(("flow-nav", page.as_str())),
-            Sense::click(),
-        );
+        let response = ui.interact(item, Id::unique(("flow-nav", page.as_str())), Sense::click());
         let active = page == current;
-        let hover = motion::toggle(
-            ui,
-            response.id.with("hover"),
-            response.hovered() && !active,
-            200.0,
-            motion::ease,
-        );
+        let hover = motion::toggle(ui, response.id.with("hover"), response.hovered() && !active, 200.0, motion::ease);
         let painter = ui.painter();
         let r = CornerRadius::from(9.0);
         if active {
@@ -71,31 +57,11 @@ pub fn nav_items(ui: &mut Ui, rect: Rect, current: PageId) -> Option<PageId> {
             painter.rect_filled(item, r, t.subtle_hover.gamma_multiply(hover));
         }
         let color = if active { t.on_accent } else { t.fg };
-        let icon_rect = Rect::from_min_size(
-            pos2(item.left() + 12.0, item.center().y - 8.0),
-            Vec2::splat(16.0),
-        );
+        let icon_rect = Rect::from_min_size(pos2(item.left() + 12.0, item.center().y - 8.0), Vec2::splat(16.0));
         icons::paint(ui, page.icon(), icon_rect, 16.0, 1.75, color);
-        let weight = if active {
-            Weight::Strong
-        } else {
-            Weight::Medium
-        };
-        let galley = text::galley(
-            ui,
-            page.label(),
-            TextStyle::BODY.weight(weight),
-            color,
-            f32::INFINITY,
-        );
-        ui.painter().galley(
-            pos2(
-                icon_rect.right() + 12.0,
-                item.center().y - galley.size().y / 2.0,
-            ),
-            galley,
-            color,
-        );
+        let weight = if active { Weight::Strong } else { Weight::Medium };
+        let galley = text::galley(ui, page.label(), TextStyle::BODY.weight(weight), color, f32::INFINITY);
+        ui.painter().galley(pos2(icon_rect.right() + 12.0, item.center().y - galley.size().y / 2.0), galley, color);
         focus::ring(ui, &response, item, 9.0);
         if response.clicked() && !active {
             picked = Some(page);
@@ -143,18 +109,14 @@ pub fn status_footer(ui: &mut Ui, rect: Rect, status: &Status<'_>) -> bool {
     // `mx-2 border-t border-line px-2 pt-3 pb-3`
     let top = rect.bottom() - footer_height();
     ui.painter().line_segment(
-        [
-            pos2(rect.left() + 8.0, top + 0.5),
-            pos2(rect.right() - 8.0, top + 0.5),
-        ],
+        [pos2(rect.left() + 8.0, top + 0.5), pos2(rect.right() - 8.0, top + 0.5)],
         Stroke::new(1.0, t.line),
     );
     let left = rect.left() + 16.0;
     let width = rect.width() - 32.0;
     let mut y = top + 1.0 + 12.0;
     let dot = if status.paused { t.warn } else { t.ok };
-    ui.painter()
-        .circle_filled(pos2(left + 4.0, y + 8.0), 4.0, dot);
+    ui.painter().circle_filled(pos2(left + 4.0, y + 8.0), 4.0, dot);
     let line = if status.paused {
         "Dictation paused"
     } else if is_cloud_model_id(status.active_model) {
@@ -163,30 +125,18 @@ pub fn status_footer(ui: &mut Ui, rect: Rect, status: &Status<'_>) -> bool {
         "Active model"
     };
     let caption = text::galley(ui, line, TextStyle::CAPTION, t.fg_2, f32::INFINITY);
-    ui.painter()
-        .galley(pos2(left + 8.0 + 8.0, y), caption, t.fg_2);
+    ui.painter().galley(pos2(left + 8.0 + 8.0, y), caption, t.fg_2);
     y += 16.0 + 4.0;
-    let model = text::galley_truncated(
-        ui,
-        status.model_label.as_str(),
-        TextStyle::BODY,
-        t.fg,
-        width,
-    );
+    let model = text::galley_truncated(ui, status.model_label.as_str(), TextStyle::BODY, t.fg, width);
     let model_rect = Rect::from_min_size(pos2(left, y), model.size());
     ui.painter().galley(model_rect.min, model, t.fg);
     // `title=` on the truncated name.
     let hover = ui.interact(model_rect, Id::unique("flow-footer-model"), Sense::hover());
     crate::components::tooltip::show(ui, &hover, &status.model_label);
     y += 20.0 + 4.0;
-    let mut child = ui.new_child(
-        egui::UiBuilder::new().max_rect(Rect::from_min_size(pos2(left, y), vec2(width, 16.0))),
-    );
-    let label = if status.paused {
-        "Resume dictation"
-    } else {
-        "Pause dictation"
-    };
+    let mut child =
+        ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(pos2(left, y), vec2(width, 16.0))));
+    let label = if status.paused { "Resume dictation" } else { "Pause dictation" };
     link(&mut child, label, TextStyle::CAPTION).clicked()
 }
 

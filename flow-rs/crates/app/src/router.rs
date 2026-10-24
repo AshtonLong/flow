@@ -107,10 +107,6 @@ impl Router {
         Arc::new_cyclic(|me| Self { engine, models, get_secret, http, me: me.clone() })
     }
 
-    pub fn is_cloud(&self, model_id: &str) -> bool {
-        is_cloud_model_id(model_id)
-    }
-
     fn cloud_deps(&self, config: &Arc<Config>) -> CloudDeps {
         CloudDeps {
             catalog: self.models.catalog(),
@@ -130,7 +126,10 @@ impl Router {
 
     fn local(&self, model_id: &str, config: &Config) -> Result<EngineModelRef, TranscribeError> {
         let Some(name) = self.models.local_name(model_id) else {
-            return Err(TranscribeError::new(TranscribeErrorCode::UnknownModel, format!("Unknown model \"{model_id}\"")));
+            return Err(TranscribeError::new(
+                TranscribeErrorCode::UnknownModel,
+                format!("Unknown model \"{model_id}\""),
+            ));
         };
         let Some(path) = self.models.model_path(model_id) else {
             return Err(TranscribeError::new(TranscribeErrorCode::NotInstalled, format!("{name} is not downloaded")));
@@ -167,7 +166,13 @@ impl Router {
         match transcriber {
             Transcriber::Local(model) => self
                 .engine
-                .transcribe(model.clone(), audio.to_vec(), opts.language.clone(), opts.hints.clone(), opts.cancel.clone())
+                .transcribe(
+                    model.clone(),
+                    audio.to_vec(),
+                    opts.language.clone(),
+                    opts.hints.clone(),
+                    opts.cancel.clone(),
+                )
                 .await
                 .map_err(engine_error),
             Transcriber::Cloud(cloud) => {
@@ -181,11 +186,16 @@ impl Router {
         }
     }
 
-    async fn run(&self, transcriber: &Transcriber, audio: &[f32], opts: &TranscribeOpts) -> Result<Transcript, TranscribeError> {
+    async fn run(
+        &self,
+        transcriber: &Transcriber,
+        audio: &[f32],
+        opts: &TranscribeOpts,
+    ) -> Result<Transcript, TranscribeError> {
         let pieces = if audio.len() as f64 > MAX_PIECE_SECONDS * SAMPLE_RATE as f64 {
             split_ranges(audio, MAX_PIECE_SECONDS, SAMPLE_RATE)
         } else {
-            vec![0..audio.len()]
+            std::iter::once(0..audio.len()).collect()
         };
         let started = Instant::now();
         let mut texts: Vec<String> = Vec::new();
@@ -239,7 +249,9 @@ impl Router {
         let cloud = is_cloud_model_id(&active_id);
         let failure = match self.resolve(&active_id, &config) {
             Ok(transcriber) => match self.run(&transcriber, &audio, &opts).await {
-                Ok(transcript) => return Ok(RouteResult { transcript, cloud, fell_back: false, fallback_reason: None }),
+                Ok(transcript) => {
+                    return Ok(RouteResult { transcript, cloud, fell_back: false, fallback_reason: None });
+                }
                 Err(err) => err,
             },
             Err(err) => err,
@@ -301,7 +313,10 @@ impl LocalEngine for EngineAdapter {
     fn load(&self, model: EngineModelRef) -> BoxFuture<Result<(), EngineFailure>> {
         let me = self.0.clone();
         Box::pin(async move {
-            me.load(&model, None).await.map(|_| ()).map_err(|e| EngineFailure { message: e.message, aborted: e.aborted })
+            me.load(&model, None)
+                .await
+                .map(|_| ())
+                .map_err(|e| EngineFailure { message: e.message, aborted: e.aborted })
         })
     }
 

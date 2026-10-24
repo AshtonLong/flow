@@ -6,9 +6,7 @@
 use std::borrow::Cow;
 
 use egui::epaint::StrokeKind;
-use egui::{
-    Color32, CornerRadius, CursorIcon, Painter, Rect, Response, Sense, Stroke, Ui, Vec2, pos2, vec2,
-};
+use egui::{Color32, CornerRadius, CursorIcon, Painter, Rect, Response, Sense, Stroke, Ui, Vec2, pos2, vec2};
 
 use super::tooltip;
 use crate::design::text::{self, TextStyle};
@@ -61,12 +59,7 @@ pub struct IconSpec {
 
 impl IconSpec {
     pub fn new(icon: Icon, size: f32) -> Self {
-        Self {
-            icon,
-            size,
-            stroke: 2.0,
-            rotation: 0.0,
-        }
+        Self { icon, size, stroke: 2.0, rotation: 0.0 }
     }
 }
 
@@ -91,20 +84,12 @@ pub(crate) fn paint_keycap(painter: &Painter, rect: Rect, radius: f32, key: &Key
     let face = rect.translate(vec2(0.0, key.shift));
     let r = CornerRadius::from(radius);
     if key.raised && key.lift > 0.0 {
-        painter.rect_filled(
-            face.translate(vec2(0.0, key.lift + 1.0)),
-            r,
-            Color32::from_black_alpha(56),
-        );
+        painter.rect_filled(face.translate(vec2(0.0, key.lift + 1.0)), r, Color32::from_black_alpha(56));
         if key.wall.a() > 0 {
             painter.rect_filled(face.translate(vec2(0.0, key.lift)), r, key.wall);
         }
     } else if key.raised {
-        painter.rect_filled(
-            face.translate(vec2(0.0, 1.0)),
-            r,
-            Color32::from_black_alpha(56),
-        );
+        painter.rect_filled(face.translate(vec2(0.0, 1.0)), r, Color32::from_black_alpha(56));
     }
     painter.rect_filled(face, r, key.top);
     if key.inset && key.line.a() > 0 {
@@ -125,13 +110,7 @@ pub(crate) fn keycap_state(
     let pressed = !disabled && response.is_pointer_button_down_on();
     let hovered = !disabled && response.hovered();
     let hover = motion::toggle(ui, id.with("flow-btn-hover"), hovered, 83.0, motion::linear);
-    let press = motion::toggle(
-        ui,
-        id.with("flow-btn-press"),
-        pressed,
-        110.0,
-        motion::snappy,
-    );
+    let press = motion::toggle(ui, id.with("flow-btn-press"), pressed, 110.0, motion::snappy);
     let text = if disabled {
         t.fg_disabled
     } else if danger {
@@ -308,78 +287,40 @@ impl<'a> Button<'a> {
     }
 
     fn style(&self) -> TextStyle {
-        TextStyle::BODY.weight(if self.variant == Variant::Subtle {
-            Weight::Medium
-        } else {
-            Weight::Strong
-        })
+        TextStyle::BODY.weight(if self.variant == Variant::Subtle { Weight::Medium } else { Weight::Strong })
     }
 
     pub fn show(self, ui: &mut Ui) -> Response {
         let style = self.style();
-        let galley = text::galley(
-            ui,
-            self.label.as_ref(),
-            style,
-            Color32::PLACEHOLDER,
-            f32::INFINITY,
-        );
+        let galley = text::galley(ui, self.label.as_ref(), style, Color32::PLACEHOLDER, f32::INFINITY);
         let gap = 8.0;
         let icon_w = self.icon.map(|i| i.size - 2.0 + gap).unwrap_or(0.0);
         let trailing_w = self.trailing.map(|i| gap + i.size).unwrap_or(0.0);
         let content = icon_w + galley.size().x + trailing_w;
         let height = self.size.height();
-        let width = self
-            .width
-            .unwrap_or(content + 2.0 * self.size.padding())
-            .max(self.min_width);
-        let sense = if self.disabled {
-            Sense::hover()
-        } else {
-            Sense::click()
-        };
+        let width = self.width.unwrap_or(content + 2.0 * self.size.padding()).max(self.min_width);
+        let sense = if self.disabled { Sense::hover() } else { Sense::click() };
         let (rect, response) = ui.allocate_exact_size(vec2(width, height), sense);
         if ui.is_rect_visible(rect.expand(4.0)) {
-            let (key, color) =
-                keycap_state(ui, &response, self.variant, self.danger, self.disabled);
+            let (key, color) = keycap_state(ui, &response, self.variant, self.danger, self.disabled);
             let painter = ui.painter();
             paint_keycap(painter, rect, 8.0, &key);
             let face = rect.translate(vec2(0.0, key.shift));
             let mut x = face.center().x - content / 2.0;
             if let Some(icon) = self.icon {
                 // `-ml-0.5`: the icon sits 2 px into the padding.
-                let icon_rect = Rect::from_min_size(
-                    pos2(x - 2.0, face.center().y - icon.size / 2.0),
-                    Vec2::splat(icon.size),
-                );
-                icons::paint_rotated(
-                    ui,
-                    icon.icon,
-                    icon_rect,
-                    icon.size,
-                    icon.stroke,
-                    color,
-                    icon.rotation,
-                );
+                let icon_rect =
+                    Rect::from_min_size(pos2(x - 2.0, face.center().y - icon.size / 2.0), Vec2::splat(icon.size));
+                icons::paint_rotated(ui, icon.icon, icon_rect, icon.size, icon.stroke, color, icon.rotation);
                 x += icon_w;
             }
             let text_pos = pos2(x, face.center().y - galley.size().y / 2.0);
             x += galley.size().x;
             painter.galley(text_pos, galley, color);
             if let Some(icon) = self.trailing {
-                let icon_rect = Rect::from_min_size(
-                    pos2(x + gap, face.center().y - icon.size / 2.0),
-                    Vec2::splat(icon.size),
-                );
-                icons::paint_rotated(
-                    ui,
-                    icon.icon,
-                    icon_rect,
-                    icon.size,
-                    icon.stroke,
-                    color,
-                    icon.rotation,
-                );
+                let icon_rect =
+                    Rect::from_min_size(pos2(x + gap, face.center().y - icon.size / 2.0), Vec2::splat(icon.size));
+                icons::paint_rotated(ui, icon.icon, icon_rect, icon.size, icon.stroke, color, icon.rotation);
             }
             focus::ring(ui, &response, face, 8.0);
         }
@@ -433,26 +374,13 @@ impl<'a> IconButton<'a> {
 
     pub fn show(self, ui: &mut Ui) -> Response {
         let side = self.size.height();
-        let sense = if self.disabled {
-            Sense::hover()
-        } else {
-            Sense::click()
-        };
+        let sense = if self.disabled { Sense::hover() } else { Sense::click() };
         let (rect, response) = ui.allocate_exact_size(vec2(side, side), sense);
         if ui.is_rect_visible(rect.expand(4.0)) {
-            let (key, color) =
-                keycap_state(ui, &response, self.variant, self.danger, self.disabled);
+            let (key, color) = keycap_state(ui, &response, self.variant, self.danger, self.disabled);
             paint_keycap(ui.painter(), rect, 8.0, &key);
             let face = rect.translate(vec2(0.0, key.shift));
-            icons::paint_rotated(
-                ui,
-                self.icon.icon,
-                face,
-                self.icon.size,
-                self.icon.stroke,
-                color,
-                self.icon.rotation,
-            );
+            icons::paint_rotated(ui, self.icon.icon, face, self.icon.size, self.icon.stroke, color, self.icon.rotation);
             focus::ring(ui, &response, face, 8.0);
         }
         // A disabled button gets no pointer events in Chromium, so Radix shows no tooltip.
@@ -479,10 +407,7 @@ pub fn link_colored(ui: &mut Ui, label: &str, style: TextStyle, color: Color32) 
     let thickness = style.size * if response.hovered() { 0.16 } else { 0.09 };
     let underline_top = baseline + 0.22 * style.size;
     ui.painter().rect_filled(
-        Rect::from_min_max(
-            pos2(rect.left(), underline_top),
-            pos2(rect.right(), underline_top + thickness.max(1.0)),
-        ),
+        Rect::from_min_max(pos2(rect.left(), underline_top), pos2(rect.right(), underline_top + thickness.max(1.0))),
         0.0,
         color,
     );

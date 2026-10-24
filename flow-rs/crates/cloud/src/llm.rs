@@ -25,8 +25,7 @@ use crate::CloudDeps;
 use crate::http::describe_error;
 use crate::provider::{Headers, ResolvedProvider, auth_headers, resolve_provider, with_headers};
 use crate::text::{
-    collapse_spaces, find_ascii_ci, js_len, js_trim, js_trim_end, js_trim_start, js_truncate,
-    starts_with_ascii_ci,
+    collapse_spaces, find_ascii_ci, js_len, js_trim, js_trim_end, js_trim_start, js_truncate, starts_with_ascii_ci,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -245,10 +244,7 @@ fn output_budget(chars: usize) -> u64 {
 }
 
 fn host_of(base_url: &str) -> String {
-    url::Url::parse(base_url)
-        .ok()
-        .and_then(|url| url.host_str().map(str::to_lowercase))
-        .unwrap_or_default()
+    url::Url::parse(base_url).ok().and_then(|url| url.host_str().map(str::to_lowercase)).unwrap_or_default()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -379,11 +375,7 @@ fn anthropic_messages(provider: &ResolvedProvider, model: &str, system: &str, us
         "system": system,
         "messages": [{ "role": "user", "content": user }],
     });
-    let tuning = if legacy {
-        json!({ "temperature": 0.2 })
-    } else {
-        json!({ "output_config": { "effort": "low" } })
-    };
+    let tuning = if legacy { json!({ "temperature": 0.2 }) } else { json!({ "output_config": { "effort": "low" } }) };
     ChatRequest {
         url: format!("{}/messages", provider.base_url),
         body: merged(&bare, tuning),
@@ -485,12 +477,7 @@ struct Posted {
     text: String,
 }
 
-async fn post(
-    http: &reqwest::Client,
-    url: &str,
-    headers: &Headers,
-    body: &Value,
-) -> Result<Posted, CleanupError> {
+async fn post(http: &reqwest::Client, url: &str, headers: &Headers, body: &Value) -> Result<Posted, CleanupError> {
     let request = with_headers(http.post(url), headers.iter().cloned()).body(body.to_string());
     let exchange = async {
         let response = request.send().await?;
@@ -518,9 +505,8 @@ async fn run(core: &str, deps: &CloudDeps) -> Result<String, CleanupError> {
         )
         .with_status(response.status));
     }
-    let json: Value = serde_json::from_str(&response.text).map_err(|err| {
-        CleanupError::bad_output("The cleanup model response is not JSON").with_cause(err)
-    })?;
+    let json: Value = serde_json::from_str(&response.text)
+        .map_err(|err| CleanupError::bad_output("The cleanup model response is not JSON").with_cause(err))?;
     sanitise_reply(&request.read(&json)?, core)
 }
 

@@ -49,10 +49,6 @@ impl SettingsHost {
         *self.on_closed.lock() = Some(f);
     }
 
-    pub fn is_open(&self) -> bool {
-        self.child.lock().is_some()
-    }
-
     /// Opens the window, or brings it to the front (on `page`, if given).
     pub fn open(self: &Arc<Self>, page: Option<&str>) {
         let mut slot = self.child.lock();

@@ -6,7 +6,7 @@ use windows::Win32::Graphics::Gdi::{
     CreateDIBSection, DIB_RGB_COLORS, DeleteDC, DeleteObject, GetMonitorInfoW, HBITMAP, HDC, HGDIOBJ, HMONITOR,
     MONITORINFO, MONITORINFOEXW, SelectObject,
 };
-use windows::Win32::UI::WindowsAndMessaging::{UpdateLayeredWindow, ULW_ALPHA};
+use windows::Win32::UI::WindowsAndMessaging::{ULW_ALPHA, UpdateLayeredWindow};
 use windows::core::PCWSTR;
 
 /// A NUL-terminated UTF-16 copy of `s`.

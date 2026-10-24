@@ -1,30 +1,16 @@
 //! Lookups over the catalog snapshot. Port of `lib/models.ts`.
 
 use flow_core::catalog::{
-    CUSTOM_PREFIX, CatalogSnapshot, CloudModelEntry, LocalModelEntry, ModelEntry, ProviderEntry,
-    split_model_id,
+    CUSTOM_PREFIX, CatalogSnapshot, CloudModelEntry, LocalModelEntry, ModelEntry, ProviderEntry, split_model_id,
 };
 use flow_core::config::Config;
 use flow_core::types::BackendDevice;
 
 /// Local, then cloud, then user-registered entries.
 pub fn all_models(snapshot: &CatalogSnapshot) -> Vec<ModelEntry> {
-    let local = snapshot
-        .catalog
-        .local
-        .iter()
-        .cloned()
-        .map(ModelEntry::Local);
-    let cloud = snapshot
-        .catalog
-        .cloud
-        .iter()
-        .cloned()
-        .map(ModelEntry::Cloud);
-    local
-        .chain(cloud)
-        .chain(snapshot.custom.iter().cloned())
-        .collect()
+    let local = snapshot.catalog.local.iter().cloned().map(ModelEntry::Local);
+    let cloud = snapshot.catalog.cloud.iter().cloned().map(ModelEntry::Cloud);
+    local.chain(cloud).chain(snapshot.custom.iter().cloned()).collect()
 }
 
 pub fn find_model(snapshot: Option<&CatalogSnapshot>, id: &str) -> Option<ModelEntry> {
@@ -38,10 +24,7 @@ pub fn find_model(snapshot: Option<&CatalogSnapshot>, id: &str) -> Option<ModelE
     snapshot.custom.iter().find(|m| m.id() == id).cloned()
 }
 
-pub fn find_provider<'a>(
-    snapshot: Option<&'a CatalogSnapshot>,
-    id: &str,
-) -> Option<&'a ProviderEntry> {
+pub fn find_provider<'a>(snapshot: Option<&'a CatalogSnapshot>, id: &str) -> Option<&'a ProviderEntry> {
     snapshot?.catalog.providers.iter().find(|p| p.id == id)
 }
 
@@ -55,8 +38,7 @@ pub fn model_label(snapshot: Option<&CatalogSnapshot>, id: &str) -> String {
     };
     match entry {
         ModelEntry::Local(m) => m.name,
-        ModelEntry::Cloud(m) => match find_provider(snapshot, &m.provider).map(|p| p.name.as_str())
-        {
+        ModelEntry::Cloud(m) => match find_provider(snapshot, &m.provider).map(|p| p.name.as_str()) {
             Some(provider) if !m.name.to_lowercase().starts_with(&provider.to_lowercase()) => {
                 format!("{provider}: {}", m.name)
             }
@@ -71,10 +53,7 @@ pub fn is_ready(snapshot: &CatalogSnapshot, id: &str) -> bool {
 
 /// Models that can transcribe right now: installed local, connected cloud, custom endpoints.
 pub fn ready_models(snapshot: &CatalogSnapshot) -> Vec<ModelEntry> {
-    all_models(snapshot)
-        .into_iter()
-        .filter(|m| is_ready(snapshot, m.id()))
-        .collect()
+    all_models(snapshot).into_iter().filter(|m| is_ready(snapshot, m.id())).collect()
 }
 
 pub fn installed_local(snapshot: &CatalogSnapshot) -> Vec<LocalModelEntry> {
@@ -98,12 +77,8 @@ pub fn cloud_by_provider(snapshot: &CatalogSnapshot) -> Vec<ProviderGroup<'_>> {
         .providers
         .iter()
         .filter_map(|provider| {
-            let models: Vec<&CloudModelEntry> = snapshot
-                .catalog
-                .cloud
-                .iter()
-                .filter(|m| m.provider == provider.id)
-                .collect();
+            let models: Vec<&CloudModelEntry> =
+                snapshot.catalog.cloud.iter().filter(|m| m.provider == provider.id).collect();
             (!models.is_empty()).then_some(ProviderGroup { provider, models })
         })
         .collect()
@@ -126,10 +101,7 @@ pub struct CustomEndpoint {
 }
 
 /// Custom endpoints are `[providers.<id>]` tables with a `base_url` that are not catalog providers.
-pub fn custom_endpoints(
-    config: &Config,
-    snapshot: Option<&CatalogSnapshot>,
-) -> Vec<CustomEndpoint> {
+pub fn custom_endpoints(config: &Config, snapshot: Option<&CatalogSnapshot>) -> Vec<CustomEndpoint> {
     config
         .providers
         .iter()
@@ -152,9 +124,7 @@ pub fn provider_of_model(id: &str) -> Option<&str> {
 
 pub fn is_gpu_device(device: &BackendDevice) -> bool {
     let text = format!("{} {}", device.device_type, device.kind).to_lowercase();
-    ["gpu", "cuda", "vulkan", "metal"]
-        .iter()
-        .any(|w| text.contains(w))
+    ["gpu", "cuda", "vulkan", "metal"].iter().any(|w| text.contains(w))
 }
 
 #[cfg(test)]

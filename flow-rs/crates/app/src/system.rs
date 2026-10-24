@@ -23,8 +23,8 @@ use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, FindWindowW, GetMessageW, MSG, PBT_APMRESUMEAUTOMATIC,
     PBT_APMRESUMESUSPEND, PostMessageW, PostQuitMessage, RegisterClassW, SPI_GETCLIENTAREAANIMATION,
     SPI_GETHIGHCONTRAST, SW_SHOWNORMAL, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, SendMessageW, SystemParametersInfoW,
-    TranslateMessage, WM_APP, WM_COPYDATA, WM_POWERBROADCAST, WM_SETTINGCHANGE, WM_SYSCOLORCHANGE,
-    WM_THEMECHANGED, WM_WTSSESSION_CHANGE, WNDCLASSW, WS_EX_TOOLWINDOW, WS_OVERLAPPED, WTS_SESSION_LOCK,
+    TranslateMessage, WM_APP, WM_COPYDATA, WM_POWERBROADCAST, WM_SETTINGCHANGE, WM_SYSCOLORCHANGE, WM_THEMECHANGED,
+    WM_WTSSESSION_CHANGE, WNDCLASSW, WS_EX_TOOLWINDOW, WS_OVERLAPPED, WTS_SESSION_LOCK,
 };
 use windows::core::{PCWSTR, w};
 
@@ -33,8 +33,6 @@ const WINDOW_CLASS: PCWSTR = w!("FlowMainWindow.rs");
 const COPYDATA_ARGS: usize = 0x464C_4F57; // "FLOW"
 /// `WM_DWMCOLORIZATIONCOLORCHANGED`, sent when the accent colour changes.
 const WM_DWMCOLORIZATIONCOLORCHANGED: u32 = 0x0320;
-/// Posted to the window to wake the loop and run queued main-thread work.
-const WM_FLOW_WAKE: u32 = WM_APP + 1;
 /// Posted to end the message loop.
 const WM_FLOW_QUIT: u32 = WM_APP + 2;
 
@@ -57,7 +55,6 @@ pub enum SystemEvent {
 type Handler = Arc<dyn Fn(SystemEvent) + Send + Sync>;
 static HANDLER: OnceLock<Handler> = OnceLock::new();
 static WINDOW: OnceLock<isize> = OnceLock::new();
-static WAKE: OnceLock<Box<dyn Fn() + Send + Sync>> = OnceLock::new();
 
 fn wide(text: &str) -> Vec<u16> {
     text.encode_utf16().chain(std::iter::once(0)).collect()
@@ -91,7 +88,8 @@ pub fn acquire_single_instance(args: &[String], user_data: &Path) -> bool {
     if let Ok(hwnd) = unsafe { FindWindowW(WINDOW_CLASS, PCWSTR(title.as_ptr())) } {
         let payload = args.join("\u{1f}");
         let bytes = payload.as_bytes();
-        let data = COPYDATASTRUCT { dwData: COPYDATA_ARGS, cbData: bytes.len() as u32, lpData: bytes.as_ptr() as *mut c_void };
+        let data =
+            COPYDATASTRUCT { dwData: COPYDATA_ARGS, cbData: bytes.len() as u32, lpData: bytes.as_ptr() as *mut c_void };
         unsafe {
             SendMessageW(hwnd, WM_COPYDATA, Some(WPARAM(0)), Some(LPARAM(&data as *const _ as isize)));
         }
@@ -130,12 +128,6 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: 
         WM_SETTINGCHANGE | WM_SYSCOLORCHANGE | WM_THEMECHANGED | WM_DWMCOLORIZATIONCOLORCHANGED => {
             emit(SystemEvent::SettingsChanged);
         }
-        WM_FLOW_WAKE => {
-            if let Some(wake) = WAKE.get() {
-                wake();
-            }
-            return LRESULT(0);
-        }
         WM_FLOW_QUIT => {
             unsafe { PostQuitMessage(0) };
             return LRESULT(0);
@@ -146,12 +138,16 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: 
 }
 
 /// Creates the hidden window that receives system broadcasts. Main thread only.
-pub fn create_main_window(handler: Handler, wake: Box<dyn Fn() + Send + Sync>) -> windows::core::Result<()> {
+pub fn create_main_window(handler: Handler) -> windows::core::Result<()> {
     let _ = HANDLER.set(handler);
-    let _ = WAKE.set(wake);
     unsafe {
         let instance = GetModuleHandleW(None)?;
-        let class = WNDCLASSW { lpfnWndProc: Some(wndproc), hInstance: instance.into(), lpszClassName: WINDOW_CLASS, ..Default::default() };
+        let class = WNDCLASSW {
+            lpfnWndProc: Some(wndproc),
+            hInstance: instance.into(),
+            lpszClassName: WINDOW_CLASS,
+            ..Default::default()
+        };
         RegisterClassW(&class);
         // Titled with the instance key so a second instance finds this one.
         let title = wide(INSTANCE_KEY.get().map_or("Flow", String::as_str));
@@ -193,11 +189,6 @@ fn post(msg: u32) {
             let _ = PostMessageW(Some(HWND(hwnd as *mut c_void)), msg, WPARAM(0), LPARAM(0));
         }
     }
-}
-
-/// Wakes the main thread to run its queued work. Any thread.
-pub fn wake_main_thread() {
-    post(WM_FLOW_WAKE);
 }
 
 /// Ends the message loop. Any thread.

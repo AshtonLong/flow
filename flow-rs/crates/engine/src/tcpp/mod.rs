@@ -66,7 +66,9 @@ impl ErrorKind {
             TRANSCRIBE_ERR_INVALID_ARG | TRANSCRIBE_ERR_SAMPLE_RATE => Self::InvalidArgument,
             TRANSCRIBE_ERR_NOT_IMPLEMENTED => Self::NotImplementedByModel,
             TRANSCRIBE_ERR_FILE_NOT_FOUND => Self::ModelFileNotFound,
-            TRANSCRIBE_ERR_GGUF | TRANSCRIBE_ERR_UNSUPPORTED_ARCH | TRANSCRIBE_ERR_UNSUPPORTED_VARIANT => Self::ModelLoad,
+            TRANSCRIBE_ERR_GGUF | TRANSCRIBE_ERR_UNSUPPORTED_ARCH | TRANSCRIBE_ERR_UNSUPPORTED_VARIANT => {
+                Self::ModelLoad
+            }
             TRANSCRIBE_ERR_OOM => Self::OutOfMemory,
             TRANSCRIBE_ERR_BACKEND => Self::Backend,
             TRANSCRIBE_ERR_UNSUPPORTED_LANGUAGE
@@ -141,7 +143,8 @@ fn check(native: &Native, status: c_int, context: &str) -> Result<(), TcError> {
 
 /// A string option as passed to C, which would silently cut it at a NUL.
 fn cstr(value: &str, name: &str) -> Result<CString, TcError> {
-    CString::new(value).map_err(|_| TcError::new(ErrorKind::InvalidArgument, format!("{name} contains a NUL character")))
+    CString::new(value)
+        .map_err(|_| TcError::new(ErrorKind::InvalidArgument, format!("{name} contains a NUL character")))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -402,7 +405,8 @@ impl TranscribeModel {
         if pcm.is_empty() {
             return Err(TcError::new(ErrorKind::Transcribe, "PCM is empty"));
         }
-        let samples = c_int::try_from(pcm.len()).map_err(|_| TcError::new(ErrorKind::InputTooLong, "PCM is too long"))?;
+        let samples =
+            c_int::try_from(pcm.len()).map_err(|_| TcError::new(ErrorKind::InputTooLong, "PCM is too long"))?;
         let params = RunParams::build(self, opts)?;
         let session = Session::open(self)?;
 
@@ -492,7 +496,8 @@ impl RunParams {
         let mut raw: ffi::RunParams = unsafe { std::mem::zeroed() };
         unsafe { (n.api.run_params_init)(&mut raw) };
         raw.task = ffi::TRANSCRIBE_TASK_TRANSCRIBE;
-        raw.timestamps = if opts.no_timestamps { ffi::TRANSCRIBE_TIMESTAMPS_NONE } else { ffi::TRANSCRIBE_TIMESTAMPS_AUTO };
+        raw.timestamps =
+            if opts.no_timestamps { ffi::TRANSCRIBE_TIMESTAMPS_NONE } else { ffi::TRANSCRIBE_TIMESTAMPS_AUTO };
         raw.pnc = ffi::TRANSCRIBE_MODE_DEFAULT;
         raw.itn = ffi::TRANSCRIBE_MODE_DEFAULT;
         raw.diarize = ffi::TRANSCRIBE_MODE_DEFAULT;
@@ -510,7 +515,11 @@ impl RunParams {
         if let Some(prompt) = opts.whisper_initial_prompt {
             // SAFETY: valid model handle.
             let accepted = unsafe {
-                (n.api.model_accepts_ext_kind)(model.handle, ffi::TRANSCRIBE_EXT_SLOT_RUN, ffi::TRANSCRIBE_EXT_KIND_WHISPER_RUN)
+                (n.api.model_accepts_ext_kind)(
+                    model.handle,
+                    ffi::TRANSCRIBE_EXT_SLOT_RUN,
+                    ffi::TRANSCRIBE_EXT_KIND_WHISPER_RUN,
+                )
             };
             if !accepted {
                 return Err(TcError::new(

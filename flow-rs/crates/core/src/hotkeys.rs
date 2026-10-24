@@ -92,11 +92,7 @@ fn modifier_rank(token: &str) -> usize {
 
 /// The generic modifier a sided key belongs to: `LCtrl` → `Ctrl`.
 pub fn generic_of(key: &str) -> Option<&'static str> {
-    if SIDED_MODIFIERS.contains(&key) {
-        GENERIC_MODIFIERS.iter().copied().find(|g| *g == &key[1..])
-    } else {
-        None
-    }
+    if SIDED_MODIFIERS.contains(&key) { GENERIC_MODIFIERS.iter().copied().find(|g| *g == &key[1..]) } else { None }
 }
 
 fn canonical_token(raw: &str) -> Option<&'static str> {

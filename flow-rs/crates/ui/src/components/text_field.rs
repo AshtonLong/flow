@@ -12,8 +12,8 @@ use std::sync::Arc;
 use egui::epaint::StrokeKind;
 use egui::text::{LayoutJob, TextWrapping};
 use egui::{
-    Align, Color32, CornerRadius, EventFilter, Frame, Galley, Id, Key, Layout, Margin, Painter,
-    Rect, Response, Sense, Stroke, TextBuffer, TextEdit, Ui, UiBuilder, pos2, vec2,
+    Align, Color32, CornerRadius, EventFilter, Frame, Galley, Id, Key, Layout, Margin, Painter, Rect, Response, Sense,
+    Stroke, TextBuffer, TextEdit, Ui, UiBuilder, pos2, vec2,
 };
 
 use crate::design::text::{self, TextStyle};
@@ -56,40 +56,30 @@ pub fn paint_input_frame(painter: &Painter, rect: Rect, look: InputLook) {
         t.input_line
     };
     // The bottom border owns the lower part of the rounded corners, as in CSS.
-    let band = Rect::from_min_max(
-        pos2(rect.left() - 1.0, rect.bottom() - 3.0),
-        pos2(rect.right() + 1.0, rect.bottom() + 1.0),
+    let band =
+        Rect::from_min_max(pos2(rect.left() - 1.0, rect.bottom() - 3.0), pos2(rect.right() + 1.0, rect.bottom() + 1.0));
+    painter.with_clip_rect(band.intersect(painter.clip_rect())).rect_stroke(
+        rect,
+        r,
+        Stroke::new(1.0, bottom),
+        StrokeKind::Inside,
     );
-    painter
-        .with_clip_rect(band.intersect(painter.clip_rect()))
-        .rect_stroke(rect, r, Stroke::new(1.0, bottom), StrokeKind::Inside);
     if !look.disabled && (look.focused || look.invalid) {
         // `box-shadow: inset 0 -1px 0 <colour>`.
-        let band = Rect::from_min_max(
-            pos2(rect.left(), rect.bottom() - 2.0),
-            pos2(rect.right(), rect.bottom() - 1.0),
+        let band = Rect::from_min_max(pos2(rect.left(), rect.bottom() - 2.0), pos2(rect.right(), rect.bottom() - 1.0));
+        painter.with_clip_rect(band.intersect(painter.clip_rect())).rect_stroke(
+            rect.shrink(1.0),
+            CornerRadius::from(7.0),
+            Stroke::new(1.0, bottom),
+            StrokeKind::Inside,
         );
-        painter
-            .with_clip_rect(band.intersect(painter.clip_rect()))
-            .rect_stroke(
-                rect.shrink(1.0),
-                CornerRadius::from(7.0),
-                Stroke::new(1.0, bottom),
-                StrokeKind::Inside,
-            );
     }
 }
 
-fn layouter(
-    style: TextStyle,
-    color: Color32,
-) -> impl FnMut(&Ui, &dyn TextBuffer, f32) -> Arc<Galley> {
+fn layouter(style: TextStyle, color: Color32) -> impl FnMut(&Ui, &dyn TextBuffer, f32) -> Arc<Galley> {
     move |ui: &Ui, buffer: &dyn TextBuffer, wrap: f32| {
         let mut job = LayoutJob::single_section(buffer.as_str().to_owned(), style.format(color));
-        job.wrap = TextWrapping {
-            max_width: wrap,
-            ..TextWrapping::default()
-        };
+        job.wrap = TextWrapping { max_width: wrap, ..TextWrapping::default() };
         crate::design::text::snap_baselines(ui.painter().layout_job(job), style)
     }
 }
@@ -122,35 +112,18 @@ fn edit(ui: &mut Ui, spec: &EditSpec<'_>, text: &mut String) -> EditOutput {
     paint_input_frame(
         ui.painter(),
         spec.rect,
-        InputLook {
-            hovered,
-            focused: had_focus,
-            disabled: !spec.enabled,
-            invalid: spec.invalid,
-        },
+        InputLook { hovered, focused: had_focus, disabled: !spec.enabled, invalid: spec.invalid },
     );
     // Escape and Enter belong to the field (revert / commit), not to focus handling.
     let (escape, enter) = if had_focus {
-        ui.memory_mut(|m| {
-            m.set_focus_lock_filter(
-                spec.id,
-                EventFilter {
-                    escape: true,
-                    ..EventFilter::default()
-                },
-            )
-        });
+        ui.memory_mut(|m| m.set_focus_lock_filter(spec.id, EventFilter { escape: true, ..EventFilter::default() }));
         ctx.input(|i| (i.key_pressed(Key::Escape), i.key_pressed(Key::Enter)))
     } else {
         (false, false)
     };
     let color = if spec.enabled { t.fg } else { t.fg_disabled };
     let inner = spec.rect.shrink(1.0);
-    let pad_y = if spec.multiline {
-        5.0
-    } else {
-        ((inner.height() - spec.style.line_height) / 2.0).max(0.0)
-    };
+    let pad_y = if spec.multiline { 5.0 } else { ((inner.height() - spec.style.line_height) / 2.0).max(0.0) };
     if text.is_empty()
         && let Some(placeholder) = spec.placeholder
     {
@@ -159,22 +132,12 @@ fn edit(ui: &mut Ui, spec: &EditSpec<'_>, text: &mut String) -> EditOutput {
             Align::Max => inner.right() - 10.0 - galley.size().x,
             _ => inner.left() + 10.0,
         };
-        ui.painter()
-            .with_clip_rect(inner)
-            .galley(pos2(x, inner.top() + pad_y), galley, t.fg_3);
+        ui.painter().with_clip_rect(inner).galley(pos2(x, inner.top() + pad_y), galley, t.fg_3);
     }
-    let mut child = ui.new_child(
-        UiBuilder::new()
-            .max_rect(inner)
-            .layout(Layout::top_down(Align::Min)),
-    );
+    let mut child = ui.new_child(UiBuilder::new().max_rect(inner).layout(Layout::top_down(Align::Min)));
     child.set_clip_rect(inner.intersect(ui.clip_rect()));
     let mut layout = layouter(spec.style, color);
-    let editor = if spec.multiline {
-        TextEdit::multiline(text)
-    } else {
-        TextEdit::singleline(text)
-    };
+    let editor = if spec.multiline { TextEdit::multiline(text) } else { TextEdit::singleline(text) };
     let output = editor
         .id(spec.id)
         // With an explicit frame egui takes the padding from it, not from `.margin()`.
@@ -193,12 +156,7 @@ fn edit(ui: &mut Ui, spec: &EditSpec<'_>, text: &mut String) -> EditOutput {
         .layouter(&mut layout)
         .show(&mut child);
     let changed = output.response.changed();
-    EditOutput {
-        response: output.response.response,
-        changed,
-        escape,
-        enter,
-    }
+    EditOutput { response: output.response.response, changed, escape, enter }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -292,11 +250,7 @@ impl<'a> TextField<'a> {
         }
         d.init = true;
 
-        let style = if self.mono {
-            TextStyle::BODY.mono().size(13.0, 20.0)
-        } else {
-            TextStyle::BODY
-        };
+        let style = if self.mono { TextStyle::BODY.mono().size(13.0, 20.0) } else { TextStyle::BODY };
         let (rect, _) = ui.allocate_exact_size(vec2(self.width, 32.0), Sense::hover());
         let spec = EditSpec {
             id: self.id,
@@ -356,10 +310,7 @@ impl<'a> TextField<'a> {
             text::paragraph_max(ui, error, TextStyle::CAPTION, t.danger, self.width);
         }
         ctx.data_mut(|m| m.insert_temp(self.id, d));
-        FieldResponse {
-            response: out.response,
-            committed,
-        }
+        FieldResponse { response: out.response, committed }
     }
 }
 
@@ -375,11 +326,7 @@ pub struct NumberField<'a> {
 }
 
 impl<'a> NumberField<'a> {
-    pub fn new(
-        id_salt: impl Hash + std::fmt::Debug,
-        value: i64,
-        range: std::ops::RangeInclusive<i64>,
-    ) -> Self {
+    pub fn new(id_salt: impl Hash + std::fmt::Debug, value: i64, range: std::ops::RangeInclusive<i64>) -> Self {
         Self {
             id: Id::unique(("flow-number-field", id_salt)),
             value,
@@ -411,18 +358,12 @@ impl<'a> NumberField<'a> {
         }
         d.init = true;
 
-        let unit = self
-            .unit
-            .map(|u| text::galley(ui, u, TextStyle::BODY, t.fg_2, f32::INFINITY));
+        let unit = self.unit.map(|u| text::galley(ui, u, TextStyle::BODY, t.fg_2, f32::INFINITY));
         let width = 88.0 + unit.as_ref().map(|u| 8.0 + u.size().x).unwrap_or(0.0);
         let (outer, _) = ui.allocate_exact_size(vec2(width, 32.0), Sense::hover());
         let rect = Rect::from_min_size(outer.min, vec2(88.0, 32.0));
         if let Some(unit) = unit {
-            ui.painter().galley(
-                pos2(rect.right() + 8.0, outer.center().y - unit.size().y / 2.0),
-                unit,
-                t.fg_2,
-            );
+            ui.painter().galley(pos2(rect.right() + 8.0, outer.center().y - unit.size().y / 2.0), unit, t.fg_2);
         }
         let spec = EditSpec {
             id: self.id,
@@ -454,10 +395,7 @@ impl<'a> NumberField<'a> {
             }
         };
         if out.changed {
-            d.draft = text
-                .chars()
-                .filter(|c| c.is_ascii_digit() || *c == '-')
-                .collect();
+            d.draft = text.chars().filter(|c| c.is_ascii_digit() || *c == '-').collect();
         }
         if out.escape {
             d.draft = d.committed.clone();
@@ -473,10 +411,7 @@ impl<'a> NumberField<'a> {
             settle(&mut d);
         }
         ctx.data_mut(|m| m.insert_temp(self.id, d));
-        FieldResponse {
-            response: out.response,
-            committed,
-        }
+        FieldResponse { response: out.response, committed }
     }
 }
 
@@ -490,12 +425,7 @@ pub struct TextArea<'a> {
 
 impl<'a> TextArea<'a> {
     pub fn new(id_salt: impl Hash + std::fmt::Debug, value: &'a str) -> Self {
-        Self {
-            id: Id::unique(("flow-text-area", id_salt)),
-            value,
-            rows: 3,
-            placeholder: None,
-        }
+        Self { id: Id::unique(("flow-text-area", id_salt)), value, rows: 3, placeholder: None }
     }
     pub fn rows(mut self, rows: usize) -> Self {
         self.rows = rows;
@@ -559,10 +489,7 @@ impl<'a> TextArea<'a> {
             }
         }
         ctx.data_mut(|m| m.insert_temp(self.id, d));
-        FieldResponse {
-            response: out.response,
-            committed,
-        }
+        FieldResponse { response: out.response, committed }
     }
 }
 

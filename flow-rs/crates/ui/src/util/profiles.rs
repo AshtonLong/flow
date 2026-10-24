@@ -8,10 +8,7 @@ use serde_json::{Map, Value, json};
 use super::format::prompt_label;
 use super::models::model_label;
 
-fn section_mut<'a>(
-    profile: &'a mut Profile,
-    section: &str,
-) -> Option<&'a mut Option<Map<String, Value>>> {
+fn section_mut<'a>(profile: &'a mut Profile, section: &str) -> Option<&'a mut Option<Map<String, Value>>> {
     match section {
         "audio" => Some(&mut profile.audio),
         "model" => Some(&mut profile.model),
@@ -40,11 +37,7 @@ pub fn set_override(profile: &Profile, section: &str, key: &str, value: Option<V
                 current.shift_remove(key);
             }
         }
-        *slot = if current.is_empty() {
-            None
-        } else {
-            Some(current)
-        };
+        *slot = if current.is_empty() { None } else { Some(current) };
     }
     next
 }
@@ -104,18 +97,10 @@ pub fn match_summary(profile: &Profile) -> String {
         parts.push(profile.match_process.join(", "));
     }
     if !profile.match_title.is_empty() {
-        let titles: Vec<String> = profile
-            .match_title
-            .iter()
-            .map(|t| format!("“{t}”"))
-            .collect();
+        let titles: Vec<String> = profile.match_title.iter().map(|t| format!("“{t}”")).collect();
         parts.push(format!("title contains {}", titles.join(" or ")));
     }
-    if parts.is_empty() {
-        "Matches no app yet".into()
-    } else {
-        parts.join("; ")
-    }
+    if parts.is_empty() { "Matches no app yet".into() } else { parts.join("; ") }
 }
 
 pub fn override_summary(profile: &Profile, catalog: Option<&CatalogSnapshot>) -> String {
@@ -148,20 +133,14 @@ pub fn override_summary(profile: &Profile, catalog: Option<&CatalogSnapshot>) ->
         Some("paste") => parts.push("Pastes".into()),
         _ => {}
     }
-    if let Some(shortcut) =
-        get_override(profile, "insert", "paste_shortcut").and_then(Value::as_str)
-    {
+    if let Some(shortcut) = get_override(profile, "insert", "paste_shortcut").and_then(Value::as_str) {
         parts.push(format!("Pastes with {shortcut}"));
     }
     let others = other_overrides(profile).len();
     if others > 0 {
         parts.push(format!("{others} more set in the file"));
     }
-    if parts.is_empty() {
-        "No overrides yet".into()
-    } else {
-        parts.join(", ")
-    }
+    if parts.is_empty() { "No overrides yet".into() } else { parts.join(", ") }
 }
 
 pub struct Starter {
@@ -202,11 +181,7 @@ pub fn starters() -> Vec<Starter> {
             profile: Profile {
                 insert: table(json!({ "paste_shortcut": "Ctrl+Shift+V" })),
                 cleanup: table(json!({ "llm_enabled": false })),
-                ..blank(
-                    "Terminals",
-                    &["WindowsTerminal.exe", "wezterm-gui.exe", "alacritty.exe"],
-                    true,
-                )
+                ..blank("Terminals", &["WindowsTerminal.exe", "wezterm-gui.exe", "alacritty.exe"], true)
             },
         },
         Starter {
@@ -214,39 +189,24 @@ pub fn starters() -> Vec<Starter> {
             description: "Code comment prompt, keeps filler words",
             profile: Profile {
                 cleanup: table(json!({ "llm_prompt": "code_comment", "filler_removal": false })),
-                ..blank(
-                    "Code editors",
-                    &["Code.exe", "Cursor.exe", "devenv.exe", "idea64.exe"],
-                    true,
-                )
+                ..blank("Code editors", &["Code.exe", "Cursor.exe", "devenv.exe", "idea64.exe"], true)
             },
         },
         Starter {
             id: "passwords",
             description: "Turns dictation off",
-            profile: blank(
-                "Password managers",
-                &["1Password.exe", "Bitwarden.exe", "KeePassXC.exe"],
-                false,
-            ),
+            profile: blank("Password managers", &["1Password.exe", "Bitwarden.exe", "KeePassXC.exe"], false),
         },
     ]
 }
 
 /// `New profile`, `New profile 2`, … not already used.
 pub fn unique_name(existing: &[Profile], wanted: &str) -> String {
-    let taken = |name: &str| {
-        existing
-            .iter()
-            .any(|p| p.name.to_lowercase() == name.to_lowercase())
-    };
+    let taken = |name: &str| existing.iter().any(|p| p.name.to_lowercase() == name.to_lowercase());
     if !taken(wanted) {
         return wanted.to_string();
     }
-    (2..)
-        .map(|n| format!("{wanted} {n}"))
-        .find(|c| !taken(c))
-        .unwrap_or_else(|| wanted.to_string())
+    (2..).map(|n| format!("{wanted} {n}")).find(|c| !taken(c)).unwrap_or_else(|| wanted.to_string())
 }
 
 #[cfg(test)]
@@ -271,19 +231,10 @@ mod tests {
 
     #[test]
     fn omits_defaults_and_empty_sections_when_serialising() {
-        let empty = Profile {
-            name: "Empty".into(),
-            match_process: vec![],
-            cleanup: None,
-            overlay: None,
-            ..slack()
-        };
+        let empty = Profile { name: "Empty".into(), match_process: vec![], cleanup: None, overlay: None, ..slack() };
         assert_eq!(serialize_profile(&empty), json!({ "name": "Empty" }));
         assert_eq!(
-            serialize_profile(&Profile {
-                enabled: false,
-                ..slack()
-            }),
+            serialize_profile(&Profile { enabled: false, ..slack() }),
             json!({
                 "name": "Slack",
                 "match_process": ["slack.exe"],
@@ -297,26 +248,12 @@ mod tests {
     #[test]
     fn sets_and_clears_overrides_dropping_emptied_sections() {
         let slack = slack();
-        let with_model = set_override(
-            &slack,
-            "model",
-            "active",
-            Some(json!("groq/whisper-large-v3-turbo")),
-        );
-        assert_eq!(
-            with_model.model,
-            table(json!({ "active": "groq/whisper-large-v3-turbo" }))
-        );
-        assert_eq!(
-            set_override(&with_model, "model", "active", None).model,
-            None
-        );
+        let with_model = set_override(&slack, "model", "active", Some(json!("groq/whisper-large-v3-turbo")));
+        assert_eq!(with_model.model, table(json!({ "active": "groq/whisper-large-v3-turbo" })));
+        assert_eq!(set_override(&with_model, "model", "active", None).model, None);
         let cleared = set_override(&slack, "cleanup", "llm_prompt", None);
         assert_eq!(cleared.cleanup, table(json!({ "llm_enabled": true })));
-        assert_eq!(
-            slack.cleanup,
-            table(json!({ "llm_enabled": true, "llm_prompt": "casual" }))
-        );
+        assert_eq!(slack.cleanup, table(json!({ "llm_enabled": true, "llm_prompt": "casual" })));
     }
 
     #[test]
@@ -327,26 +264,10 @@ mod tests {
     #[test]
     fn summarises_matches_and_overrides() {
         assert_eq!(match_summary(&slack()), "slack.exe");
-        let by_title = Profile {
-            match_process: vec![],
-            match_title: vec!["Gmail".into()],
-            ..slack()
-        };
+        let by_title = Profile { match_process: vec![], match_title: vec!["Gmail".into()], ..slack() };
         assert_eq!(match_summary(&by_title), "title contains “Gmail”");
-        assert_eq!(
-            override_summary(&slack(), None),
-            "Casual prompt, 1 more set in the file"
-        );
-        assert_eq!(
-            override_summary(
-                &Profile {
-                    enabled: false,
-                    ..slack()
-                },
-                None
-            ),
-            "Dictation is off in this app"
-        );
+        assert_eq!(override_summary(&slack(), None), "Casual prompt, 1 more set in the file");
+        assert_eq!(override_summary(&Profile { enabled: false, ..slack() }, None), "Dictation is off in this app");
     }
 
     #[test]
@@ -354,21 +275,10 @@ mod tests {
         let profiles: Vec<Profile> = starters().into_iter().map(|s| s.profile).collect();
         let validated = validate_config(&json!({ "profiles": serialize_profiles(&profiles) }));
         assert!(validated.issues.is_empty());
-        let names: Vec<&str> = validated
-            .config
-            .profiles
-            .iter()
-            .map(|p| p.name.as_str())
-            .collect();
-        assert_eq!(
-            names,
-            vec!["Terminals", "Code editors", "Password managers"]
-        );
+        let names: Vec<&str> = validated.config.profiles.iter().map(|p| p.name.as_str()).collect();
+        assert_eq!(names, vec!["Terminals", "Code editors", "Password managers"]);
         assert!(!validated.config.profiles[2].enabled);
-        assert_eq!(
-            validated.config.profiles[0].insert,
-            table(json!({ "paste_shortcut": "Ctrl+Shift+V" }))
-        );
+        assert_eq!(validated.config.profiles[0].insert, table(json!({ "paste_shortcut": "Ctrl+Shift+V" })));
     }
 
     #[test]

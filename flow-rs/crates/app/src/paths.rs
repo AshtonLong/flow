@@ -57,7 +57,8 @@ impl Paths {
             .or_else(|| find_repo_resources(&exe_dir))
             .unwrap_or(installed_resources);
         let bundled_engine = exe_dir.join("engine").join("transcribe.dll");
-        let engine_library = if bundled_engine.is_file() || packaged { bundled_engine } else { electron_engine_library() };
+        let engine_library =
+            if bundled_engine.is_file() || packaged { bundled_engine } else { electron_engine_library() };
         Self {
             logs: user_data.join("logs"),
             user_data,

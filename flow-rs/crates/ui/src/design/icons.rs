@@ -16,8 +16,7 @@ use std::sync::{Arc, OnceLock};
 use egui::emath::GuiRounding as _;
 use egui::epaint::{Mesh, Shape};
 use egui::{
-    Color32, ColorImage, Context, Pos2, Rect, Response, Sense, TextureHandle, TextureOptions, Ui,
-    Vec2, pos2, vec2,
+    Color32, ColorImage, Context, Pos2, Rect, Response, Sense, TextureHandle, TextureOptions, Ui, Vec2, pos2, vec2,
 };
 use parking_lot::Mutex;
 
@@ -54,11 +53,7 @@ pub enum Icon {
 
 macro_rules! svg {
     ($file:literal) => {
-        include_str!(concat!(
-            "../../../../resources/icons/lucide/",
-            $file,
-            ".svg"
-        ))
+        include_str!(concat!("../../../../resources/icons/lucide/", $file, ".svg"))
     };
 }
 
@@ -127,12 +122,7 @@ impl Icon {
     pub fn polylines(self) -> &'static [Polyline] {
         static PARSED: OnceLock<HashMap<Icon, Vec<Polyline>>> = OnceLock::new();
         PARSED
-            .get_or_init(|| {
-                Icon::ALL
-                    .iter()
-                    .map(|&icon| (icon, parse_svg(icon.source())))
-                    .collect()
-            })
+            .get_or_init(|| Icon::ALL.iter().map(|&icon| (icon, parse_svg(icon.source()))).collect())
             .get(&self)
             .map(Vec::as_slice)
             .unwrap_or(&[])
@@ -160,25 +150,15 @@ type Cache = Arc<Mutex<HashMap<Key, TextureHandle>>>;
 fn texture(ctx: &Context, icon: Icon, size: f32, stroke_width: f32) -> (TextureHandle, f32) {
     let ppp = ctx.pixels_per_point();
     let px = (size * ppp).round().max(1.0) as u32;
-    let key = Key {
-        icon,
-        px,
-        stroke_milli: (stroke_width * 1000.0).round() as u32,
-    };
-    let cache: Cache = ctx.data_mut(|d| {
-        d.get_temp_mut_or_default::<Cache>(egui::Id::unique("flow-icon-cache"))
-            .clone()
-    });
+    let key = Key { icon, px, stroke_milli: (stroke_width * 1000.0).round() as u32 };
+    let cache: Cache =
+        ctx.data_mut(|d| d.get_temp_mut_or_default::<Cache>(egui::Id::unique("flow-icon-cache")).clone());
     let mut cache = cache.lock();
     let handle = cache
         .entry(key)
         .or_insert_with(|| {
             let image = rasterize(icon.polylines(), px, stroke_width);
-            ctx.load_texture(
-                format!("icon-{icon:?}-{px}-{}", key.stroke_milli),
-                image,
-                TextureOptions::LINEAR,
-            )
+            ctx.load_texture(format!("icon-{icon:?}-{px}-{}", key.stroke_milli), image, TextureOptions::LINEAR)
         })
         .clone();
     (handle, px as f32 / ppp)
@@ -190,11 +170,7 @@ fn rasterize(lines: &[Polyline], px: u32, stroke_width: f32) -> ColorImage {
     let half = stroke_width * scale / 2.0;
     let mut segments: Vec<(Pos2, Pos2)> = Vec::new();
     for line in lines {
-        let pts: Vec<Pos2> = line
-            .points
-            .iter()
-            .map(|p| pos2(p.x * scale, p.y * scale))
-            .collect();
+        let pts: Vec<Pos2> = line.points.iter().map(|p| pos2(p.x * scale, p.y * scale)).collect();
         for pair in pts.windows(2) {
             segments.push((pair[0], pair[1]));
         }
@@ -214,14 +190,8 @@ fn rasterize(lines: &[Polyline], px: u32, stroke_width: f32) -> ColorImage {
             let mut cover = 0.0;
             for sy in 0..SS {
                 for sx in 0..SS {
-                    let p = pos2(
-                        x as f32 + (sx as f32 + 0.5) / SS as f32,
-                        y as f32 + (sy as f32 + 0.5) / SS as f32,
-                    );
-                    let d = segments
-                        .iter()
-                        .map(|&(a, b)| distance_to_segment(p, a, b))
-                        .fold(f32::INFINITY, f32::min);
+                    let p = pos2(x as f32 + (sx as f32 + 0.5) / SS as f32, y as f32 + (sy as f32 + 0.5) / SS as f32);
+                    let d = segments.iter().map(|&(a, b)| distance_to_segment(p, a, b)).fold(f32::INFINITY, f32::min);
                     cover += (half - d + 0.5 / SS as f32).clamp(0.0, 1.0 / SS as f32) * SS as f32;
                 }
             }
@@ -235,11 +205,7 @@ fn rasterize(lines: &[Polyline], px: u32, stroke_width: f32) -> ColorImage {
 fn distance_to_segment(p: Pos2, a: Pos2, b: Pos2) -> f32 {
     let ab = b - a;
     let len2 = ab.length_sq();
-    let t = if len2 > 0.0 {
-        ((p - a).dot(ab) / len2).clamp(0.0, 1.0)
-    } else {
-        0.0
-    };
+    let t = if len2 > 0.0 { ((p - a).dot(ab) / len2).clamp(0.0, 1.0) } else { 0.0 };
     (p - (a + ab * t)).length()
 }
 
@@ -249,15 +215,7 @@ pub fn paint(ui: &Ui, icon: Icon, rect: Rect, size: f32, stroke_width: f32, colo
 }
 
 /// Like [`paint`], turned by `angle` radians about its centre (the `.spin` loader).
-pub fn paint_rotated(
-    ui: &Ui,
-    icon: Icon,
-    rect: Rect,
-    size: f32,
-    stroke_width: f32,
-    color: Color32,
-    angle: f32,
-) {
+pub fn paint_rotated(ui: &Ui, icon: Icon, rect: Rect, size: f32, stroke_width: f32, color: Color32, angle: f32) {
     let (handle, drawn) = texture(ui.ctx(), icon, size, stroke_width);
     let ppp = ui.ctx().pixels_per_point();
     let min = (rect.center() - Vec2::splat(drawn / 2.0)).round_to_pixels(ppp);
@@ -302,9 +260,7 @@ fn attr<'a>(element: &'a str, name: &str) -> Option<&'a str> {
 }
 
 fn num(element: &str, name: &str) -> f32 {
-    attr(element, name)
-        .and_then(|v| v.trim().parse().ok())
-        .unwrap_or(0.0)
+    attr(element, name).and_then(|v| v.trim().parse().ok()).unwrap_or(0.0)
 }
 
 /// Parses the shapes of a lucide SVG into polylines.
@@ -316,10 +272,7 @@ pub fn parse_svg(source: &str) -> Vec<Polyline> {
         let end = rest.find('>').unwrap_or(rest.len());
         let element = &rest[..end];
         rest = &rest[end..];
-        let tag = element
-            .split(|c: char| c.is_whitespace() || c == '/')
-            .next()
-            .unwrap_or("");
+        let tag = element.split(|c: char| c.is_whitespace() || c == '/').next().unwrap_or("");
         match tag {
             "path" => {
                 if let Some(d) = attr(element, "d") {
@@ -331,12 +284,8 @@ pub fn parse_svg(source: &str) -> Vec<Polyline> {
                 out.push(ellipse(pos2(cx, cy), r, r));
             }
             "rect" => {
-                let (x, y, w, h) = (
-                    num(element, "x"),
-                    num(element, "y"),
-                    num(element, "width"),
-                    num(element, "height"),
-                );
+                let (x, y, w, h) =
+                    (num(element, "x"), num(element, "y"), num(element, "width"), num(element, "height"));
                 let rx = attr(element, "rx").map(|_| num(element, "rx"));
                 let ry = attr(element, "ry").map(|_| num(element, "ry"));
                 let (rx, ry) = match (rx, ry) {
@@ -359,16 +308,8 @@ pub fn parse_svg(source: &str) -> Vec<Polyline> {
                     .split(|c: char| c == ',' || c.is_whitespace())
                     .filter_map(|v| v.parse().ok())
                     .collect();
-                let points = values
-                    .as_chunks::<2>()
-                    .0
-                    .iter()
-                    .map(|[x, y]| pos2(*x, *y))
-                    .collect();
-                out.push(Polyline {
-                    points,
-                    closed: tag == "polygon",
-                });
+                let points = values.as_chunks::<2>().0.iter().map(|[x, y]| pos2(*x, *y)).collect();
+                out.push(Polyline { points, closed: tag == "polygon" });
             }
             _ => {}
         }
@@ -384,23 +325,12 @@ fn ellipse(center: Pos2, rx: f32, ry: f32) -> Polyline {
             pos2(center.x + rx * a.cos(), center.y + ry * a.sin())
         })
         .collect();
-    Polyline {
-        points,
-        closed: true,
-    }
+    Polyline { points, closed: true }
 }
 
 fn rounded_rect(x: f32, y: f32, w: f32, h: f32, rx: f32, ry: f32) -> Polyline {
     if rx <= 0.0 || ry <= 0.0 {
-        return Polyline {
-            points: vec![
-                pos2(x, y),
-                pos2(x + w, y),
-                pos2(x + w, y + h),
-                pos2(x, y + h),
-            ],
-            closed: true,
-        };
+        return Polyline { points: vec![pos2(x, y), pos2(x + w, y), pos2(x + w, y + h), pos2(x, y + h)], closed: true };
     }
     let mut points = Vec::new();
     let corners = [
@@ -415,10 +345,7 @@ fn rounded_rect(x: f32, y: f32, w: f32, h: f32, rx: f32, ry: f32) -> Polyline {
             points.push(pos2(c.x + rx * a.cos(), c.y + ry * a.sin()));
         }
     }
-    Polyline {
-        points,
-        closed: true,
-    }
+    Polyline { points, closed: true }
 }
 
 /// Path data tokens: command letters and numbers (`-4.74-2.85`, `.97.5`).
@@ -429,9 +356,7 @@ struct Tokens<'a> {
 
 impl Tokens<'_> {
     fn skip_separators(&mut self) {
-        while self.i < self.s.len()
-            && (self.s[self.i].is_ascii_whitespace() || self.s[self.i] == b',')
-        {
+        while self.i < self.s.len() && (self.s[self.i].is_ascii_whitespace() || self.s[self.i] == b',') {
             self.i += 1;
         }
     }
@@ -449,9 +374,7 @@ impl Tokens<'_> {
 
     fn has_number(&mut self) -> bool {
         self.skip_separators();
-        self.s
-            .get(self.i)
-            .is_some_and(|c| c.is_ascii_digit() || matches!(c, b'-' | b'+' | b'.'))
+        self.s.get(self.i).is_some_and(|c| c.is_ascii_digit() || matches!(c, b'-' | b'+' | b'.'))
     }
 
     fn number(&mut self) -> Option<f32> {
@@ -500,10 +423,7 @@ impl Tokens<'_> {
 pub fn parse_path(d: &str) -> Vec<Polyline> {
     let mut lines: Vec<Polyline> = Vec::new();
     let mut current: Vec<Pos2> = Vec::new();
-    let mut t = Tokens {
-        s: d.as_bytes(),
-        i: 0,
-    };
+    let mut t = Tokens { s: d.as_bytes(), i: 0 };
     let mut pos = Pos2::ZERO;
     let mut start = Pos2::ZERO;
     let mut last_control: Option<Pos2> = None;
@@ -512,10 +432,7 @@ pub fn parse_path(d: &str) -> Vec<Polyline> {
 
     let flush = |current: &mut Vec<Pos2>, lines: &mut Vec<Polyline>, closed: bool| {
         if current.len() > 1 {
-            lines.push(Polyline {
-                points: std::mem::take(current),
-                closed,
-            });
+            lines.push(Polyline { points: std::mem::take(current), closed });
         }
         current.clear();
     };
@@ -574,9 +491,7 @@ pub fn parse_path(d: &str) -> Vec<Polyline> {
                 } else {
                     last_control.map(|c| pos + (pos - c)).unwrap_or(pos)
                 };
-                let (Some(x2), Some(y2), Some(x), Some(y)) =
-                    (t.number(), t.number(), t.number(), t.number())
-                else {
+                let (Some(x2), Some(y2), Some(x), Some(y)) = (t.number(), t.number(), t.number(), t.number()) else {
                     break;
                 };
                 let c2 = pos2(x2, y2) + base;
@@ -614,8 +529,7 @@ pub fn parse_path(d: &str) -> Vec<Polyline> {
                 pos = end;
             }
             b'A' => {
-                let (Some(rx), Some(ry), Some(rotation)) = (t.number(), t.number(), t.number())
-                else {
+                let (Some(rx), Some(ry), Some(rotation)) = (t.number(), t.number(), t.number()) else {
                     break;
                 };
                 let (Some(large), Some(sweep)) = (t.flag(), t.flag()) else {
@@ -668,16 +582,7 @@ fn cubic(out: &mut Vec<Pos2>, p0: Pos2, p1: Pos2, p2: Pos2, p3: Pos2) {
 
 /// SVG arc (endpoint parameterisation, F.6.5 of the SVG spec).
 #[allow(clippy::too_many_arguments)]
-fn arc(
-    out: &mut Vec<Pos2>,
-    from: Pos2,
-    rx: f32,
-    ry: f32,
-    rotation_deg: f32,
-    large: bool,
-    sweep: bool,
-    to: Pos2,
-) {
+fn arc(out: &mut Vec<Pos2>, from: Pos2, rx: f32, ry: f32, rotation_deg: f32, large: bool, sweep: bool, to: Pos2) {
     let (mut rx, mut ry) = (rx.abs(), ry.abs());
     if rx == 0.0 || ry == 0.0 || from == to {
         out.push(to);
@@ -710,12 +615,7 @@ fn arc(
         if ux * vy - uy * vx < 0.0 { -a } else { a }
     };
     let theta1 = angle(1.0, 0.0, (x1 - cx1) / rx, (y1 - cy1) / ry);
-    let mut delta = angle(
-        (x1 - cx1) / rx,
-        (y1 - cy1) / ry,
-        (-x1 - cx1) / rx,
-        (-y1 - cy1) / ry,
-    );
+    let mut delta = angle((x1 - cx1) / rx, (y1 - cy1) / ry, (-x1 - cx1) / rx, (-y1 - cy1) / ry);
     if !sweep && delta > 0.0 {
         delta -= std::f32::consts::TAU;
     } else if sweep && delta < 0.0 {
@@ -725,10 +625,7 @@ fn arc(
     for i in 1..=steps {
         let a = theta1 + delta * i as f32 / steps as f32;
         let (s, c) = a.sin_cos();
-        out.push(pos2(
-            center.x + cos * rx * c - sin * ry * s,
-            center.y + sin * rx * c + cos * ry * s,
-        ));
+        out.push(pos2(center.x + cos * rx * c - sin * ry * s, center.y + sin * rx * c + cos * ry * s));
     }
 }
 
@@ -776,14 +673,7 @@ mod tests {
 
     #[test]
     fn rasterizes_a_crisp_line() {
-        let image = rasterize(
-            &[Polyline {
-                points: vec![pos2(0.0, 12.0), pos2(24.0, 12.0)],
-                closed: false,
-            }],
-            24,
-            2.0,
-        );
+        let image = rasterize(&[Polyline { points: vec![pos2(0.0, 12.0), pos2(24.0, 12.0)], closed: false }], 24, 2.0);
         let alpha = |x: usize, y: usize| image.pixels[y * 24 + x].a();
         assert_eq!(alpha(12, 11), 255);
         assert_eq!(alpha(12, 12), 255);

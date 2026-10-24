@@ -24,8 +24,7 @@ fn uses_keyword_fields(model: &str) -> bool {
 
 /// The hint terms as a Whisper-style prompt: a short glossary the model treats as prior text.
 pub fn hint_prompt<S: AsRef<str>>(hints: &[S]) -> String {
-    limit_hints(hints, HintLimits { max_total_chars: Some(PROMPT_CHAR_BUDGET), ..HintLimits::default() })
-        .join(", ")
+    limit_hints(hints, HintLimits { max_total_chars: Some(PROMPT_CHAR_BUDGET), ..HintLimits::default() }).join(", ")
 }
 
 pub(crate) fn build(wav: Vec<u8>, input: &BuildInput<'_>) -> Result<CloudRequest, reqwest::Error> {
@@ -35,8 +34,7 @@ pub(crate) fn build(wav: Vec<u8>, input: &BuildInput<'_>) -> Result<CloudRequest
             form = form.text("languages[]", input.language.to_string());
         }
         // Keywords must stay on one line and may not contain angle brackets.
-        let cleaned: Vec<String> =
-            input.hints.iter().map(|h| h.replace(['<', '>', '\r', '\n'], " ")).collect();
+        let cleaned: Vec<String> = input.hints.iter().map(|h| h.replace(['<', '>', '\r', '\n'], " ")).collect();
         let keywords = limit_hints(&cleaned, HintLimits { max_terms: Some(MAX_KEYWORDS), ..HintLimits::default() });
         for keyword in keywords {
             form = form.text("keywords[]", keyword);

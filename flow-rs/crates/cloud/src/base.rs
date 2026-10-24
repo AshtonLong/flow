@@ -94,11 +94,7 @@ impl CloudTranscriber {
 
     /// Uploads the audio as a WAV and returns the trimmed transcript. Fails only
     /// with TranscribeError; a cancel aborts the request and fails with `aborted`.
-    pub async fn transcribe(
-        &self,
-        audio: &[f32],
-        opts: &TranscribeOptions,
-    ) -> Result<Transcript, TranscribeError> {
+    pub async fn transcribe(&self, audio: &[f32], opts: &TranscribeOptions) -> Result<Transcript, TranscribeError> {
         let started = Instant::now();
         let audio_ms = samples_to_ms(audio.len());
         if opts.cancel.is_cancelled() {
@@ -123,10 +119,8 @@ impl CloudTranscriber {
             .with_user_message(format!("Couldn't reach {name}"))
             .with_cause(err)
         })?;
-        let builder = with_headers(
-            self.http.post(&request.url),
-            auth_headers(&self.provider).into_iter().chain(request.headers),
-        );
+        let builder =
+            with_headers(self.http.post(&request.url), auth_headers(&self.provider).into_iter().chain(request.headers));
         let builder = match request.body {
             CloudBody::Form(form) => builder.multipart(form),
             CloudBody::Bytes(bytes) => builder.body(bytes),

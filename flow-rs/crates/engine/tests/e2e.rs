@@ -40,8 +40,9 @@ fn install_library() {
     DONE.get_or_init(|| {
         let _ = log::set_logger(&StderrLogger).map(|()| log::set_max_level(log::LevelFilter::Info));
         let source = std::env::var_os("FLOW_TEST_TRANSCRIBE_DIR").map(PathBuf::from).unwrap_or_else(|| {
-            PathBuf::from(std::env::var_os("LOCALAPPDATA").expect("LOCALAPPDATA"))
-                .join("Programs\\Flow\\resources\\app.asar.unpacked\\node_modules\\@transcribe-cpp\\win32-x64-cpu-vulkan")
+            PathBuf::from(std::env::var_os("LOCALAPPDATA").expect("LOCALAPPDATA")).join(
+                "Programs\\Flow\\resources\\app.asar.unpacked\\node_modules\\@transcribe-cpp\\win32-x64-cpu-vulkan",
+            )
         });
         let target = host().parent().unwrap().join("engine");
         std::fs::create_dir_all(&target).unwrap();
@@ -72,9 +73,9 @@ fn client() -> Arc<EngineClient> {
 }
 
 fn models_dir() -> PathBuf {
-    std::env::var_os("FLOW_TEST_MODELS_DIR").map(PathBuf::from).unwrap_or_else(|| {
-        PathBuf::from(std::env::var_os("LOCALAPPDATA").expect("LOCALAPPDATA")).join("Flow\\models")
-    })
+    std::env::var_os("FLOW_TEST_MODELS_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(std::env::var_os("LOCALAPPDATA").expect("LOCALAPPDATA")).join("Flow\\models"))
 }
 
 fn models() -> Vec<(PathBuf, u64)> {
@@ -105,7 +106,13 @@ fn parakeet() -> Option<PathBuf> {
 }
 
 fn words(text: &str) -> String {
-    text.to_lowercase().chars().filter(|c| c.is_alphanumeric() || c.is_whitespace()).collect::<String>().split_whitespace().collect::<Vec<_>>().join(" ")
+    text.to_lowercase()
+        .chars()
+        .filter(|c| c.is_alphanumeric() || c.is_whitespace())
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 async fn transcribe_jfk(client: &EngineClient, model: &EngineModelRef) {
@@ -141,7 +148,14 @@ async fn probe_lists_devices() {
     let probe = client.probe().await.unwrap();
     eprintln!("probe in {:?}: transcribe.cpp {}, vad {:?}", started.elapsed(), probe.version, probe.vad);
     for d in &probe.devices {
-        eprintln!("  {} kind={} type={} {:?} {} MiB", d.name, d.kind, d.device_type, d.description, d.memory_total >> 20);
+        eprintln!(
+            "  {} kind={} type={} {:?} {} MiB",
+            d.name,
+            d.kind,
+            d.device_type,
+            d.description,
+            d.memory_total >> 20
+        );
     }
     assert_eq!(probe.version, "0.3.0");
     assert_eq!(probe.vad, VadKind::Silero);

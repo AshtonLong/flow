@@ -73,10 +73,6 @@ pub fn set_debug(enabled: bool) {
     }
 }
 
-pub fn debug_enabled() -> bool {
-    LOGGER.get().is_some_and(|l| l.debug.load(Ordering::Relaxed))
-}
-
 impl log::Log for FlowLogger {
     fn enabled(&self, metadata: &log::Metadata) -> bool {
         // Flow's own scopes are single words; other crates log under module paths.

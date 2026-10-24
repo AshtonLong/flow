@@ -38,14 +38,7 @@ impl TextStyle {
     pub const HEADING_TRACKING: f32 = -0.03;
 
     pub const fn new(size: f32, line_height: f32) -> Self {
-        Self {
-            size,
-            line_height,
-            weight: Weight::Body,
-            mono: false,
-            tracking: 0.0,
-            logo: false,
-        }
+        Self { size, line_height, weight: Weight::Body, mono: false, tracking: 0.0, logo: false }
     }
 
     pub const fn weight(mut self, weight: Weight) -> Self {
@@ -81,11 +74,7 @@ impl TextStyle {
     }
 
     pub fn font_id(&self) -> FontId {
-        let family = if self.logo {
-            logo_family()
-        } else {
-            family(self.weight, self.mono)
-        };
+        let family = if self.logo { logo_family() } else { family(self.weight, self.mono) };
         FontId::new(self.size, family)
     }
 
@@ -119,13 +108,7 @@ pub fn css_baseline(size: f32, line_height: f32) -> f32 {
 /// leaves 14 px body text 0.9 px low and blurred across an extra pixel row.
 pub fn snap_baselines(galley: Arc<Galley>, style: TextStyle) -> Arc<Galley> {
     let target = css_baseline(style.size, style.line_height);
-    let off = |row: &egui::epaint::text::PlacedRow| {
-        row.row
-            .glyphs
-            .first()
-            .map(|g| target - g.pos.y)
-            .unwrap_or(0.0)
-    };
+    let off = |row: &egui::epaint::text::PlacedRow| row.row.glyphs.first().map(|g| target - g.pos.y).unwrap_or(0.0);
     if galley.rows.iter().all(|row| off(row).abs() < 0.01) {
         return galley;
     }
@@ -137,18 +120,9 @@ pub fn snap_baselines(galley: Arc<Galley>, style: TextStyle) -> Arc<Galley> {
 }
 
 /// Lays out one run of text. `wrap` is the maximum width (`f32::INFINITY` for one line).
-pub fn galley(
-    ui: &Ui,
-    text: impl Into<String>,
-    style: TextStyle,
-    color: Color32,
-    wrap: f32,
-) -> Arc<Galley> {
+pub fn galley(ui: &Ui, text: impl Into<String>, style: TextStyle, color: Color32, wrap: f32) -> Arc<Galley> {
     let mut job = LayoutJob::single_section(text.into(), style.format(color));
-    job.wrap = TextWrapping {
-        max_width: wrap,
-        ..TextWrapping::default()
-    };
+    job.wrap = TextWrapping { max_width: wrap, ..TextWrapping::default() };
     snap_baselines(ui.painter().layout_job(job), style)
 }
 
@@ -172,12 +146,7 @@ pub fn label(ui: &mut Ui, text: impl Into<String>, style: TextStyle, color: Colo
 }
 
 /// Text wrapped at the available width.
-pub fn paragraph(
-    ui: &mut Ui,
-    text: impl Into<String>,
-    style: TextStyle,
-    color: Color32,
-) -> Response {
+pub fn paragraph(ui: &mut Ui, text: impl Into<String>, style: TextStyle, color: Color32) -> Response {
     let width = ui.available_width();
     let galley = galley(ui, text, style, color, width);
     paint_galley(ui, galley)
@@ -205,9 +174,7 @@ pub fn paint_galley(ui: &mut Ui, galley: Arc<Galley>) -> Response {
 
 /// Width of a run of text in a style.
 pub fn width(ui: &Ui, text: &str, style: TextStyle) -> f32 {
-    galley(ui, text, style, Color32::PLACEHOLDER, f32::INFINITY)
-        .size()
-        .x
+    galley(ui, text, style, Color32::PLACEHOLDER, f32::INFINITY).size().x
 }
 
 /// `ch` units: the advance of "0" in a style (`max-w-[72ch]`).
@@ -244,37 +211,16 @@ pub struct RichResponse {
 
 impl Rich {
     pub fn new(base: TextStyle, color: Color32) -> Self {
-        Self {
-            base,
-            color,
-            spans: Vec::new(),
-        }
+        Self { base, color, spans: Vec::new() }
     }
 
     pub fn text(mut self, text: impl Into<String>) -> Self {
-        self.spans.push(Span {
-            text: text.into(),
-            style: self.base,
-            color: None,
-            underline: false,
-            link: false,
-        });
+        self.spans.push(Span { text: text.into(), style: self.base, color: None, underline: false, link: false });
         self
     }
 
-    pub fn styled(
-        mut self,
-        text: impl Into<String>,
-        style: TextStyle,
-        color: Option<Color32>,
-    ) -> Self {
-        self.spans.push(Span {
-            text: text.into(),
-            style,
-            color,
-            underline: false,
-            link: false,
-        });
+    pub fn styled(mut self, text: impl Into<String>, style: TextStyle, color: Option<Color32>) -> Self {
+        self.spans.push(Span { text: text.into(), style, color, underline: false, link: false });
         self
     }
 
@@ -293,13 +239,7 @@ impl Rich {
     /// `.link`: weight 620, underlined, clickable.
     pub fn link(mut self, text: impl Into<String>) -> Self {
         let style = self.base.weight(Weight::Strong);
-        self.spans.push(Span {
-            text: text.into(),
-            style,
-            color: None,
-            underline: true,
-            link: true,
-        });
+        self.spans.push(Span { text: text.into(), style, color: None, underline: true, link: true });
         self
     }
 
@@ -318,10 +258,7 @@ impl Rich {
             }
             job.append(&span.text, 0.0, format);
         }
-        job.wrap = TextWrapping {
-            max_width: wrap,
-            ..TextWrapping::default()
-        };
+        job.wrap = TextWrapping { max_width: wrap, ..TextWrapping::default() };
         job
     }
 
@@ -332,11 +269,7 @@ impl Rich {
         let hovered: Option<usize> = ui.data(|d| d.get_temp(id));
         let galley = snap_baselines(ui.painter().layout_job(self.job(wrap, hovered)), self.base);
         let has_links = self.spans.iter().any(|s| s.link);
-        let sense = if has_links {
-            Sense::click()
-        } else {
-            Sense::hover()
-        };
+        let sense = if has_links { Sense::click() } else { Sense::hover() };
         let (rect, response) = ui.allocate_exact_size(galley.size(), sense);
         let mut clicked = None;
         let mut now_hovered = None;
@@ -376,15 +309,7 @@ pub fn baseline(galley: &Galley) -> f32 {
     galley
         .rows
         .first()
-        .map(|row| {
-            row.pos.y
-                + row
-                    .row
-                    .glyphs
-                    .first()
-                    .map(|g| g.pos.y)
-                    .unwrap_or(row.row.size.y * 0.75)
-        })
+        .map(|row| row.pos.y + row.row.glyphs.first().map(|g| g.pos.y).unwrap_or(row.row.size.y * 0.75))
         .unwrap_or(0.0)
 }
 

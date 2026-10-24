@@ -37,11 +37,8 @@ impl ErrorBoundary {
             return;
         }
         // Draw into a child so a half-drawn page can be dropped wholesale.
-        let mut child = ui.new_child(
-            egui::UiBuilder::new()
-                .max_rect(ui.available_rect_before_wrap())
-                .layout(*ui.layout()),
-        );
+        let mut child =
+            ui.new_child(egui::UiBuilder::new().max_rect(ui.available_rect_before_wrap()).layout(*ui.layout()));
         let outcome = catch_unwind(AssertUnwindSafe(|| body(&mut child)));
         match outcome {
             Ok(()) => {

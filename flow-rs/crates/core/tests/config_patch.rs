@@ -4,9 +4,11 @@ use std::collections::HashSet;
 
 use flow_core::config::toml_write::deep_equal;
 use flow_core::config::value::toml_to_json;
-use flow_core::config::{parse_toml, patch_toml, validate_config, Config, ConfigPatch, ConfigPath, PathSeg, TomlPatchError};
+use flow_core::config::{
+    Config, ConfigPatch, ConfigPath, PathSeg, TomlPatchError, parse_toml, patch_toml, validate_config,
+};
 use flow_core::path;
-use serde_json::{json, Value as Json};
+use serde_json::{Value as Json, json};
 use toml::Value;
 
 /// The example from SPEC.md "Configuration", comments included.
@@ -109,7 +111,11 @@ fn apply_to_object(root: &mut Value, patch: &ConfigPatch) {
             if value.is_none() {
                 return;
             }
-            let fresh = if matches!(path[i + 1], PathSeg::Index(_)) { Value::Array(vec![]) } else { Value::Table(Table::new()) };
+            let fresh = if matches!(path[i + 1], PathSeg::Index(_)) {
+                Value::Array(vec![])
+            } else {
+                Value::Table(Table::new())
+            };
             set_child(node, part, fresh);
         }
         node = child_mut(node, part).expect("just created");
@@ -327,7 +333,10 @@ mod existing_values {
                 set(path!["profiles", 0usize, "name"], json!("Shells")),
             ],
         );
-        assert_eq!(out, "[[profiles]]\nname = \"Shells\"  # literal\nmatch_process = [\"c.exe\"]  # after\nenabled = true\n");
+        assert_eq!(
+            out,
+            "[[profiles]]\nname = \"Shells\"  # literal\nmatch_process = [\"c.exe\"]  # after\nenabled = true\n"
+        );
     }
 
     #[test]
@@ -477,7 +486,8 @@ mod new_keys {
 
     #[test]
     fn appends_to_an_empty_table() {
-        let out = patch_and_check("[audio]\n\n[model]\nactive = \"x\"\n", &[set(path!["audio", "sounds"], json!(false))]);
+        let out =
+            patch_and_check("[audio]\n\n[model]\nactive = \"x\"\n", &[set(path!["audio", "sounds"], json!(false))]);
         assert_eq!(out, "[audio]\nsounds = false\n\n[model]\nactive = \"x\"\n");
     }
 
@@ -540,7 +550,10 @@ mod new_keys {
             patch_and_check("# Flow settings\n# more\n\n[audio]\nsounds = true\n", &[set(path!["version"], json!(1))]),
             "# Flow settings\n# more\n\nversion = 1\n\n[audio]\nsounds = true\n"
         );
-        assert_eq!(patch_and_check("a = 1\n\n[audio]\n", &[set(path!["version"], json!(1))]), "a = 1\nversion = 1\n\n[audio]\n");
+        assert_eq!(
+            patch_and_check("a = 1\n\n[audio]\n", &[set(path!["version"], json!(1))]),
+            "a = 1\nversion = 1\n\n[audio]\n"
+        );
     }
 
     #[test]
@@ -553,7 +566,11 @@ mod new_keys {
                 set(path!["profiles", 1usize, "enabled"], json!(false)),
             ],
         );
-        assert!(out.contains("cleanup.llm_enabled = false\ncleanup.filler_removal = false\n\n[[profiles]]\nname = \"Slack\""));
+        assert!(
+            out.contains(
+                "cleanup.llm_enabled = false\ncleanup.filler_removal = false\n\n[[profiles]]\nname = \"Slack\""
+            )
+        );
         assert!(out.ends_with("cleanup.llm_prompt = \"casual\"\ninsert.method = \"type\"\nenabled = false\n"));
     }
 
@@ -684,8 +701,10 @@ mod removing {
     #[test]
     fn removes_a_dotted_key_and_a_whole_dotted_table_from_a_list_item() {
         let example = example();
-        let patches =
-            [remove(path!["profiles", 0usize, "insert", "paste_shortcut"]), remove(path!["profiles", 1usize, "cleanup"])];
+        let patches = [
+            remove(path!["profiles", 0usize, "insert", "paste_shortcut"]),
+            remove(path!["profiles", 1usize, "cleanup"]),
+        ];
         let out = patch_toml(&example, &patches).unwrap();
         // A table spelled only with dotted keys goes when its last key goes.
         assert_same(&prune(&parse(&out)), &prune(&apply_all(&example, &patches)), &out);
@@ -828,7 +847,8 @@ mod lists_of_tables {
     #[test]
     fn removes_the_blocks_when_the_list_is_emptied() {
         let example = example();
-        let out = patch_toml(&example, &[set(path!["dictionary"], json!([])), set(path!["profiles"], json!([]))]).unwrap();
+        let out =
+            patch_toml(&example, &[set(path!["dictionary"], json!([])), set(path!["profiles"], json!([]))]).unwrap();
         assert_eq!(
             out,
             example[..example.find("[[dictionary]]").unwrap()].to_string()
@@ -921,7 +941,9 @@ mod lists_of_tables {
                 set(path!["local_models", 0usize], json!({ "id": "m", "path": "m.gguf" })),
             ],
         );
-        assert!(out.contains("write = \"Tauri\"\n\n[[dictionary]]\nheard = [\"j son\"]\nwrite = \"JSON\"\n\n[[snippets]]"));
+        assert!(
+            out.contains("write = \"Tauri\"\n\n[[dictionary]]\nheard = [\"j son\"]\nwrite = \"JSON\"\n\n[[snippets]]")
+        );
         assert!(out.ends_with("\n\n[[local_models]]\nid = \"m\"\npath = \"m.gguf\"\n"));
         expect_comments_kept(&example, &out, "#");
     }
@@ -943,16 +965,17 @@ mod lists_of_tables {
     #[test]
     fn replaces_one_item_key_by_key_keeping_its_comments() {
         let source = "[[snippets]]\n# the address\ntrigger = \"my address\"  # spoken\ntext = \"old\"\nextra = 1\n";
-        let out = patch_and_check(source, &[set(path!["snippets", 0usize], json!({ "trigger": "my address", "text": "new" }))]);
+        let out = patch_and_check(
+            source,
+            &[set(path!["snippets", 0usize], json!({ "trigger": "my address", "text": "new" }))],
+        );
         assert_eq!(out, "[[snippets]]\n# the address\ntrigger = \"my address\"  # spoken\ntext = \"new\"\n");
     }
 
     #[test]
     fn rejects_an_item_index_past_the_end_of_the_list() {
         let example = example();
-        let rejects = |patch: ConfigPatch| {
-            matches!(patch_toml(&example, &[patch]), Err(TomlPatchError::Invalid(_)))
-        };
+        let rejects = |patch: ConfigPatch| matches!(patch_toml(&example, &[patch]), Err(TomlPatchError::Invalid(_)));
         assert!(rejects(set(path!["profiles", 5usize, "name"], json!("x"))));
         assert!(rejects(set(path!["profiles", 3usize], json!({ "name": "x" }))));
         assert!(rejects(set(path!["audio", 0usize], json!(1))));
@@ -1003,7 +1026,11 @@ mod whole_tables {
     fn creates_an_empty_table() {
         let out = patch_toml("[audio]\nsounds = true\n", &[set(path!["providers", "x"], json!({}))]).unwrap();
         assert_eq!(out, "[audio]\nsounds = true\n\n[providers.x]\n");
-        assert_same(&parse(&out), &to_toml(&json!({ "audio": { "sounds": true }, "providers": { "x": {} } })).unwrap(), &out);
+        assert_same(
+            &parse(&out),
+            &to_toml(&json!({ "audio": { "sounds": true }, "providers": { "x": {} } })).unwrap(),
+            &out,
+        );
     }
 
     #[test]
@@ -1029,8 +1056,14 @@ mod whole_tables {
 
     #[test]
     fn turns_a_scalar_into_a_table_and_a_table_into_a_scalar() {
-        assert_eq!(patch_and_check("[t]\na = 1  # c\n", &[set(path!["t", "a"], json!({ "b": 2 }))]), "[t]\na = { b = 2 }  # c\n");
-        assert_eq!(patch_and_check("[t]\na = 1  # c\n", &[set(path!["t", "a", "b"], json!(2))]), "[t]\na = { b = 2 }  # c\n");
+        assert_eq!(
+            patch_and_check("[t]\na = 1  # c\n", &[set(path!["t", "a"], json!({ "b": 2 }))]),
+            "[t]\na = { b = 2 }  # c\n"
+        );
+        assert_eq!(
+            patch_and_check("[t]\na = 1  # c\n", &[set(path!["t", "a", "b"], json!(2))]),
+            "[t]\na = { b = 2 }  # c\n"
+        );
         let example = example();
         let out = patch_and_check(&example, &[set(path!["providers", "groq"], json!("nope"))]);
         assert_eq!(get(&parse(&out), &["providers", "groq"]), Some(&Value::String("nope".into())));
@@ -1118,7 +1151,10 @@ mod strings {
             patch_and_check(source, &[set(path!["prompts", "a", "text"], json!("short"))]),
             "[prompts.a]\ntext = \"short\"  # real comment\nx = 1\n"
         );
-        assert_eq!(patch_and_check(source, &[set(path!["prompts", "a", "x"], json!(2))]), rep(source, "x = 1", "x = 2"));
+        assert_eq!(
+            patch_and_check(source, &[set(path!["prompts", "a", "x"], json!(2))]),
+            rep(source, "x = 1", "x = 2")
+        );
         assert_eq!(patch_and_check(source, &[remove(path!["prompts", "a", "text"])]), "[prompts.a]\nx = 1\n");
     }
 
@@ -1136,7 +1172,16 @@ mod strings {
     #[test]
     fn writes_numbers_so_they_read_back_as_the_same_number() {
         let example = example();
-        for value in [json!(0), json!(-1), json!(42), json!(1.5), json!(-0.25), json!(1e21), json!(1e-7), json!(9007199254740992.0)] {
+        for value in [
+            json!(0),
+            json!(-1),
+            json!(42),
+            json!(1.5),
+            json!(-0.25),
+            json!(1e21),
+            json!(1e-7),
+            json!(9007199254740992.0),
+        ] {
             patch_and_check(&example, &[set(path!["model", "keep_loaded_minutes"], value)]);
         }
     }
@@ -1586,7 +1631,10 @@ enabled = true
             set(path!["profiles", 1usize, "cleanup", "llm_enabled"], json!(false)),
             set(path!["profiles", 1usize, "overlay", "style"], json!("none")),
             set(path!["profiles", 0usize, "match_title"], json!(["/powershell/i"])),
-            set(path!["profiles", 2usize], json!({ "name": "Games", "match_process": ["*.game.exe"], "enabled": false })),
+            set(
+                path!["profiles", 2usize],
+                json!({ "name": "Games", "match_process": ["*.game.exe"], "enabled": false }),
+            ),
             set(path!["local_models"], json!([{ "id": "mine", "path": "D:\\models\\mine.gguf" }])),
         ];
         let out = patch_and_check(&example, &patches);

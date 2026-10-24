@@ -116,8 +116,9 @@ pub struct SessionDeps {
     /// Voice detection: speech with silence removed, `Ok(None)` when there is none.
     pub trim: Arc<dyn Fn(Arc<Vec<f32>>) -> BoxFuture<Result<Option<Vec<f32>>, String>> + Send + Sync>,
     /// The optional language-model pass over already rule-cleaned text.
-    pub cleanup_llm:
-        Arc<dyn Fn(String, Arc<Config>, Arc<Catalog>, CancellationToken) -> BoxFuture<Result<String, String>> + Send + Sync>,
+    pub cleanup_llm: Arc<
+        dyn Fn(String, Arc<Config>, Arc<Catalog>, CancellationToken) -> BoxFuture<Result<String, String>> + Send + Sync,
+    >,
     pub capture: Arc<dyn SessionCapture>,
     pub overlay: Arc<dyn SessionOverlay>,
     /// `cancel` (Esc) is only listened for while there is something to cancel.
@@ -240,6 +241,7 @@ impl DictationSession {
         self.me.upgrade().expect("session is alive while its methods run")
     }
 
+    #[cfg(test)]
     pub fn state(&self) -> SessionState {
         self.state.lock().state()
     }
@@ -470,7 +472,15 @@ impl DictationSession {
         }
         let text = message.unwrap_or_else(|| reason.default_message().to_string());
         log::error!(target: "session", "capture failed: {}", reason_name(reason));
-        self.show_flash(&mut st, OverlayState { phase: OverlayPhase::Error, cloud: false, message: Some(text.clone()), ..Default::default() });
+        self.show_flash(
+            &mut st,
+            OverlayState {
+                phase: OverlayPhase::Error,
+                cloud: false,
+                message: Some(text.clone()),
+                ..Default::default()
+            },
+        );
         drop(st);
         self.emit_event(DictationEvent { id: rec.id, ok: false, error: Some(text), ..Default::default() });
     }
@@ -492,7 +502,12 @@ impl DictationSession {
         }
         let audio = Arc::new(audio);
         // Kept in memory (never on disk) until the next dictation, for "retry last".
-        st.last = Some(LastDictation { audio: audio.clone(), config: rec.config.clone(), target: target.clone(), text: None });
+        st.last = Some(LastDictation {
+            audio: audio.clone(),
+            config: rec.config.clone(),
+            target: target.clone(),
+            text: None,
+        });
         self.enqueue(st, rec.id, audio, rec.config, target, released_at);
     }
 
@@ -770,7 +785,12 @@ impl DictationSession {
         let config = (self.deps.get_config)();
         let audio_ms = samples_ms(audio.len());
         let Some(speech) = self.trim(Arc::new(audio)).await else {
-            return Ok(Transcript { text: String::new(), model: config.model.active.clone(), audio_ms, elapsed_ms: 0.0 });
+            return Ok(Transcript {
+                text: String::new(),
+                model: config.model.active.clone(),
+                audio_ms,
+                elapsed_ms: 0.0,
+            });
         };
         let started = (self.deps.now)();
         let opts = TranscribeOpts {

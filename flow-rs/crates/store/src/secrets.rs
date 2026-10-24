@@ -242,9 +242,9 @@ impl SystemCipher {
     fn decrypt_safe_storage(&self, data: &[u8]) -> Result<Vec<u8>, SecretError> {
         use aes_gcm::aead::Aead as _;
         use aes_gcm::{Aes256Gcm, KeyInit as _, Nonce};
-        let key = self
-            .legacy_key()
-            .ok_or_else(|| SecretError::Cipher("The key the Electron build stored in Local State is unavailable.".into()))?;
+        let key = self.legacy_key().ok_or_else(|| {
+            SecretError::Cipher("The key the Electron build stored in Local State is unavailable.".into())
+        })?;
         if data.len() < SAFE_STORAGE_NONCE + SAFE_STORAGE_TAG {
             return Err(SecretError::Cipher("The stored value is too short.".into()));
         }

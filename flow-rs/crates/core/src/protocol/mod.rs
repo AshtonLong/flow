@@ -23,9 +23,8 @@ impl Serialize for Pcm {
 impl<'de> Deserialize<'de> for Pcm {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let text = String::deserialize(deserializer)?;
-        let bytes = base64::engine::general_purpose::STANDARD
-            .decode(text.as_bytes())
-            .map_err(serde::de::Error::custom)?;
+        let bytes =
+            base64::engine::general_purpose::STANDARD.decode(text.as_bytes()).map_err(serde::de::Error::custom)?;
         if bytes.len() % 4 != 0 {
             return Err(serde::de::Error::custom("PCM byte length is not a multiple of 4"));
         }

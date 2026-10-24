@@ -30,22 +30,12 @@ pub struct BoxShadow {
 impl BoxShadow {
     /// A hard ring `0 0 0 <width>px <color>`.
     pub const fn ring(width: f32, color: Color32) -> Self {
-        Self {
-            offset: Vec2::ZERO,
-            blur: 0.0,
-            spread: width,
-            color,
-        }
+        Self { offset: Vec2::ZERO, blur: 0.0, spread: width, color }
     }
 
     /// `0 <y> <blur> <spread> <color>`, in rem where the CSS uses rem (1 rem = 16 px).
     pub const fn drop(y: f32, blur: f32, spread: f32, color: Color32) -> Self {
-        Self {
-            offset: vec2(0.0, y),
-            blur,
-            spread,
-            color,
-        }
+        Self { offset: vec2(0.0, y), blur, spread, color }
     }
 }
 
@@ -143,11 +133,7 @@ pub struct Tokens {
 
 impl Tokens {
     pub fn new(appearance: Appearance, system: &SystemColors) -> Self {
-        let mut tokens = if appearance.dark {
-            Self::dark()
-        } else {
-            Self::light()
-        };
+        let mut tokens = if appearance.dark { Self::dark() } else { Self::light() };
         if appearance.high_contrast {
             tokens.apply_high_contrast(system);
         }
@@ -208,12 +194,7 @@ impl Tokens {
             ],
             shadow_dialog: vec![
                 BoxShadow::ring(1.0, rgba(0, 0, 0, 0.07)),
-                BoxShadow::drop(
-                    1.9 * 16.0,
-                    3.75 * 16.0,
-                    -1.25 * 16.0,
-                    rgba(20, 30, 50, 0.45),
-                ),
+                BoxShadow::drop(1.9 * 16.0, 3.75 * 16.0, -1.25 * 16.0, rgba(20, 30, 50, 0.45)),
                 BoxShadow::drop(0.5 * 16.0, 1.1 * 16.0, -0.5 * 16.0, rgba(20, 30, 50, 0.25)),
             ],
 
@@ -369,28 +350,17 @@ impl Tokens {
 }
 
 fn srgb_to_linear(c: f32) -> f32 {
-    if c <= 0.04045 {
-        c / 12.92
-    } else {
-        ((c + 0.055) / 1.055).powf(2.4)
-    }
+    if c <= 0.04045 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) }
 }
 
 fn linear_to_srgb(c: f32) -> f32 {
-    if c <= 0.003_130_8 {
-        c * 12.92
-    } else {
-        1.055 * c.powf(1.0 / 2.4) - 0.055
-    }
+    if c <= 0.003_130_8 { c * 12.92 } else { 1.055 * c.powf(1.0 / 2.4) - 0.055 }
 }
 
 fn to_oklab(c: Color32) -> [f32; 3] {
     let [r, g, b, _] = c.to_srgba_unmultiplied();
-    let (r, g, b) = (
-        srgb_to_linear(r as f32 / 255.0),
-        srgb_to_linear(g as f32 / 255.0),
-        srgb_to_linear(b as f32 / 255.0),
-    );
+    let (r, g, b) =
+        (srgb_to_linear(r as f32 / 255.0), srgb_to_linear(g as f32 / 255.0), srgb_to_linear(b as f32 / 255.0));
     let l = 0.412_221_47 * r + 0.536_332_55 * g + 0.051_445_995 * b;
     let m = 0.211_903_5 * r + 0.680_699_5 * g + 0.107_396_96 * b;
     let s = 0.088_302_46 * r + 0.281_718_85 * g + 0.629_978_7 * b;
@@ -427,10 +397,7 @@ mod tests {
     #[test]
     fn alpha_colours_match_css() {
         assert_eq!(rgba(0, 0, 0, 0.1).to_srgba_unmultiplied(), [0, 0, 0, 26]);
-        assert_eq!(
-            hex(0x1b1d21).to_srgba_unmultiplied(),
-            [0x1b, 0x1d, 0x21, 255]
-        );
+        assert_eq!(hex(0x1b1d21).to_srgba_unmultiplied(), [0x1b, 0x1d, 0x21, 255]);
     }
 
     #[test]

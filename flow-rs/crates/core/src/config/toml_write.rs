@@ -9,8 +9,8 @@
 use serde_json::Value as Json;
 use toml::Value;
 
-use super::toml_parse::MAX_SAFE_INTEGER;
 use super::PathSeg;
+use super::toml_parse::MAX_SAFE_INTEGER;
 
 pub type Table = toml::Table;
 
@@ -364,8 +364,10 @@ pub fn format_value(value: &Value, multiline: bool) -> String {
             if table.is_empty() {
                 return "{}".into();
             }
-            let body: Vec<String> =
-                table.iter().map(|(key, child)| format!("{} = {}", format_key(key), format_value(child, false))).collect();
+            let body: Vec<String> = table
+                .iter()
+                .map(|(key, child)| format!("{} = {}", format_key(key), format_value(child, false)))
+                .collect();
             format!("{{ {} }}", body.join(", "))
         }
     }

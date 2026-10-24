@@ -12,9 +12,9 @@ use serde_json::Value;
 use crate::catalog::{CatalogSnapshot, DownloadProgress};
 use crate::config::{ConfigPatch, ConfigSnapshot};
 use crate::protocol::Pcm;
-use crate::types::{DictationEvent, ThemeInfo};
 #[allow(unused_imports)] // Named in the docs of `Request`.
 use crate::types::{AppInfo, HistoryEntry, Transcript};
+use crate::types::{DictationEvent, ThemeInfo};
 
 /// A call from the settings window. Each variant documents its result type.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -127,7 +127,9 @@ pub enum Event {
     ThemeChanged(ThemeInfo),
     /// Bring the window to the front (the tray asked for Settings again), and
     /// optionally switch to a page such as `models`.
-    Focus { page: Option<String> },
+    Focus {
+        page: Option<String>,
+    },
     /// The main process is quitting: close the window.
     Quit,
 }

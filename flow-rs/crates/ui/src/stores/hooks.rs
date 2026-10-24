@@ -19,11 +19,7 @@ pub struct AppInfoStore {
 
 impl AppInfoStore {
     pub(crate) fn new(link: Link) -> Self {
-        let mut store = Self {
-            link,
-            info: None,
-            loading: None,
-        };
+        let mut store = Self { link, info: None, loading: None };
         store.refresh();
         store
     }
@@ -62,9 +58,7 @@ pub struct Microphones {
 
 impl Microphones {
     pub(crate) fn new() -> Self {
-        Self {
-            mics: audio::list_microphones(),
-        }
+        Self { mics: audio::list_microphones() }
     }
 
     pub fn list(&self) -> &[Microphone] {
@@ -92,10 +86,7 @@ impl Default for Flash {
 
 impl Flash {
     pub fn new(duration: Duration) -> Self {
-        Self {
-            duration,
-            until: None,
-        }
+        Self { duration, until: None }
     }
 
     pub fn flash(&mut self) {
@@ -128,12 +119,7 @@ pub struct Debounced<T> {
 
 impl<T: Clone + PartialEq> Debounced<T> {
     pub fn new(value: T, delay: Duration) -> Self {
-        Self {
-            delay,
-            current: value.clone(),
-            latest: value,
-            changed_at: Instant::now(),
-        }
+        Self { delay, current: value.clone(), latest: value, changed_at: Instant::now() }
     }
 
     /// Feeds this frame's value; returns the debounced one.

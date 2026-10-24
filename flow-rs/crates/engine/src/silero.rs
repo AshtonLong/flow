@@ -343,7 +343,9 @@ mod onnx {
                     Value::Bytes(self.take(n)?)
                 }
                 5 => Value::Bytes(self.take(4)?),
-                other => return Err(SileroError::new(format!("unsupported protobuf wire type {other} in the VAD model"))),
+                other => {
+                    return Err(SileroError::new(format!("unsupported protobuf wire type {other} in the VAD model")));
+                }
             };
             Ok(Some((key >> 3, value)))
         }

@@ -120,12 +120,7 @@ pub struct AudioConfig {
 
 impl Default for AudioConfig {
     fn default() -> Self {
-        Self {
-            input_device: "default".into(),
-            keep_mic_warm: false,
-            sounds: true,
-            max_recording_seconds: 300,
-        }
+        Self { input_device: "default".into(), keep_mic_warm: false, sounds: true, max_recording_seconds: 300 }
     }
 }
 
@@ -288,14 +283,8 @@ pub enum OverlayPosition {
 }
 
 impl OverlayPosition {
-    pub const ALL: [Self; 6] = [
-        Self::BottomCenter,
-        Self::BottomLeft,
-        Self::BottomRight,
-        Self::TopCenter,
-        Self::TopLeft,
-        Self::TopRight,
-    ];
+    pub const ALL: [Self; 6] =
+        [Self::BottomCenter, Self::BottomLeft, Self::BottomRight, Self::TopCenter, Self::TopLeft, Self::TopRight];
     pub fn as_str(self) -> &'static str {
         match self {
             Self::BottomCenter => "bottom-center",

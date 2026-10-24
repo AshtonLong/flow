@@ -213,18 +213,18 @@ async fn handle(app: Arc<App>, request: Request) -> Reply {
             }
         }
         Request::HistoryDelete(id) => {
-            if let Some(history) = &app.history {
-                if let Err(err) = history.delete(id) {
-                    return Reply::err(err.to_string());
-                }
+            if let Some(history) = &app.history
+                && let Err(err) = history.delete(id)
+            {
+                return Reply::err(err.to_string());
             }
             ok()
         }
         Request::HistoryClear => {
-            if let Some(history) = &app.history {
-                if let Err(err) = history.clear() {
-                    return Reply::err(err.to_string());
-                }
+            if let Some(history) = &app.history
+                && let Err(err) = history.clear()
+            {
+                return Reply::err(err.to_string());
             }
             ok()
         }

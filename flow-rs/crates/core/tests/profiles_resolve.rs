@@ -1,9 +1,11 @@
 //! PORT: tests/unit/profiles/resolve.test.ts
 
-use flow_core::config::{validate_config, Config, DeviceSetting, InsertMethod, OverlayPosition, OverlaySize, OverlayStyle, Profile};
-use flow_core::profiles::{match_profile, resolve_profile, ResolvedProfile};
+use flow_core::config::{
+    Config, DeviceSetting, InsertMethod, OverlayPosition, OverlaySize, OverlayStyle, Profile, validate_config,
+};
+use flow_core::profiles::{ResolvedProfile, match_profile, resolve_profile};
 use flow_core::types::FocusedApp;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 fn app(process_name: &str, title: &str) -> FocusedApp {
     FocusedApp {

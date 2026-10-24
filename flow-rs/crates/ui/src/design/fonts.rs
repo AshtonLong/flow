@@ -8,8 +8,8 @@
 use std::sync::{Arc, OnceLock};
 
 use egui::epaint::text::{
-    FallbackRequest, FontData, FontDefinitions, FontFamily, FontInsert, FontPriority, FontTweak,
-    InsertFontFamily, VariationCoords,
+    FallbackRequest, FontData, FontDefinitions, FontFamily, FontInsert, FontPriority, FontTweak, InsertFontFamily,
+    VariationCoords,
 };
 
 static RECURSIVE: &[u8] = include_bytes!("../../../../resources/fonts/Recursive-latin.ttf");
@@ -34,15 +34,8 @@ pub enum Weight {
 }
 
 impl Weight {
-    pub const ALL: [Self; 7] = [
-        Self::Normal,
-        Self::Body,
-        Self::Medium,
-        Self::Semibold,
-        Self::Strong,
-        Self::Heavy,
-        Self::Black,
-    ];
+    pub const ALL: [Self; 7] =
+        [Self::Normal, Self::Body, Self::Medium, Self::Semibold, Self::Strong, Self::Heavy, Self::Black];
 
     /// The `wght` axis value.
     pub fn value(self) -> f32 {
@@ -59,11 +52,7 @@ impl Weight {
 }
 
 fn family_name(weight: Weight, mono: bool) -> String {
-    format!(
-        "recursive-{}{}",
-        if mono { "mono-" } else { "" },
-        weight.value() as u32
-    )
+    format!("recursive-{}{}", if mono { "mono-" } else { "" }, weight.value() as u32)
 }
 
 /// The egui family for a weight, sans (`MONO 0`) or mono (`MONO 1`, for key caps and code).
@@ -87,8 +76,7 @@ pub fn family(weight: Weight, mono: bool) -> FontFamily {
 /// The mark: `CASL 1`, `slnt -12`, `CRSV 1`, weight 880.
 pub fn logo_family() -> FontFamily {
     static LOGO: OnceLock<FontFamily> = OnceLock::new();
-    LOGO.get_or_init(|| FontFamily::Name("recursive-logo".into()))
-        .clone()
+    LOGO.get_or_init(|| FontFamily::Name("recursive-logo".into())).clone()
 }
 
 fn face(wght: f32, mono: f32, casl: f32, slnt: f32, crsv: f32) -> FontData {
@@ -113,25 +101,14 @@ pub fn definitions() -> FontDefinitions {
     for weight in Weight::ALL {
         for mono in [false, true] {
             let name = family_name(weight, mono);
-            defs.font_data.insert(
-                name.clone(),
-                Arc::new(face(weight.value(), mono as u8 as f32, 0.0, 0.0, 0.5)),
-            );
+            defs.font_data.insert(name.clone(), Arc::new(face(weight.value(), mono as u8 as f32, 0.0, 0.0, 0.5)));
             defs.families.insert(family(weight, mono), vec![name]);
         }
     }
-    defs.font_data.insert(
-        "recursive-logo".into(),
-        Arc::new(face(880.0, 0.0, 1.0, -12.0, 1.0)),
-    );
-    defs.families
-        .insert(logo_family(), vec!["recursive-logo".into()]);
-    defs.families.insert(
-        FontFamily::Proportional,
-        vec![family_name(Weight::Body, false)],
-    );
-    defs.families
-        .insert(FontFamily::Monospace, vec![family_name(Weight::Body, true)]);
+    defs.font_data.insert("recursive-logo".into(), Arc::new(face(880.0, 0.0, 1.0, -12.0, 1.0)));
+    defs.families.insert(logo_family(), vec!["recursive-logo".into()]);
+    defs.families.insert(FontFamily::Proportional, vec![family_name(Weight::Body, false)]);
+    defs.families.insert(FontFamily::Monospace, vec![family_name(Weight::Body, true)]);
     defs
 }
 
@@ -147,30 +124,16 @@ fn fallback(request: &FallbackRequest<'_>) -> Option<FontInsert> {
     static SEGOE: OnceLock<Option<Arc<Vec<u8>>>> = OnceLock::new();
     static SYMBOL: OnceLock<Option<Arc<Vec<u8>>>> = OnceLock::new();
     let first = request.cluster.chars().next()?;
-    let windows = std::env::var_os("WINDIR")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| "C:\\Windows".into());
+    let windows = std::env::var_os("WINDIR").map(std::path::PathBuf::from).unwrap_or_else(|| "C:\\Windows".into());
     // Letters and punctuation from Segoe UI; arrows, dingbats and the rest from Segoe UI Symbol.
     let symbolic = matches!(first as u32, 0x2190..=0x2BFF);
-    let (name, cell, file) = if symbolic {
-        ("segoe-ui-symbol", &SYMBOL, "seguisym.ttf")
-    } else {
-        ("segoe-ui", &SEGOE, "segoeui.ttf")
-    };
-    let bytes = cell
-        .get_or_init(|| {
-            std::fs::read(windows.join("Fonts").join(file))
-                .ok()
-                .map(Arc::new)
-        })
-        .clone()?;
+    let (name, cell, file) =
+        if symbolic { ("segoe-ui-symbol", &SYMBOL, "seguisym.ttf") } else { ("segoe-ui", &SEGOE, "segoeui.ttf") };
+    let bytes = cell.get_or_init(|| std::fs::read(windows.join("Fonts").join(file)).ok().map(Arc::new)).clone()?;
     let data = FontData::from_blob(bytes, 0);
     Some(FontInsert::new(
         name,
         data,
-        vec![InsertFontFamily {
-            family: request.family.clone(),
-            priority: FontPriority::Lowest,
-        }],
+        vec![InsertFontFamily { family: request.family.clone(), priority: FontPriority::Lowest }],
     ))
 }

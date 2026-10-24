@@ -101,10 +101,11 @@ pub fn read_wav(path: &std::path::Path) -> std::io::Result<Vec<f32>> {
     let mut offset = 12;
     while offset + 8 <= bytes.len() {
         let id = &bytes[offset..offset + 4];
-        let size = u32::from_le_bytes([bytes[offset + 4], bytes[offset + 5], bytes[offset + 6], bytes[offset + 7]]) as usize;
+        let size =
+            u32::from_le_bytes([bytes[offset + 4], bytes[offset + 5], bytes[offset + 6], bytes[offset + 7]]) as usize;
         if id == b"data" {
             let data = &bytes[offset + 8..(offset + 8 + size).min(bytes.len())];
-            return Ok(data.chunks_exact(2).map(|b| i16::from_le_bytes([b[0], b[1]]) as f32 / 32768.0).collect());
+            return Ok(data.as_chunks::<2>().0.iter().map(|b| i16::from_le_bytes(*b) as f32 / 32768.0).collect());
         }
         offset += 8 + size + (size & 1);
     }

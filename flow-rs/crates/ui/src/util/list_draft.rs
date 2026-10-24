@@ -27,12 +27,7 @@ fn signature<T: Serialize>(values: &[T]) -> String {
 
 impl<T: Clone + Serialize> ListDraft<T> {
     pub fn new(saved: &[T], is_complete: fn(&T) -> bool) -> Self {
-        let mut draft = Self {
-            rows: Vec::new(),
-            next_key: 0,
-            committed: signature(saved),
-            is_complete,
-        };
+        let mut draft = Self { rows: Vec::new(), next_key: 0, committed: signature(saved), is_complete };
         draft.rows = draft.wrap(saved);
         draft
     }
@@ -43,10 +38,7 @@ impl<T: Clone + Serialize> ListDraft<T> {
             .map(|value| {
                 let key = self.next_key;
                 self.next_key += 1;
-                DraftRow {
-                    key,
-                    value: value.clone(),
-                }
+                DraftRow { key, value: value.clone() }
             })
             .collect()
     }
@@ -69,11 +61,7 @@ impl<T: Clone + Serialize> ListDraft<T> {
     }
 
     fn complete(&self) -> Vec<T> {
-        self.rows
-            .iter()
-            .filter(|r| (self.is_complete)(&r.value))
-            .map(|r| r.value.clone())
-            .collect()
+        self.rows.iter().filter(|r| (self.is_complete)(&r.value)).map(|r| r.value.clone()).collect()
     }
 
     /// Replaces the rows; returns the complete rows to write when they changed.
@@ -100,16 +88,7 @@ impl<T: Clone + Serialize> ListDraft<T> {
         let next = self
             .rows
             .iter()
-            .map(|r| {
-                if r.key == key {
-                    DraftRow {
-                        key,
-                        value: value.clone(),
-                    }
-                } else {
-                    r.clone()
-                }
-            })
+            .map(|r| if r.key == key { DraftRow { key, value: value.clone() } } else { r.clone() })
             .collect();
         self.apply(next)
     }
@@ -132,20 +111,10 @@ mod tests {
     #[test]
     fn writes_only_complete_rows() {
         let mut draft = ListDraft::new(&["a".to_string()], complete);
-        assert_eq!(
-            draft.add(String::new()),
-            None,
-            "an empty row is not written"
-        );
+        assert_eq!(draft.add(String::new()), None, "an empty row is not written");
         let key = draft.rows()[1].key;
-        assert_eq!(
-            draft.update(key, "b".into()),
-            Some(vec!["a".to_string(), "b".to_string()])
-        );
-        assert_eq!(
-            draft.remove(draft.rows()[0].key),
-            Some(vec!["b".to_string()])
-        );
+        assert_eq!(draft.update(key, "b".into()), Some(vec!["a".to_string(), "b".to_string()]));
+        assert_eq!(draft.remove(draft.rows()[0].key), Some(vec!["b".to_string()]));
     }
 
     #[test]

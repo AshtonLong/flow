@@ -130,10 +130,7 @@ pub fn parse_catalog(bytes: impl AsRef<[u8]>) -> Result<Catalog, CatalogError> {
     check_kinds(&value)?;
     let catalog = Catalog::deserialize(&value).map_err(|e| CatalogError(e.to_string()))?;
     if catalog.version > CATALOG_VERSION {
-        return Err(CatalogError(format!(
-            "Catalog version {} is newer than this app understands",
-            catalog.version
-        )));
+        return Err(CatalogError(format!("Catalog version {} is newer than this app understands", catalog.version)));
     }
     for entry in &catalog.local {
         if !is_https_url(&entry.url) {
@@ -278,7 +275,14 @@ mod tests {
             ],
             local,
             cloud: vec![
-                cloud("groq/whisper-large-v3-turbo", "groq", "whisper-large-v3-turbo", "Whisper large-v3-turbo", "Lowest price", 0.04),
+                cloud(
+                    "groq/whisper-large-v3-turbo",
+                    "groq",
+                    "whisper-large-v3-turbo",
+                    "Whisper large-v3-turbo",
+                    "Lowest price",
+                    0.04,
+                ),
                 cloud("openai/gpt-4o-transcribe", "openai", "gpt-4o-transcribe", "gpt-4o-transcribe", "OpenAI", 0.36),
                 cloud("ollama/whisper", "ollama", "whisper", "Local Whisper", "Keyless", 0.0),
             ],
@@ -390,8 +394,7 @@ mod tests {
         assert!(catalog.local.iter().any(|e| e.id == DEFAULT_LOCAL_MODEL));
         let llm_model = CleanupConfig::default().llm_model;
         assert!(catalog.cleanup.iter().any(|e| e.id == llm_model));
-        let recommended: Vec<&str> =
-            catalog.cloud.iter().filter(|e| e.recommended).map(|e| e.id.as_str()).collect();
+        let recommended: Vec<&str> = catalog.cloud.iter().filter(|e| e.recommended).map(|e| e.id.as_str()).collect();
         assert_eq!(recommended, ["groq/whisper-large-v3-turbo"]);
         assert_eq!(catalog.cleanup.iter().filter(|e| e.recommended).count(), 1);
     }

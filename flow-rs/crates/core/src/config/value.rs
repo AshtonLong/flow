@@ -29,7 +29,10 @@ fn apply_one(root: &mut Value, path: &[PathSeg], value: Option<&Value>) {
                     if value.is_none() {
                         return;
                     }
-                    map.insert(key.clone(), if next_is_index { Value::Array(vec![]) } else { Value::Object(Map::new()) });
+                    map.insert(
+                        key.clone(),
+                        if next_is_index { Value::Array(vec![]) } else { Value::Object(Map::new()) },
+                    );
                 }
                 map.get_mut(key).unwrap()
             }

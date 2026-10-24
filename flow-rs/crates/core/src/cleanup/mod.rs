@@ -96,10 +96,7 @@ mod tests {
 
     fn config() -> Config {
         Config {
-            dictionary: vec![DictionaryEntry {
-                heard: vec!["tory".into(), "towery".into()],
-                write: "Tauri".into(),
-            }],
+            dictionary: vec![DictionaryEntry { heard: vec!["tory".into(), "towery".into()], write: "Tauri".into() }],
             snippets: vec![
                 Snippet { trigger: "my address".into(), text: "221B Baker Street, London".into() },
                 Snippet { trigger: "code block".into(), text: "if (x)  {\n    um  period\n}".into() },

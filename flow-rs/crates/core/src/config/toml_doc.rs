@@ -65,10 +65,20 @@ pub struct SectionNode {
 /// Where a value lives, which decides how it is replaced or removed.
 #[derive(Debug, Clone, Copy)]
 pub enum Owner<'a> {
-    Section { section: &'a SectionNode, entry: &'a KeyValueNode },
+    Section {
+        section: &'a SectionNode,
+        entry: &'a KeyValueNode,
+    },
     /// `index` is the entry's position in `table.entries`.
-    Inline { table: &'a ValueNode, entry: &'a KeyValueNode, index: usize },
-    Array { array: &'a ValueNode, index: usize },
+    Inline {
+        table: &'a ValueNode,
+        entry: &'a KeyValueNode,
+        index: usize,
+    },
+    Array {
+        array: &'a ValueNode,
+        index: usize,
+    },
 }
 
 impl Owner<'_> {
@@ -151,14 +161,8 @@ impl<'s> Scanner<'s> {
 
     fn scan(mut self) -> Vec<SectionNode> {
         let len = self.b.len();
-        let mut sections = vec![SectionNode {
-            path: Vec::new(),
-            header: None,
-            start: 0,
-            body_start: 0,
-            end: 0,
-            entries: Vec::new(),
-        }];
+        let mut sections =
+            vec![SectionNode { path: Vec::new(), header: None, start: 0, body_start: 0, end: 0, entries: Vec::new() }];
         // Number of items seen so far for each array of tables, keyed by its path.
         let mut counts: HashMap<ConfigPath, usize> = HashMap::new();
 

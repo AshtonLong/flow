@@ -108,18 +108,8 @@ impl TranscribeError {
         Self::with_options(code, message, TranscribeErrorOptions::default())
     }
 
-    pub fn with_options(
-        code: TranscribeErrorCode,
-        message: impl Into<String>,
-        opts: TranscribeErrorOptions,
-    ) -> Self {
-        Self {
-            code,
-            message: message.into(),
-            status: opts.status,
-            cause: opts.cause,
-            user_message: opts.user_message,
-        }
+    pub fn with_options(code: TranscribeErrorCode, message: impl Into<String>, opts: TranscribeErrorOptions) -> Self {
+        Self { code, message: message.into(), status: opts.status, cause: opts.cause, user_message: opts.user_message }
     }
 
     /// `TranscribeError('aborted', 'Cancelled')`, the error every cancel produces.
@@ -216,8 +206,8 @@ mod tests {
 
         #[test]
         fn lets_the_thrower_supply_the_user_message() {
-            let err = TranscribeError::new(TranscribeErrorCode::Auth, "x")
-                .with_user_message("Groq rejected the API key");
+            let err =
+                TranscribeError::new(TranscribeErrorCode::Auth, "x").with_user_message("Groq rejected the API key");
             assert_eq!(err.user_message(), "Groq rejected the API key");
         }
 

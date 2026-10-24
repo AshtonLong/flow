@@ -18,7 +18,11 @@ const WAIT: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Clone)]
 pub enum Reply {
-    Respond { status: u16, body: String, content_type: &'static str },
+    Respond {
+        status: u16,
+        body: String,
+        content_type: &'static str,
+    },
     /// Never answers; waits until the client closes the connection.
     Hang,
     /// Closes the connection without answering, like a failed `fetch`.
@@ -131,9 +135,11 @@ fn find(haystack: &[u8], needle: &[u8], from: usize) -> Option<usize> {
 }
 
 fn disposition_param(value: &str, key: &str) -> Option<String> {
-    value.split(';').filter_map(|p| p.trim().split_once('=')).find(|(k, _)| k.trim() == key).map(|(_, v)| {
-        v.trim().trim_matches('"').to_string()
-    })
+    value
+        .split(';')
+        .filter_map(|p| p.trim().split_once('='))
+        .find(|(k, _)| k.trim() == key)
+        .map(|(_, v)| v.trim().trim_matches('"').to_string())
 }
 
 impl Form {
@@ -180,11 +186,7 @@ impl Form {
     }
 
     pub fn get_all(&self, name: &str) -> Vec<String> {
-        self.parts
-            .iter()
-            .filter(|p| p.name == name)
-            .map(|p| String::from_utf8_lossy(&p.data).into_owned())
-            .collect()
+        self.parts.iter().filter(|p| p.name == name).map(|p| String::from_utf8_lossy(&p.data).into_owned()).collect()
     }
 }
 

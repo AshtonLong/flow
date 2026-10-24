@@ -51,15 +51,8 @@ pub enum PageId {
 }
 
 impl PageId {
-    pub const ALL: [Self; 7] = [
-        Self::General,
-        Self::Hotkeys,
-        Self::Models,
-        Self::Cleanup,
-        Self::Profiles,
-        Self::History,
-        Self::Advanced,
-    ];
+    pub const ALL: [Self; 7] =
+        [Self::General, Self::Hotkeys, Self::Models, Self::Cleanup, Self::Profiles, Self::History, Self::Advanced];
 
     pub fn as_str(self) -> &'static str {
         match self {

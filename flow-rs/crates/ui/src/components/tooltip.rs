@@ -48,19 +48,13 @@ pub fn show(ui: &Ui, response: &Response, text: &str) {
         if response.is_pointer_button_down_on() {
             state.suppressed = true;
         }
-        let delay = if now - state.last_closed < SKIP_DELAY {
-            0.0
-        } else {
-            DELAY
-        };
+        let delay = if now - state.last_closed < SKIP_DELAY { 0.0 } else { DELAY };
         let due = now - state.since >= delay;
         if due && !state.suppressed {
             state.shown = true;
             paint(ui, response.rect, text);
         } else if !due {
-            ctx.request_repaint_after(std::time::Duration::from_secs_f64(
-                delay - (now - state.since),
-            ));
+            ctx.request_repaint_after(std::time::Duration::from_secs_f64(delay - (now - state.since)));
         }
     } else if state.trigger == Some(id) {
         if state.shown {
@@ -79,25 +73,21 @@ fn paint(ui: &Ui, anchor: Rect, label: &str) {
     let size = galley.size() + vec2(16.0, 10.0);
     let screen = ctx.content_rect();
     let mut x = anchor.center().x - size.x / 2.0;
-    x = x.clamp(
-        screen.left() + 8.0,
-        (screen.right() - 8.0 - size.x).max(screen.left() + 8.0),
-    );
+    x = x.clamp(screen.left() + 8.0, (screen.right() - 8.0 - size.x).max(screen.left() + 8.0));
     let mut y = anchor.top() - SIDE_OFFSET - size.y;
     if y < screen.top() + 4.0 {
         y = anchor.bottom() + SIDE_OFFSET;
     }
     let rect = Rect::from_min_size(pos2(x, y), size).round_ui();
-    Area::new(Id::unique("flow-tooltip"))
-        .order(Order::Tooltip)
-        .fixed_pos(rect.min)
-        .interactable(false)
-        .show(ctx, |ui| {
+    Area::new(Id::unique("flow-tooltip")).order(Order::Tooltip).fixed_pos(rect.min).interactable(false).show(
+        ctx,
+        |ui| {
             let painter = ui.painter();
             shadow::paint_surface(painter, rect, 4.0, t.flyout, &t.shadow_flyout, None);
             painter.galley(pos2(rect.left() + 8.0, rect.top() + 5.0), galley, t.fg);
             ui.allocate_rect(rect, egui::Sense::hover());
-        });
+        },
+    );
 }
 
 trait RoundUi {

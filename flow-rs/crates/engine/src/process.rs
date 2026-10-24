@@ -27,7 +27,9 @@ use flow_core::vad::{DEFAULT_SEGMENT_OPTIONS, energy_probs, extract_segments, se
 use parking_lot::Mutex;
 
 use crate::silero::SileroVad;
-use crate::tcpp::{self, BackendInfo, DeviceType, Feature, TcError, TranscribeModel, TranscribeOptions, TranscriptionResult};
+use crate::tcpp::{
+    self, BackendInfo, DeviceType, Feature, TcError, TranscribeModel, TranscribeOptions, TranscriptionResult,
+};
 
 /// Stack for the model worker. ggml's Vulkan model initialisation needs more
 /// than small default stacks (the bindings raise koffi's async stack to 2 MiB).
@@ -45,7 +47,12 @@ pub(crate) trait Speech: Send + 'static {
 pub(crate) trait SpeechModel {
     fn backend(&self) -> String;
     fn supports(&self, feature: Feature) -> bool;
-    fn transcribe(&self, pcm: &[f32], opts: &TranscribeOptions<'_>, abort: &AtomicBool) -> Result<TranscriptionResult, TcError>;
+    fn transcribe(
+        &self,
+        pcm: &[f32],
+        opts: &TranscribeOptions<'_>,
+        abort: &AtomicBool,
+    ) -> Result<TranscriptionResult, TcError>;
 }
 
 /// transcribe.cpp through `transcribe.dll`.
@@ -76,7 +83,12 @@ impl SpeechModel for TranscribeModel {
         TranscribeModel::supports(self, feature)
     }
 
-    fn transcribe(&self, pcm: &[f32], opts: &TranscribeOptions<'_>, abort: &AtomicBool) -> Result<TranscriptionResult, TcError> {
+    fn transcribe(
+        &self,
+        pcm: &[f32],
+        opts: &TranscribeOptions<'_>,
+        abort: &AtomicBool,
+    ) -> Result<TranscriptionResult, TcError> {
         TranscribeModel::transcribe(self, pcm, opts, Some(abort))
     }
 }
@@ -137,10 +149,8 @@ impl Replier {
     fn reply(&self, id: u64, result: Result<(EngineResult, Vec<f32>), TcError>, aborted: bool) {
         match result {
             Ok((result, pcm)) => self.send(&EngineResponse::Ok { id, result }, &pcm),
-            Err(err) => self.send(
-                &EngineResponse::Err { id, error: err.message.clone(), aborted: err.is_abort() || aborted },
-                &[],
-            ),
+            Err(err) => self
+                .send(&EngineResponse::Err { id, error: err.message.clone(), aborted: err.is_abort() || aborted }, &[]),
         }
     }
 }
@@ -177,13 +187,15 @@ impl Vad {
     pub(crate) fn trim(&mut self, audio: &[f32]) -> (EngineTrimResult, Vec<f32>) {
         let total_ms = samples_to_ms(audio.len());
         let (probs, detector) = match self.detector() {
-            Some(silero) => match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| silero.probabilities(audio))) {
-                Ok(probs) => (probs, VadKind::Silero),
-                Err(_) => {
-                    log_line("[engine] VAD run failed: the Silero model panicked");
-                    (energy_probs(audio), VadKind::Energy)
+            Some(silero) => {
+                match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| silero.probabilities(audio))) {
+                    Ok(probs) => (probs, VadKind::Silero),
+                    Err(_) => {
+                        log_line("[engine] VAD run failed: the Silero model panicked");
+                        (energy_probs(audio), VadKind::Energy)
+                    }
                 }
-            },
+            }
             None => (energy_probs(audio), VadKind::Energy),
         };
         let segments = segments_from_probs(&probs, total_ms, &DEFAULT_SEGMENT_OPTIONS);
@@ -219,7 +231,8 @@ pub(crate) fn serve<S: Speech>(speech: S, mut input: impl Read, output: Box<dyn 
 
     let (jobs, job_rx) = mpsc::channel::<Job>();
     let worker = {
-        let (replier, vad, inflight, stopping) = (replier.clone(), Arc::clone(&vad), Arc::clone(&inflight), Arc::clone(&stopping));
+        let (replier, vad, inflight, stopping) =
+            (replier.clone(), Arc::clone(&vad), Arc::clone(&inflight), Arc::clone(&stopping));
         thread::Builder::new()
             .name("engine-model".into())
             .stack_size(WORKER_STACK)
@@ -260,7 +273,10 @@ pub(crate) fn serve<S: Speech>(speech: S, mut input: impl Read, output: Box<dyn 
                 log_line(&format!("[engine] unreadable request: {err}"));
                 let id = serde_json::from_slice::<serde_json::Value>(&json).ok().and_then(|v| v.get("id")?.as_u64());
                 if let Some(id) = id {
-                    replier.send(&EngineResponse::Err { id, error: format!("Unknown request: {err}"), aborted: false }, &[]);
+                    replier.send(
+                        &EngineResponse::Err { id, error: format!("Unknown request: {err}"), aborted: false },
+                        &[],
+                    );
                 }
                 continue;
             }
@@ -458,7 +474,10 @@ fn to_backend_device(d: &BackendInfo) -> BackendDevice {
 /// Picks the compute device. `auto` uses a discrete GPU when one is present
 /// (CUDA before Vulkan) and the CPU otherwise; integrated GPUs are skipped
 /// because they are usually slower than the CPU path for these models.
-pub(crate) fn pick_device(devices: &[BackendInfo], device: EngineDevice) -> (Option<&BackendInfo>, Option<&BackendInfo>) {
+pub(crate) fn pick_device(
+    devices: &[BackendInfo],
+    device: EngineDevice,
+) -> (Option<&BackendInfo>, Option<&BackendInfo>) {
     let cpu = devices.iter().find(|d| d.device_type == DeviceType::Cpu);
     let rank = |kind: &str| match kind {
         "cuda" => 0,
@@ -567,7 +586,12 @@ mod tests {
         fn supports(&self, feature: Feature) -> bool {
             self.0.features.contains(&feature)
         }
-        fn transcribe(&self, pcm: &[f32], opts: &TranscribeOptions<'_>, abort: &AtomicBool) -> Result<TranscriptionResult, TcError> {
+        fn transcribe(
+            &self,
+            pcm: &[f32],
+            opts: &TranscribeOptions<'_>,
+            abort: &AtomicBool,
+        ) -> Result<TranscriptionResult, TcError> {
             self.0.calls.lock().push(format!(
                 "transcribe {} samples, language {:?}, vocabulary {:?}, initial prompt {:?}, prompt {:?}",
                 pcm.len(),
@@ -714,7 +738,12 @@ mod tests {
         let EngineResponse::Ok { result: EngineResult::Load(load), .. } = r else { panic!("{r:?}") };
         assert_eq!((load.model_id.as_str(), load.backend.as_str()), ("a", "Vulkan0"));
         h.send(
-            EngineRequest::Transcribe { id: 2, model: model("a", EngineDevice::Auto), language: "en".into(), hints: vec![] },
+            EngineRequest::Transcribe {
+                id: 2,
+                model: model("a", EngineDevice::Auto),
+                language: "en".into(),
+                hints: vec![],
+            },
             &[0.0; 1600],
         );
         let (r, _) = h.next();
@@ -764,7 +793,10 @@ mod tests {
     #[test]
     fn passes_hints_the_way_the_model_supports_them() {
         for (features, expected) in [
-            (vec![Feature::Vocabulary, Feature::InitialPrompt], "vocabulary Some([\"Tauri\", \"Flow\"]), initial prompt None, prompt None"),
+            (
+                vec![Feature::Vocabulary, Feature::InitialPrompt],
+                "vocabulary Some([\"Tauri\", \"Flow\"]), initial prompt None, prompt None",
+            ),
             (vec![Feature::InitialPrompt], "vocabulary None, initial prompt Some(\"Tauri, Flow\"), prompt None"),
             (vec![Feature::ContextPrompt], "vocabulary None, initial prompt None, prompt Some(\"Tauri, Flow\")"),
             (vec![], "vocabulary None, initial prompt None, prompt None"),
@@ -775,7 +807,10 @@ mod tests {
             let mut h = Harness::start(s);
             h.next();
             let hints = vec!["Tauri".into(), String::new(), "Flow".into()];
-            h.send(EngineRequest::Transcribe { id: 1, model: model("a", EngineDevice::Cpu), language: "fr".into(), hints }, &[0.1; 320]);
+            h.send(
+                EngineRequest::Transcribe { id: 1, model: model("a", EngineDevice::Cpu), language: "fr".into(), hints },
+                &[0.1; 320],
+            );
             h.next();
             let call = calls.lock().last().cloned().unwrap();
             assert_eq!(call, format!("transcribe 320 samples, language Some(\"fr\"), {expected}"));
@@ -790,7 +825,15 @@ mod tests {
         let mut h = Harness::start(s);
         h.next();
         let started = Instant::now();
-        h.send(EngineRequest::Transcribe { id: 7, model: model("a", EngineDevice::Cpu), language: "en".into(), hints: vec![] }, &[0.0; 16]);
+        h.send(
+            EngineRequest::Transcribe {
+                id: 7,
+                model: model("a", EngineDevice::Cpu),
+                language: "en".into(),
+                hints: vec![],
+            },
+            &[0.0; 16],
+        );
         thread::sleep(Duration::from_millis(100));
         // Cancelling something else does nothing.
         h.send(EngineRequest::Cancel { id: 8, target: 99 }, &[]);
@@ -806,7 +849,15 @@ mod tests {
         s.transcribe_ms = 1_500;
         let mut h = Harness::start(s);
         h.next();
-        h.send(EngineRequest::Transcribe { id: 1, model: model("a", EngineDevice::Cpu), language: "en".into(), hints: vec![] }, &[0.0; 16]);
+        h.send(
+            EngineRequest::Transcribe {
+                id: 1,
+                model: model("a", EngineDevice::Cpu),
+                language: "en".into(),
+                hints: vec![],
+            },
+            &[0.0; 16],
+        );
         h.send(EngineRequest::Trim { id: 2 }, &vec![0.0; 16_000]);
         // The trim answers first even though it was sent second.
         let (first, pcm) = h.next();
@@ -814,7 +865,11 @@ mod tests {
             first,
             EngineResponse::Ok {
                 id: 2,
-                result: EngineResult::Trim(EngineTrimResult { has_speech: false, speech_ms: 0.0, detector: VadKind::Silero })
+                result: EngineResult::Trim(EngineTrimResult {
+                    has_speech: false,
+                    speech_ms: 0.0,
+                    detector: VadKind::Silero
+                })
             }
         );
         assert!(pcm.is_empty());
@@ -829,7 +884,15 @@ mod tests {
         s.transcribe_ms = 200;
         let mut h = Harness::start(s);
         h.next();
-        h.send(EngineRequest::Transcribe { id: 1, model: model("a", EngineDevice::Cpu), language: "en".into(), hints: vec![] }, &[0.0; 16]);
+        h.send(
+            EngineRequest::Transcribe {
+                id: 1,
+                model: model("a", EngineDevice::Cpu),
+                language: "en".into(),
+                hints: vec![],
+            },
+            &[0.0; 16],
+        );
         h.send(EngineRequest::Unload { id: 2 }, &[]);
         h.send(EngineRequest::Probe { id: 3 }, &[]);
         let ids: Vec<u64> = (0..3)

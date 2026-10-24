@@ -34,8 +34,14 @@ pub struct EngineModelRef {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum EngineRequest {
-    Probe { id: u64 },
-    Load { id: u64, #[serde(flatten)] model: EngineModelRef },
+    Probe {
+        id: u64,
+    },
+    Load {
+        id: u64,
+        #[serde(flatten)]
+        model: EngineModelRef,
+    },
     Transcribe {
         id: u64,
         #[serde(flatten)]
@@ -43,10 +49,17 @@ pub enum EngineRequest {
         language: String,
         hints: Vec<String>,
     },
-    Trim { id: u64 },
-    Unload { id: u64 },
+    Trim {
+        id: u64,
+    },
+    Unload {
+        id: u64,
+    },
     /// Aborts the in-flight request with id `target`. No response is sent for the cancel itself.
-    Cancel { id: u64, target: u64 },
+    Cancel {
+        id: u64,
+        target: u64,
+    },
 }
 
 impl EngineRequest {
@@ -122,8 +135,14 @@ pub enum EngineResult {
 #[serde(untagged)]
 pub enum EngineResponse {
     /// Sent unprompted, once, when the engine is ready to take requests.
-    Hello { hello: bool, pid: u32 },
-    Ok { id: u64, result: EngineResult },
+    Hello {
+        hello: bool,
+        pid: u32,
+    },
+    Ok {
+        id: u64,
+        result: EngineResult,
+    },
     Err {
         id: u64,
         error: String,
@@ -219,7 +238,11 @@ mod tests {
             EngineResponse::Ok { id: 1, result: EngineResult::Unload },
             EngineResponse::Ok {
                 id: 2,
-                result: EngineResult::Trim(EngineTrimResult { has_speech: true, speech_ms: 1.0, detector: VadKind::Silero }),
+                result: EngineResult::Trim(EngineTrimResult {
+                    has_speech: true,
+                    speech_ms: 1.0,
+                    detector: VadKind::Silero,
+                }),
             },
             EngineResponse::Err { id: 3, error: "boom".into(), aborted: true },
         ] {

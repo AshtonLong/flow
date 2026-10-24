@@ -91,11 +91,7 @@ pub fn create_cloud_transcriber(model_id: &str, deps: &CloudDeps) -> Result<Clou
     if let Some(provider_id) = model_id.strip_prefix(CUSTOM_PREFIX) {
         let settings = deps.config.providers.get(provider_id);
         let configured = settings.is_some_and(|s| s.base_url.as_deref().is_some_and(|url| !url.is_empty()));
-        let resolved = if provider_id.is_empty() || !configured {
-            None
-        } else {
-            resolve_provider(provider_id, deps)
-        };
+        let resolved = if provider_id.is_empty() || !configured { None } else { resolve_provider(provider_id, deps) };
         let Some(resolved) = resolved else {
             return Err(TranscribeError::new(
                 TranscribeErrorCode::UnknownModel,

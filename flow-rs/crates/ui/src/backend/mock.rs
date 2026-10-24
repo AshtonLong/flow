@@ -15,16 +15,14 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
 use flow_core::catalog::{
-    CUSTOM_PREFIX, Catalog, CatalogSnapshot, CloudModelEntry, DownloadProgress, DownloadState,
-    ModelEntry, ModelStatus, cloud_cost, parse_catalog,
+    CUSTOM_PREFIX, Catalog, CatalogSnapshot, CloudModelEntry, DownloadProgress, DownloadState, ModelEntry, ModelStatus,
+    cloud_cost, parse_catalog,
 };
 use flow_core::config::value::apply_patches;
 use flow_core::config::{ConfigPatch, ConfigSnapshot, PathSeg, validate_config};
 use flow_core::path;
 use flow_core::protocol::settings::{BenchResult, Event, KeyTestResult, Reply, Request};
-use flow_core::types::{
-    AppInfo, BackendDevice, DegradedModule, HistoryEntry, SAMPLE_RATE, ThemeInfo, Transcript,
-};
+use flow_core::types::{AppInfo, BackendDevice, DegradedModule, HistoryEntry, SAMPLE_RATE, ThemeInfo, Transcript};
 use parking_lot::Mutex;
 use serde_json::{Value, json};
 
@@ -83,20 +81,10 @@ const SENTENCES: [&str; 12] = [
     "Could you check whether the installer is still under one hundred and twenty megabytes?",
 ];
 
-const APPS: [&str; 6] = [
-    "Code.exe",
-    "slack.exe",
-    "chrome.exe",
-    "WindowsTerminal.exe",
-    "OUTLOOK.EXE",
-    "notepad.exe",
-];
+const APPS: [&str; 6] = ["Code.exe", "slack.exe", "chrome.exe", "WindowsTerminal.exe", "OUTLOOK.EXE", "notepad.exe"];
 
 fn now_ms() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_millis() as i64)
-        .unwrap_or(0)
+    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0)
 }
 
 fn sample_history(count: usize) -> Vec<HistoryEntry> {
@@ -141,16 +129,12 @@ struct Scheduler {
 impl Scheduler {
     fn start() -> Self {
         let (tx, rx) = crossbeam_channel::unbounded::<(Instant, Job)>();
-        let _ = std::thread::Builder::new()
-            .name("settings-mock".into())
-            .spawn(move || timer_loop(&rx));
+        let _ = std::thread::Builder::new().name("settings-mock".into()).spawn(move || timer_loop(&rx));
         Self { tx }
     }
 
     fn after(&self, ms: u64, job: impl FnOnce() + Send + 'static) {
-        let _ = self
-            .tx
-            .send((Instant::now() + Duration::from_millis(ms), Box::new(job)));
+        let _ = self.tx.send((Instant::now() + Duration::from_millis(ms), Box::new(job)));
     }
 }
 
@@ -314,11 +298,7 @@ impl Mock {
             reduced_motion: options.reduced_motion,
         };
 
-        let history = if fresh {
-            Vec::new()
-        } else {
-            sample_history(95)
-        };
+        let history = if fresh { Vec::new() } else { sample_history(95) };
         let next_history_id = history.len() as i64 + 1;
         let seed = now_ms() as u64 | 1;
         let state = State {
@@ -326,16 +306,9 @@ impl Mock {
             installed: if fresh {
                 BTreeSet::new()
             } else {
-                ["parakeet-tdt-0.6b-v2", "moonshine-v2-tiny"]
-                    .iter()
-                    .map(|s| s.to_string())
-                    .collect()
+                ["parakeet-tdt-0.6b-v2", "moonshine-v2-tiny"].iter().map(|s| s.to_string()).collect()
             },
-            keys: if fresh {
-                Vec::new()
-            } else {
-                vec!["groq".into(), "custom-lan".into()]
-            },
+            keys: if fresh { Vec::new() } else { vec!["groq".into(), "custom-lan".into()] },
             key_values: HashMap::new(),
             downloads: HashMap::new(),
             timers: HashMap::new(),
@@ -380,11 +353,7 @@ fn config_snapshot(state: &State) -> ConfigSnapshot {
             issue
         })
         .collect();
-    ConfigSnapshot {
-        config: validated.config,
-        issues,
-        path: CONFIG_PATH.into(),
-    }
+    ConfigSnapshot { config: validated.config, issues, path: CONFIG_PATH.into() }
 }
 
 fn custom_entries(inner: &Inner, state: &State) -> Vec<ModelEntry> {
@@ -392,10 +361,7 @@ fn custom_entries(inner: &Inner, state: &State) -> Vec<ModelEntry> {
     config
         .providers
         .iter()
-        .filter(|(id, p)| {
-            inner.catalog.provider(id).is_none()
-                && p.base_url.as_deref().is_some_and(|u| !u.is_empty())
-        })
+        .filter(|(id, p)| inner.catalog.provider(id).is_none() && p.base_url.as_deref().is_some_and(|u| !u.is_empty()))
         .map(|(id, p)| {
             ModelEntry::Cloud(CloudModelEntry {
                 id: format!("{CUSTOM_PREFIX}{id}"),
@@ -405,7 +371,7 @@ fn custom_entries(inner: &Inner, state: &State) -> Vec<ModelEntry> {
                 description: p.base_url.clone().unwrap_or_default(),
                 price_per_hour: 0.0,
                 recommended: false,
-                hints: false,
+                hints: None,
                 min_billed_seconds: None,
                 docs_url: None,
             })
@@ -438,10 +404,7 @@ fn catalog_snapshot(inner: &Inner, state: &State) -> CatalogSnapshot {
         );
     }
     for m in &inner.catalog.cloud {
-        let keyless = inner
-            .catalog
-            .provider(&m.provider)
-            .is_some_and(|p| p.keyless);
+        let keyless = inner.catalog.provider(&m.provider).is_some_and(|p| p.keyless);
         status.insert(
             m.id.clone(),
             ModelStatus {
@@ -467,13 +430,7 @@ fn catalog_snapshot(inner: &Inner, state: &State) -> CatalogSnapshot {
             },
         );
     }
-    for id in inner
-        .catalog
-        .providers
-        .iter()
-        .map(|p| p.id.clone())
-        .chain(state.keys.iter().cloned())
-    {
+    for id in inner.catalog.providers.iter().map(|p| p.id.clone()).chain(state.keys.iter().cloned()) {
         let has = state.keys.contains(&id);
         snapshot.keys.insert(id, has);
     }
@@ -507,24 +464,10 @@ fn start_download(inner: &Arc<Inner>, id: &str, from: f64, bytes_per_second: f64
     let total = entry.size_bytes as f64;
     let received = total * from;
     publish(inner, id, received, total, DownloadState::Downloading, 0.0);
-    schedule_tick(
-        Arc::clone(inner),
-        id.to_string(),
-        generation,
-        received,
-        total,
-        bytes_per_second,
-    );
+    schedule_tick(Arc::clone(inner), id.to_string(), generation, received, total, bytes_per_second);
 }
 
-fn publish(
-    inner: &Inner,
-    id: &str,
-    received: f64,
-    total: f64,
-    state_kind: DownloadState,
-    speed: f64,
-) {
+fn publish(inner: &Inner, id: &str, received: f64, total: f64, state_kind: DownloadState, speed: f64) {
     let progress = DownloadProgress {
         id: id.to_string(),
         received_bytes: received.min(total) as u64,
@@ -544,14 +487,7 @@ fn publish(
     emit(inner, Event::ModelsProgress(progress));
 }
 
-fn schedule_tick(
-    inner: Arc<Inner>,
-    id: String,
-    generation: u64,
-    received: f64,
-    total: f64,
-    bps: f64,
-) {
+fn schedule_tick(inner: Arc<Inner>, id: String, generation: u64, received: f64, total: f64, bps: f64) {
     let timers = &inner.timers;
     let next = Arc::clone(&inner);
     timers.after(200, move || {
@@ -565,14 +501,7 @@ fn schedule_tick(
         };
         let received = received + speed * 0.2;
         if received < total {
-            publish(
-                &inner,
-                &id,
-                received,
-                total,
-                DownloadState::Downloading,
-                speed,
-            );
+            publish(&inner, &id, received, total, DownloadState::Downloading, speed);
             schedule_tick(Arc::clone(&inner), id, generation, received, total, bps);
             return;
         }
@@ -616,10 +545,7 @@ fn info(inner: &Inner, state: &State) -> AppInfo {
             ]
         },
         degraded: if inner.options.degraded {
-            vec![DegradedModule {
-                module: "better-sqlite3".into(),
-                effect: "History is unavailable.".into(),
-            }]
+            vec![DegradedModule { module: "better-sqlite3".into(), effect: "History is unavailable.".into() }]
         } else {
             Vec::new()
         },
@@ -650,9 +576,7 @@ impl Backend for Mock {
         let inner = &self.inner;
         match request {
             // ── Config ──
-            Request::ConfigGet => reply_after(inner, 20, reply, |i| {
-                Reply::ok(&config_snapshot(&i.state.lock()))
-            }),
+            Request::ConfigGet => reply_after(inner, 20, reply, |i| Reply::ok(&config_snapshot(&i.state.lock()))),
             Request::ConfigSet(patches) => {
                 let active_before = {
                     let mut state = inner.state.lock();
@@ -660,9 +584,7 @@ impl Backend for Mock {
                     state.raw = apply_patches(&state.raw, &patches);
                     before
                 };
-                let touches_providers = patches
-                    .iter()
-                    .any(|p| p.path.first() == Some(&PathSeg::from("providers")));
+                let touches_providers = patches.iter().any(|p| p.path.first() == Some(&PathSeg::from("providers")));
                 reply_after(inner, 40, reply, move |i| {
                     let snapshot = config_snapshot(&i.state.lock());
                     emit(i, Event::ConfigChanged(snapshot.clone()));
@@ -674,14 +596,12 @@ impl Backend for Mock {
             }
             Request::ConfigOpenFile => reply(Reply::ok(&())),
             Request::ConfigExport(_) => reply_after(inner, 150, reply, |_| Reply::ok(&())),
-            Request::ConfigImport(_) => reply_after(inner, 150, reply, |i| {
-                Reply::ok(&config_snapshot(&i.state.lock()))
-            }),
+            Request::ConfigImport(_) => {
+                reply_after(inner, 150, reply, |i| Reply::ok(&config_snapshot(&i.state.lock())))
+            }
 
             // ── Models ──
-            Request::ModelsList => reply_after(inner, 30, reply, |i| {
-                Reply::ok(&catalog_snapshot(i, &i.state.lock()))
-            }),
+            Request::ModelsList => reply_after(inner, 30, reply, |i| Reply::ok(&catalog_snapshot(i, &i.state.lock()))),
             Request::ModelsDownload(id) => {
                 start_download(inner, &id, 0.0, 46e6);
                 reply(Reply::ok(&()));
@@ -713,10 +633,7 @@ impl Backend for Mock {
             Request::ModelsActivate(id) => {
                 {
                     let mut state = inner.state.lock();
-                    state.raw = apply_patches(
-                        &state.raw,
-                        &[ConfigPatch::set(path!["model", "active"], id)],
-                    );
+                    state.raw = apply_patches(&state.raw, &[ConfigPatch::set(path!["model", "active"], id)]);
                 }
                 reply_after(inner, 40, reply, |i| {
                     let snapshot = config_snapshot(&i.state.lock());
@@ -725,9 +642,9 @@ impl Backend for Mock {
                     Reply::ok(&())
                 });
             }
-            Request::ModelsRefresh => reply_after(inner, 300, reply, |i| {
-                Reply::ok(&catalog_snapshot(i, &i.state.lock()))
-            }),
+            Request::ModelsRefresh => {
+                reply_after(inner, 300, reply, |i| Reply::ok(&catalog_snapshot(i, &i.state.lock())))
+            }
 
             // ── Secrets ──
             Request::SecretsSet { provider, key } => reply_after(inner, 60, reply, move |i| {
@@ -743,9 +660,7 @@ impl Backend for Mock {
                 emit_models(i);
                 Reply::ok(&())
             }),
-            Request::SecretsHas(provider) => {
-                reply(Reply::ok(&inner.state.lock().keys.contains(&provider)))
-            }
+            Request::SecretsHas(provider) => reply(Reply::ok(&inner.state.lock().keys.contains(&provider))),
             Request::SecretsDelete(provider) => {
                 inner.state.lock().keys.retain(|k| k != &provider);
                 emit_models(inner);
@@ -754,25 +669,12 @@ impl Backend for Mock {
             Request::SecretsTest(provider) => reply_after(inner, 700, reply, move |i| {
                 let state = i.state.lock();
                 let result = if !state.keys.contains(&provider) {
-                    KeyTestResult {
-                        ok: false,
-                        message: "No key is stored.".into(),
-                    }
-                } else if state
-                    .key_values
-                    .get(&provider)
-                    .is_some_and(|k| k.contains("bad"))
-                {
+                    KeyTestResult { ok: false, message: "No key is stored.".into() }
+                } else if state.key_values.get(&provider).is_some_and(|k| k.contains("bad")) {
                     // Any key containing "bad" fails, to show the error state.
-                    KeyTestResult {
-                        ok: false,
-                        message: "401 Unauthorized: invalid API key.".into(),
-                    }
+                    KeyTestResult { ok: false, message: "401 Unauthorized: invalid API key.".into() }
                 } else {
-                    KeyTestResult {
-                        ok: true,
-                        message: "The key works.".into(),
-                    }
+                    KeyTestResult { ok: true, message: "The key works.".into() }
                 };
                 Reply::ok(&result)
             }),
@@ -795,14 +697,8 @@ impl Backend for Mock {
                 for (i, model_id) in model_ids.into_iter().enumerate() {
                     let cloud = inner.catalog.cloud_entry(&model_id).cloned();
                     let jitter = inner.state.lock().rng.next();
-                    at += if cloud.is_some() {
-                        260.0 + jitter * 240.0
-                    } else {
-                        420.0 + jitter * 700.0
-                    };
-                    let elapsed_ms = (at / (i as f64 + 1.0)
-                        + if cloud.is_some() { 180.0 } else { 320.0 })
-                    .round();
+                    at += if cloud.is_some() { 260.0 + jitter * 240.0 } else { 420.0 + jitter * 700.0 };
+                    let elapsed_ms = (at / (i as f64 + 1.0) + if cloud.is_some() { 180.0 } else { 320.0 }).round();
                     let result = BenchResult {
                         run_id,
                         model_id,
@@ -814,9 +710,7 @@ impl Backend for Mock {
                         done: i + 1 == count,
                     };
                     let target = Arc::clone(inner);
-                    inner
-                        .timers
-                        .after(at as u64, move || emit(&target, Event::BenchResult(result)));
+                    inner.timers.after(at as u64, move || emit(&target, Event::BenchResult(result)));
                 }
                 reply(Reply::ok(&run_id));
             }
@@ -829,11 +723,7 @@ impl Backend for Mock {
             }
 
             // ── History ──
-            Request::HistorySearch {
-                query,
-                limit,
-                offset,
-            } => reply_after(inner, 60, reply, move |i| {
+            Request::HistorySearch { query, limit, offset } => reply_after(inner, 60, reply, move |i| {
                 let state = i.state.lock();
                 let needle = query.to_lowercase();
                 let matches: Vec<&HistoryEntry> = state
@@ -841,12 +731,8 @@ impl Backend for Mock {
                     .iter()
                     .filter(|e| needle.is_empty() || e.text.to_lowercase().contains(&needle))
                     .collect();
-                let page: Vec<HistoryEntry> = matches
-                    .into_iter()
-                    .skip(offset as usize)
-                    .take(limit as usize)
-                    .cloned()
-                    .collect();
+                let page: Vec<HistoryEntry> =
+                    matches.into_iter().skip(offset as usize).take(limit as usize).cloned().collect();
                 Reply::ok(&page)
             }),
             Request::HistoryDelete(id) => {
@@ -887,12 +773,7 @@ impl Backend for Mock {
                         elapsed_ms: 640,
                     },
                 );
-                Reply::ok(&Transcript {
-                    text: text.into(),
-                    model,
-                    audio_ms,
-                    elapsed_ms: 640.0,
-                })
+                Reply::ok(&Transcript { text: text.into(), model, audio_ms, elapsed_ms: 640.0 })
             }),
 
             // ── App ──
@@ -913,9 +794,9 @@ impl Backend for Mock {
                 inner.state.lock().paused = next;
                 reply(Reply::ok(&()));
             }
-            Request::AppCheckUpdates => reply_after(inner, 900, reply, |_| {
-                Reply::ok(&"Flow 0.1.0 is the latest version.")
-            }),
+            Request::AppCheckUpdates => {
+                reply_after(inner, 900, reply, |_| Reply::ok(&"Flow 0.1.0 is the latest version."))
+            }
             Request::ThemeGet => reply(Reply::ok(&inner.theme)),
         }
     }
@@ -932,51 +813,44 @@ fn start_capture(inner: &Arc<Inner>, reply: Box<dyn FnOnce(Reply) + Send>) {
         state.capture_generation
     };
     let target = Arc::clone(inner);
-    let spawned = std::thread::Builder::new()
-        .name("settings-mock-capture".into())
-        .spawn(move || {
-            let mut down: BTreeSet<&'static str> = BTreeSet::new();
-            let mut chord: Vec<&'static str> = Vec::new();
-            // Keys already held when recording starts (the click on Record) are ignored until released.
-            let mut ignored: BTreeSet<&'static str> =
-                crate::platform::keys_down().into_iter().collect();
-            loop {
-                std::thread::sleep(Duration::from_millis(12));
-                if target.state.lock().capture != Some(generation) {
-                    // Cancelled, or another capture took over: resolves null, like the TS mock.
-                    reply(Reply::ok(&Option::<String>::None));
-                    return;
-                }
-                let now: BTreeSet<&'static str> =
-                    crate::platform::keys_down().into_iter().collect();
-                ignored.retain(|k| now.contains(k));
-                let mut changed = false;
-                for key in now.iter().filter(|k| !ignored.contains(*k)) {
-                    if down.insert(key) {
-                        if !chord.contains(key) {
-                            chord.push(key);
-                        }
-                        changed = true;
+    let spawned = std::thread::Builder::new().name("settings-mock-capture".into()).spawn(move || {
+        let mut down: BTreeSet<&'static str> = BTreeSet::new();
+        let mut chord: Vec<&'static str> = Vec::new();
+        // Keys already held when recording starts (the click on Record) are ignored until released.
+        let mut ignored: BTreeSet<&'static str> = crate::platform::keys_down().into_iter().collect();
+        loop {
+            std::thread::sleep(Duration::from_millis(12));
+            if target.state.lock().capture != Some(generation) {
+                // Cancelled, or another capture took over: resolves null, like the TS mock.
+                reply(Reply::ok(&Option::<String>::None));
+                return;
+            }
+            let now: BTreeSet<&'static str> = crate::platform::keys_down().into_iter().collect();
+            ignored.retain(|k| now.contains(k));
+            let mut changed = false;
+            for key in now.iter().filter(|k| !ignored.contains(*k)) {
+                if down.insert(key) {
+                    if !chord.contains(key) {
+                        chord.push(key);
                     }
-                }
-                if changed {
-                    emit(
-                        &target,
-                        Event::HotkeysCaptureProgress(format_binding(&binding_from_keys(
-                            chord.iter().copied(),
-                            true,
-                        ))),
-                    );
-                }
-                down.retain(|k| now.contains(k));
-                if down.is_empty() && !chord.is_empty() {
-                    target.state.lock().capture = None;
-                    let result = format_binding(&binding_from_keys(chord.iter().copied(), true));
-                    reply(Reply::ok(&Some(result)));
-                    return;
+                    changed = true;
                 }
             }
-        });
+            if changed {
+                emit(
+                    &target,
+                    Event::HotkeysCaptureProgress(format_binding(&binding_from_keys(chord.iter().copied(), true))),
+                );
+            }
+            down.retain(|k| now.contains(k));
+            if down.is_empty() && !chord.is_empty() {
+                target.state.lock().capture = None;
+                let result = format_binding(&binding_from_keys(chord.iter().copied(), true));
+                reply(Reply::ok(&Some(result)));
+                return;
+            }
+        }
+    });
     if spawned.is_err() {
         // The reply was dropped with the closure; the caller sees an error.
         inner.state.lock().capture = None;

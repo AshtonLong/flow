@@ -25,9 +25,7 @@ fn box_pass(src: &[f32], dst: &mut [f32], len: usize, lines: usize, step: usize,
     let scale = 1.0 / (2 * r + 1) as f32;
     for line in 0..lines {
         let base = line * line_step;
-        let at = |i: isize| -> f32 {
-            if i < 0 || i as usize >= len { 0.0 } else { src[base + i as usize * step] }
-        };
+        let at = |i: isize| -> f32 { if i < 0 || i as usize >= len { 0.0 } else { src[base + i as usize * step] } };
         let mut sum: f32 = (-(r as isize)..=r as isize).map(at).sum();
         for i in 0..len {
             dst[base + i * step] = sum * scale;

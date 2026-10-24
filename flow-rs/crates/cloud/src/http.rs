@@ -35,11 +35,7 @@ pub fn error_detail(body: &str) -> String {
             json.get("message"),
             json.get("err_msg"),
         ];
-        let found = candidates
-            .into_iter()
-            .flatten()
-            .filter_map(Value::as_str)
-            .find(|c| !js_trim(c).is_empty());
+        let found = candidates.into_iter().flatten().filter_map(Value::as_str).find(|c| !js_trim(c).is_empty());
         if let Some(found) = found {
             return js_truncate(js_trim(found), 300).to_string();
         }
@@ -176,11 +172,7 @@ mod tests {
                 ),
                 ("FastAPI servers", r#"{"detail":"Not Found"}"#, "Not Found"),
                 ("Mistral", r#"{"message":"Unauthorized","request_id":"abc"}"#, "Unauthorized"),
-                (
-                    "Deepgram",
-                    r#"{"err_code":"INVALID_AUTH","err_msg":"Invalid credentials."}"#,
-                    "Invalid credentials.",
-                ),
+                ("Deepgram", r#"{"err_code":"INVALID_AUTH","err_msg":"Invalid credentials."}"#, "Invalid credentials."),
                 ("plain text", "upstream\n  timeout", "upstream timeout"),
                 ("nothing", "", ""),
                 ("JSON that is not an object", "null", "null"),

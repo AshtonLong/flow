@@ -21,13 +21,7 @@ pub struct CatalogStore {
 
 impl CatalogStore {
     pub(crate) fn new(link: Link) -> Self {
-        let mut store = Self {
-            link,
-            snapshot: None,
-            progress: HashMap::new(),
-            error: None,
-            loading: None,
-        };
+        let mut store = Self { link, snapshot: None, progress: HashMap::new(), error: None, loading: None };
         store.reload();
         store
     }
@@ -58,8 +52,7 @@ impl CatalogStore {
                 Event::ModelsChanged(next) => {
                     // A finished download shows up as `ready`; drop its progress entry.
                     self.progress.retain(|id, p| {
-                        p.state == DownloadState::Error
-                            && !next.status.get(id).is_some_and(|s| s.ready)
+                        p.state == DownloadState::Error && !next.status.get(id).is_some_and(|s| s.ready)
                     });
                     self.snapshot = Some(next.clone());
                 }
@@ -102,11 +95,6 @@ impl CatalogStore {
             .get(id)?
             .download
             .as_ref()
-            .filter(|d| {
-                matches!(
-                    d.state,
-                    DownloadState::Downloading | DownloadState::Verifying
-                )
-            })
+            .filter(|d| matches!(d.state, DownloadState::Downloading | DownloadState::Verifying))
     }
 }

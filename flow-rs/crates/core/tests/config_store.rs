@@ -2,17 +2,17 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{self, Receiver};
 use std::sync::Arc;
+use std::sync::mpsc::{self, Receiver};
 use std::time::{Duration, Instant};
 
 use flow_core::config::migrations::PlainObject;
 use flow_core::config::{
-    parse_toml, strip_api_keys, Config, ConfigIssue, ConfigPatch, ConfigSnapshot, ConfigStore, ConfigStoreOptions,
-    Migration, PathSeg, ProviderConfig, ThemeSetting, CONFIG_VERSION, DEFAULT_CONFIG_TEXT, MIGRATIONS,
+    CONFIG_VERSION, Config, ConfigIssue, ConfigPatch, ConfigSnapshot, ConfigStore, ConfigStoreOptions,
+    DEFAULT_CONFIG_TEXT, MIGRATIONS, Migration, PathSeg, ProviderConfig, ThemeSetting, parse_toml, strip_api_keys,
 };
 use flow_core::path;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 fn example() -> String {
     include_str!("fixtures/example.toml").replace("\r\n", "\n")
@@ -884,7 +884,10 @@ mod export_and_import {
                 ("groq", &ProviderConfig::default()),
                 (
                     "custom-lan",
-                    &ProviderConfig { base_url: Some("http://192.168.1.20:8000/v1".into()), ..ProviderConfig::default() }
+                    &ProviderConfig {
+                        base_url: Some("http://192.168.1.20:8000/v1".into()),
+                        ..ProviderConfig::default()
+                    }
                 ),
             ]
         );

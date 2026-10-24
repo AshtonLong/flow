@@ -210,7 +210,11 @@ impl EngineClient {
         }
     }
 
-    pub async fn load(&self, model: &EngineModelRef, cancel: Option<CancellationToken>) -> Result<EngineLoadResult, EngineError> {
+    pub async fn load(
+        &self,
+        model: &EngineModelRef,
+        cancel: Option<CancellationToken>,
+    ) -> Result<EngineLoadResult, EngineError> {
         let reply = self.request(|id| EngineRequest::Load { id, model: model.clone() }, &[], cancel).await?;
         let EngineResult::Load(result) = reply.0 else { return Err(unexpected(&reply.0)) };
         self.set_loaded(Some(&model.model_id));
@@ -340,7 +344,11 @@ impl EngineClient {
 
     fn spawn(&self, st: &mut State) -> Result<Arc<Conn>, EngineError> {
         let mut cmd = Command::new(&self.opts.exe);
-        cmd.args(&self.opts.args).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).kill_on_drop(true);
+        cmd.args(&self.opts.args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .kill_on_drop(true);
         if self.opts.debug {
             cmd.env(env::DEBUG, "1");
         }
@@ -594,7 +602,8 @@ async fn read_response<R: AsyncRead + Unpin>(input: &mut R) -> std::io::Result<O
     let mut raw = vec![0u8; samples as usize * 4];
     input.read_exact(&mut raw).await?;
     let pcm = raw.as_chunks::<4>().0.iter().map(|b| f32::from_le_bytes(*b)).collect();
-    let response = serde_json::from_slice(&json).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+    let response =
+        serde_json::from_slice(&json).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
     Ok(Some((response, pcm)))
 }
 

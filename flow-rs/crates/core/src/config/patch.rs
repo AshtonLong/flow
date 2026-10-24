@@ -7,13 +7,13 @@
 use toml::Value;
 
 use super::toml_doc::{
-    find_value, is_path_prefix, line_end_after, line_start_of, scan_toml, Located, Owner, SectionNode, TomlDoc,
-    ValueKind,
+    Located, Owner, SectionNode, TomlDoc, ValueKind, find_value, is_path_prefix, line_end_after, line_start_of,
+    scan_toml,
 };
-use super::toml_parse::{parse_toml, TomlSyntaxError};
+use super::toml_parse::{TomlSyntaxError, parse_toml};
 use super::toml_write::{
-    deep_equal_opt, format_key, format_key_path, format_table_lines, format_value, get_at, normalise_value,
-    remove_at, set_at, set_in_table, tables_equal, Table,
+    Table, deep_equal_opt, format_key, format_key_path, format_table_lines, format_value, get_at, normalise_value,
+    remove_at, set_at, set_in_table, tables_equal,
 };
 use super::{ConfigPatch, PathSeg};
 
@@ -396,7 +396,8 @@ fn set_leaf(doc: &TomlDoc<'_>, parsed: &Table, path: &[PathSeg], value: &Value) 
 
     let empty_table = matches!(value, Value::Table(table) if table.is_empty());
     // Whether a dotted key is legal here depends on how the table is already spelled.
-    let dotted_here = owner.entries.iter().any(|entry| entry.key.first().map(String::as_str) == rest_keys.first().copied());
+    let dotted_here =
+        owner.entries.iter().any(|entry| entry.key.first().map(String::as_str) == rest_keys.first().copied());
     let first_step = &path[..owner.path.len() + 1];
     let header_below = doc.sections.iter().any(|section| {
         !std::ptr::eq(section, owner) && section.header.is_some() && is_path_prefix(first_step, &section.path)
@@ -432,10 +433,8 @@ fn set_leaf(doc: &TomlDoc<'_>, parsed: &Table, path: &[PathSeg], value: &Value) 
     } else if header_path.len() >= 2 {
         // Keep `[providers.openai]` next to `[providers.groq]` rather than below the profiles.
         let parent = &header_path[..header_path.len() - 1];
-        let last = doc
-            .sections
-            .iter()
-            .rfind(|section| section.header.is_some() && is_path_prefix(parent, &section.path));
+        let last =
+            doc.sections.iter().rfind(|section| section.header.is_some() && is_path_prefix(parent, &section.path));
         if let Some(last) = last {
             offset = body_end(source, last);
         }

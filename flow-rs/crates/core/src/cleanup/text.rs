@@ -42,8 +42,7 @@ pub fn escape_reg_exp(text: &str) -> String {
 
 /// What may stand between two words of a phrase: a hyphen, en dash or comma
 /// with optional spaces, or just spaces.
-static PHRASE_GAP: LazyLock<String> =
-    LazyLock::new(|| format!("(?:[{s}]*[-–,][{s}]*|[{s}]+)", s = js::SPACE));
+static PHRASE_GAP: LazyLock<String> = LazyLock::new(|| format!("(?:[{s}]*[-–,][{s}]*|[{s}]+)", s = js::SPACE));
 
 /// Regex source that matches a phrase the way a speech model might write it:
 /// any run of spaces between words, a hyphen or a comma in place of the space,
@@ -79,9 +78,8 @@ pub fn word_after(text: &str, index: usize) -> Option<&str> {
     WORD_AFTER.captures(window).and_then(|c| c.get(1)).map(|m| m.as_str())
 }
 
-static CAPITAL_MARK: LazyLock<Regex> = LazyLock::new(|| {
-    js::fixed_plain(&format!(r#"{CAP}((?:{CAP}|[{s}"'“‘(\[])*)(\p{{Ll}})"#, s = js::SPACE))
-});
+static CAPITAL_MARK: LazyLock<Regex> =
+    LazyLock::new(|| js::fixed_plain(&format!(r#"{CAP}((?:{CAP}|[{s}"'“‘(\[])*)(\p{{Ll}})"#, s = js::SPACE)));
 
 /// Upper-cases the letter after each capitalisation mark and removes the marks.
 pub fn apply_capital_marks(text: &str) -> String {

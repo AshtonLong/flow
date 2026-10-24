@@ -52,11 +52,7 @@ mod tests {
     }
 
     fn snapshot(raw: serde_json::Value) -> ConfigSnapshot {
-        ConfigSnapshot {
-            config: validate_config(&raw).config,
-            issues: vec![],
-            path: "config.toml".into(),
-        }
+        ConfigSnapshot { config: validate_config(&raw).config, issues: vec![], path: "config.toml".into() }
     }
 
     fn store() -> (Arc<Manual>, ConfigStore) {
@@ -75,61 +71,39 @@ mod tests {
         let (backend, mut store) = store();
         store.set(path!["audio", "sounds"], false);
         store.set(path!["audio", "keep_mic_warm"], true);
-        assert!(
-            !store.config().audio.sounds,
-            "the optimistic state shows at once"
-        );
+        assert!(!store.config().audio.sounds, "the optimistic state shows at once");
         assert!(store.config().audio.keep_mic_warm);
         assert_eq!(store.pending(), 2);
 
         // A change from elsewhere is ignored while writes are pending.
-        store.pump(&[Event::ConfigChanged(snapshot(
-            json!({ "audio": { "max_recording_seconds": 60 } }),
-        ))]);
+        store.pump(&[Event::ConfigChanged(snapshot(json!({ "audio": { "max_recording_seconds": 60 } })))]);
         assert_eq!(store.config().audio.max_recording_seconds, 300);
 
         // The reply to the older write does not overwrite the newer optimistic state.
-        backend.answer(
-            0,
-            Reply::ok(&snapshot(json!({ "audio": { "sounds": false } }))),
-        );
+        backend.answer(0, Reply::ok(&snapshot(json!({ "audio": { "sounds": false } }))));
         store.pump(&[]);
         assert!(store.config().audio.keep_mic_warm);
 
-        backend.answer(
-            0,
-            Reply::ok(&snapshot(
-                json!({ "audio": { "sounds": false, "keep_mic_warm": true } }),
-            )),
-        );
+        backend.answer(0, Reply::ok(&snapshot(json!({ "audio": { "sounds": false, "keep_mic_warm": true } }))));
         store.pump(&[]);
         assert_eq!(store.pending(), 0);
         assert!(store.config().audio.keep_mic_warm && !store.config().audio.sounds);
 
         store.pump(&[Event::ConfigChanged(snapshot(json!({})))]);
-        assert!(
-            store.config().audio.sounds,
-            "changes from elsewhere apply when idle"
-        );
+        assert!(store.config().audio.sounds, "changes from elsewhere apply when idle");
     }
 
     #[test]
     fn a_failed_write_shows_the_error_and_reloads() {
         let (backend, mut store) = store();
-        let mut done = store.patch(vec![flow_core::config::ConfigPatch::set(
-            path!["audio", "sounds"],
-            false,
-        )]);
+        let mut done = store.patch(vec![flow_core::config::ConfigPatch::set(path!["audio", "sounds"], false)]);
         backend.answer(0, Reply::err("disk full"));
         store.pump(&[]);
         assert_eq!(store.error(), Some("The change was not saved: disk full"));
         assert_eq!(done.take(), Some(Err("disk full".into())));
         // The store re-reads the file.
         assert_eq!(backend.count(), 1);
-        assert_eq!(
-            backend.answer(0, Reply::ok(&snapshot(json!({})))),
-            Request::ConfigGet
-        );
+        assert_eq!(backend.answer(0, Reply::ok(&snapshot(json!({})))), Request::ConfigGet);
         store.pump(&[]);
         assert!(store.config().audio.sounds);
         store.dismiss_error();

@@ -150,10 +150,14 @@ fn quick_release_while_opening_still_stops_cleanly() {
 #[ignore = "opens the real default microphone"]
 fn level_monitor_and_clip_recorder() {
     let (tx, rx) = unbounded();
-    let monitor = LevelMonitor::open("default", Arc::new(move |level| {
-        let _ = tx.send(level);
-    }), Arc::new(|| {}))
-        .expect("monitor");
+    let monitor = LevelMonitor::open(
+        "default",
+        Arc::new(move |level| {
+            let _ = tx.send(level);
+        }),
+        Arc::new(|| {}),
+    )
+    .expect("monitor");
     std::thread::sleep(Duration::from_millis(500));
     drop(monitor);
     let levels: Vec<f32> = rx.try_iter().collect();

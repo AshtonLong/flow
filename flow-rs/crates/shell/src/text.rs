@@ -58,7 +58,8 @@ impl Font {
         face.set_variation(ttf_parser::Tag::from_bytes(b"wght"), weight)?;
         let font_ref = FontRef::new(FONT_DATA).ok()?;
         let shaper_data = ShaperData::new(&font_ref);
-        let instance = ShaperInstance::from_variations(&font_ref, [Variation { tag: Tag::new(b"wght"), value: weight }]);
+        let instance =
+            ShaperInstance::from_variations(&font_ref, [Variation { tag: Tag::new(b"wght"), value: weight }]);
         let units_per_em = face.units_per_em() as f32;
         // USE_TYPO_METRICS is set: Chromium takes the typo ascender and descender.
         let ascender = face.typographic_ascender().unwrap_or(face.ascender()) as f32;

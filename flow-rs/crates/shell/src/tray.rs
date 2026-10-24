@@ -160,9 +160,9 @@ mod imp {
         MENUITEMINFOW, MFS_CHECKED, MFS_DISABLED, MFS_ENABLED, MFS_UNCHECKED, MFT_RADIOCHECK, MFT_SEPARATOR,
         MFT_STRING, MIIM_FTYPE, MIIM_ID, MIIM_STATE, MIIM_STRING, MIIM_SUBMENU, MSG, PostMessageW, PostQuitMessage,
         RegisterClassExW, RegisterWindowMessageW, SM_CXSMICON, SM_MENUDROPALIGNMENT, SetForegroundWindow,
-        TPM_BOTTOMALIGN, TPM_LEFTALIGN, TPM_NONOTIFY, TPM_RETURNCMD, TPM_RIGHTALIGN, TPM_RIGHTBUTTON,
-        TrackPopupMenuEx, TranslateMessage, WM_APP, WM_CONTEXTMENU, WM_DISPLAYCHANGE, WM_DPICHANGED,
-        WM_LBUTTONDBLCLK, WM_NULL, WM_SETTINGCHANGE, WM_USER, WNDCLASSEXW, WS_EX_TOOLWINDOW, WS_POPUP,
+        TPM_BOTTOMALIGN, TPM_LEFTALIGN, TPM_NONOTIFY, TPM_RETURNCMD, TPM_RIGHTALIGN, TPM_RIGHTBUTTON, TrackPopupMenuEx,
+        TranslateMessage, WM_APP, WM_CONTEXTMENU, WM_DISPLAYCHANGE, WM_DPICHANGED, WM_LBUTTONDBLCLK, WM_NULL,
+        WM_SETTINGCHANGE, WM_USER, WNDCLASSEXW, WS_EX_TOOLWINDOW, WS_POPUP,
     };
     use windows::core::{PWSTR, w};
 
@@ -833,7 +833,10 @@ mod tests {
                 "Quit Flow"
             ]
         );
-        assert!(matches!(&menu[2], MenuEntry::Item { check: Check::Checkbox(false), action: Some(TrayAction::SetPaused(true)), .. }));
+        assert!(matches!(
+            &menu[2],
+            MenuEntry::Item { check: Check::Checkbox(false), action: Some(TrayAction::SetPaused(true)), .. }
+        ));
         assert!(matches!(&menu[3], MenuEntry::Item { enabled: true, .. }));
         assert!(matches!(&menu[4], MenuEntry::Item { enabled: false, .. }));
     }
@@ -859,7 +862,10 @@ mod tests {
                 action: None
             }]
         );
-        assert!(matches!(&menu[2], MenuEntry::Item { check: Check::Checkbox(true), action: Some(TrayAction::SetPaused(false)), .. }));
+        assert!(matches!(
+            &menu[2],
+            MenuEntry::Item { check: Check::Checkbox(true), action: Some(TrayAction::SetPaused(false)), .. }
+        ));
         assert_eq!(
             menu[6],
             MenuEntry::Item {

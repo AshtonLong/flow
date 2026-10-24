@@ -176,9 +176,10 @@ impl FakeServer {
         let mut start = 0;
         let mut status = "200 OK";
         let mut extra = Vec::new();
-        let requested = range.as_deref().filter(|_| !file.ignore_range).and_then(|r| {
-            r.strip_prefix("bytes=")?.strip_suffix('-')?.parse::<usize>().ok()
-        });
+        let requested = range
+            .as_deref()
+            .filter(|_| !file.ignore_range)
+            .and_then(|r| r.strip_prefix("bytes=")?.strip_suffix('-')?.parse::<usize>().ok());
         if let Some(from) = requested {
             if from >= len {
                 return respond(&mut stream, "416 Range Not Satisfiable", &[], b"").await;
@@ -299,7 +300,14 @@ pub fn local_entry(base: &str, id: &str, bytes: &[u8]) -> LocalModelEntry {
 }
 
 fn provider(id: &str, name: &str, base_url: &str, keyless: bool) -> ProviderEntry {
-    ProviderEntry { id: id.into(), name: name.into(), api: ProviderApi::Openai, base_url: base_url.into(), key_url: None, keyless }
+    ProviderEntry {
+        id: id.into(),
+        name: name.into(),
+        api: ProviderApi::Openai,
+        base_url: base_url.into(),
+        key_url: None,
+        keyless,
+    }
 }
 
 fn cloud(id: &str, provider: &str, model: &str, name: &str, description: &str, price: f64) -> CloudModelEntry {
@@ -328,7 +336,14 @@ pub fn test_catalog(local: Vec<LocalModelEntry>, as_of: &str) -> Catalog {
         ],
         local,
         cloud: vec![
-            cloud("groq/whisper-large-v3-turbo", "groq", "whisper-large-v3-turbo", "Whisper large-v3-turbo", "Lowest price", 0.04),
+            cloud(
+                "groq/whisper-large-v3-turbo",
+                "groq",
+                "whisper-large-v3-turbo",
+                "Whisper large-v3-turbo",
+                "Lowest price",
+                0.04,
+            ),
             cloud("openai/gpt-4o-transcribe", "openai", "gpt-4o-transcribe", "gpt-4o-transcribe", "OpenAI", 0.36),
             cloud("ollama/whisper", "ollama", "whisper", "Local Whisper", "Keyless", 0.0),
         ],

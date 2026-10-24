@@ -248,8 +248,7 @@ impl Inserter {
         }
 
         let shortcut = normalize_binding(&options.paste_shortcut).unwrap_or_else(|| DEFAULT_PASTE_SHORTCUT.into());
-        let sent =
-            platform.send_shortcut(&shortcut) || self.tap_shortcut.as_ref().is_some_and(|tap| tap(&shortcut));
+        let sent = platform.send_shortcut(&shortcut) || self.tap_shortcut.as_ref().is_some_and(|tap| tap(&shortcut));
         // No key was pressed, so the transcript stays on the clipboard for a manual paste.
         if !sent {
             return Ok(InsertResult::clipboard(InsertFailure::Failed));

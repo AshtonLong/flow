@@ -15,8 +15,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use egui::{
-    Align, Color32, CornerRadius, Id, Layout, OutputCommand, Rect, Stroke, Ui, UiBuilder,
-    ViewportCommand, pos2, vec2,
+    Align, Color32, CornerRadius, Id, Layout, OutputCommand, Rect, Stroke, Ui, UiBuilder, ViewportCommand, pos2, vec2,
 };
 use flow_core::config::ThemeSetting;
 use flow_core::protocol::settings::{Event, Request};
@@ -90,20 +89,12 @@ pub(crate) struct SettingsApp {
 }
 
 impl SettingsApp {
-    pub(crate) fn new(
-        cc: &eframe::CreationContext<'_>,
-        backend: Arc<dyn Backend>,
-        options: RunOptions,
-    ) -> Self {
+    pub(crate) fn new(cc: &eframe::CreationContext<'_>, backend: Arc<dyn Backend>, options: RunOptions) -> Self {
         let ctx = cc.egui_ctx.clone();
         design::fonts::install(&ctx);
         let link = Link::new(Arc::clone(&backend), ctx.clone());
         let events = EventQueue::subscribe(&backend, &ctx);
-        let page_id = options
-            .page
-            .as_deref()
-            .and_then(PageId::parse)
-            .unwrap_or(PageId::General);
+        let page_id = options.page.as_deref().and_then(PageId::parse).unwrap_or(PageId::General);
         let mut scroll = PageScroll::default();
         if let Some(offset) = options.scroll {
             scroll.scroll_to(offset);
@@ -121,9 +112,7 @@ impl SettingsApp {
             mics: Microphones::new(),
             theme: SystemTheme::new(&link),
             system_colors: platform::system_colors(),
-            gallery: options
-                .gallery
-                .then(|| gallery::Gallery::new(options.demo.clone())),
+            gallery: options.gallery.then(|| gallery::Gallery::new(options.demo.clone())),
             options,
             page_id,
             page: pages::create(page_id),
@@ -163,13 +152,8 @@ impl SettingsApp {
     }
 
     fn apply_theme(&mut self, ctx: &egui::Context) -> bool {
-        let setting = if self.config.loaded() {
-            self.config.config().general.theme
-        } else {
-            ThemeSetting::System
-        };
-        let mut appearance =
-            stores::appearance(self.theme.info(), self.options.theme.unwrap_or(setting));
+        let setting = if self.config.loaded() { self.config.config().general.theme } else { ThemeSetting::System };
+        let mut appearance = stores::appearance(self.theme.info(), self.options.theme.unwrap_or(setting));
         if let Some(high_contrast) = self.options.high_contrast {
             appearance.high_contrast = high_contrast;
         }
@@ -217,17 +201,10 @@ impl SettingsApp {
 
         // The content panel: `rounded-tl-lg border-t border-l border-line bg-layer`.
         let panel = Rect::from_min_max(pos2(main.left(), main.top() + TITLE_H), main.max);
-        let r = CornerRadius {
-            nw: 8,
-            ne: 0,
-            sw: 0,
-            se: 0,
-        };
+        let r = CornerRadius { nw: 8, ne: 0, sw: 0, se: 0 };
         ui.painter().rect_filled(panel, r, t.layer);
-        let border = ui.painter().with_clip_rect(Rect::from_min_max(
-            panel.min,
-            pos2(panel.right() + 1.0, panel.bottom() + 1.0),
-        ));
+        let border =
+            ui.painter().with_clip_rect(Rect::from_min_max(panel.min, pos2(panel.right() + 1.0, panel.bottom() + 1.0)));
         border.rect_stroke(
             Rect::from_min_max(panel.min, pos2(panel.right() + 2.0, panel.bottom() + 2.0)),
             r,
@@ -236,19 +213,7 @@ impl SettingsApp {
         );
 
         let inner = Rect::from_min_max(pos2(panel.left() + 1.0, panel.top() + 1.0), panel.max);
-        let Self {
-            scroll,
-            page,
-            page_id,
-            boundary,
-            config,
-            catalog,
-            app_info,
-            mics,
-            link,
-            gallery,
-            ..
-        } = self;
+        let Self { scroll, page, page_id, boundary, config, catalog, app_info, mics, link, gallery, .. } = self;
         let scroll_id = Id::unique(("flow-page-scroll", page_id.as_str(), gallery.is_some()));
         scroll.show(ui, inner, scroll_id, |ui| {
             // `mx-auto max-w-[760px] px-8 pt-6 pb-12`
@@ -258,17 +223,10 @@ impl SettingsApp {
             ui.add_space(24.0);
             let top = ui.cursor().min.y;
             let column = Rect::from_min_size(pos2(left, top), vec2(column_w - 64.0, f32::INFINITY));
-            let mut col = ui.new_child(
-                UiBuilder::new()
-                    .max_rect(column)
-                    .layout(Layout::top_down(Align::Min)),
-            );
+            let mut col = ui.new_child(UiBuilder::new().max_rect(column).layout(Layout::top_down(Align::Min)));
             if let Some(error) = config.error().map(str::to_owned) {
                 let dismiss = Notice::new(Tone::Danger, &error).show_with_action(&mut col, |ui| {
-                    IconButton::new("Dismiss", Icon::X, 14.0)
-                        .small()
-                        .show(ui)
-                        .clicked()
+                    IconButton::new("Dismiss", Icon::X, 14.0).small().show(ui).clicked()
                 });
                 if dismiss {
                     config.dismiss_error();
@@ -277,15 +235,7 @@ impl SettingsApp {
             }
             let issues = config.snapshot().issues.clone();
             issues_banner(&mut col, &issues, link);
-            let mut cx = Cx {
-                config,
-                catalog,
-                app_info,
-                mics,
-                link,
-                events,
-                nav,
-            };
+            let mut cx = Cx { config, catalog, app_info, mics, link, events, nav };
             match gallery {
                 Some(gallery) => gallery.ui(&mut col, &mut cx),
                 None => boundary.show(&mut col, page_id.as_str(), |ui| page.ui(ui, &mut cx)),
@@ -309,46 +259,23 @@ impl SettingsApp {
         if let Some(error) = self.config.error() {
             let width = window.width().min(480.0) - 48.0;
             let rect = Rect::from_min_size(
-                pos2(
-                    window.center().x - width / 2.0,
-                    window.top() + TITLE_H + 64.0,
-                ),
+                pos2(window.center().x - width / 2.0, window.top() + TITLE_H + 64.0),
                 vec2(width, f32::INFINITY),
             );
-            let mut child = ui.new_child(
-                UiBuilder::new()
-                    .max_rect(rect)
-                    .layout(Layout::top_down(Align::Min)),
-            );
-            Notice::new(
-                Tone::Danger,
-                &format!("Flow could not read its settings: {error}"),
-            )
-            .show(&mut child);
+            let mut child = ui.new_child(UiBuilder::new().max_rect(rect).layout(Layout::top_down(Align::Min)));
+            Notice::new(Tone::Danger, &format!("Flow could not read its settings: {error}")).show(&mut child);
         }
     }
 
-    fn onboarding(
-        &mut self,
-        ui: &mut Ui,
-        window: Rect,
-        events: &[Event],
-        nav: &mut Option<PageId>,
-    ) {
+    fn onboarding(&mut self, ui: &mut Ui, window: Rect, events: &[Event], nav: &mut Option<PageId>) {
         chrome::drag_region(
             ui,
             Rect::from_min_max(window.min, pos2(window.right(), window.top() + TITLE_H)),
             Id::unique("flow-drag-onboarding"),
         );
-        let page = self
-            .onboarding
-            .get_or_insert_with(|| Box::new(crate::onboarding::Onboarding::default()));
+        let page = self.onboarding.get_or_insert_with(|| Box::new(crate::onboarding::Onboarding::default()));
         let rect = Rect::from_min_max(pos2(window.left(), window.top() + TITLE_H), window.max);
-        let mut child = ui.new_child(
-            UiBuilder::new()
-                .max_rect(rect)
-                .layout(Layout::top_down(Align::Min)),
-        );
+        let mut child = ui.new_child(UiBuilder::new().max_rect(rect).layout(Layout::top_down(Align::Min)));
         let mut cx = Cx {
             config: &mut self.config,
             catalog: &mut self.catalog,
@@ -358,14 +285,11 @@ impl SettingsApp {
             events,
             nav,
         };
-        self.root_boundary
-            .show(&mut child, "onboarding", |ui| page.ui(ui, &mut cx));
+        self.root_boundary.show(&mut child, "onboarding", |ui| page.ui(ui, &mut cx));
     }
 
     fn screenshot(&mut self, ctx: &egui::Context) {
-        let ready = self.config.loaded()
-            && self.catalog.snapshot().is_some()
-            && self.app_info.info().is_some();
+        let ready = self.config.loaded() && self.catalog.snapshot().is_some() && self.app_info.info().is_some();
         let Some(shot) = self.shot.as_mut() else {
             return;
         };
@@ -386,23 +310,17 @@ impl SettingsApp {
             let path = shot.path.clone();
             let done = Arc::clone(&shot.done);
             let wake = ctx.clone();
-            ctx.send_viewport_cmd(ViewportCommand::Screenshot(egui::ScreenshotCallback::new(
-                move |image| {
-                    let rgba: Vec<u8> = image
-                        .pixels
-                        .iter()
-                        .flat_map(|p| p.to_srgba_unmultiplied())
-                        .collect();
-                    match png::write(&path, image.size[0] as u32, image.size[1] as u32, &rgba) {
-                        Ok(()) => {
-                            log::info!(target: "settings", "screenshot saved to {}", path.display())
-                        }
-                        Err(err) => log::error!(target: "settings", "screenshot not saved: {err}"),
+            ctx.send_viewport_cmd(ViewportCommand::Screenshot(egui::ScreenshotCallback::new(move |image| {
+                let rgba: Vec<u8> = image.pixels.iter().flat_map(|p| p.to_srgba_unmultiplied()).collect();
+                match png::write(&path, image.size[0] as u32, image.size[1] as u32, &rgba) {
+                    Ok(()) => {
+                        log::info!(target: "settings", "screenshot saved to {}", path.display())
                     }
-                    done.store(true, Ordering::SeqCst);
-                    wake.request_repaint();
-                },
-            )));
+                    Err(err) => log::error!(target: "settings", "screenshot not saved: {err}"),
+                }
+                done.store(true, Ordering::SeqCst);
+                wake.request_repaint();
+            })));
         }
     }
 }
@@ -494,12 +412,7 @@ impl eframe::App for SettingsApp {
             match &event {
                 // While a hotkey is being recorded, keys belong to the recorder.
                 egui::Event::Key { .. } | egui::Event::Text(_) if capturing => {}
-                egui::Event::Key {
-                    key,
-                    pressed: true,
-                    modifiers,
-                    ..
-                } => {
+                egui::Event::Key { key, pressed: true, modifiers, .. } => {
                     use egui::Key;
                     let paste = (*key == Key::V && modifiers.command && !modifiers.alt)
                         || (*key == Key::Insert && modifiers.shift);
@@ -531,6 +444,5 @@ impl eframe::App for SettingsApp {
 
 /// The window icon (`resources/icons/icon.png`).
 pub(crate) fn icon() -> Option<egui::IconData> {
-    eframe::icon_data::from_png_bytes(include_bytes!("../../../../../resources/icons/icon.png"))
-        .ok()
+    eframe::icon_data::from_png_bytes(include_bytes!("../../../../../resources/icons/icon.png")).ok()
 }

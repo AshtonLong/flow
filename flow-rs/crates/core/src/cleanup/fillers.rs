@@ -47,8 +47,7 @@ static NUMBER_WORD: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 /// The text before a filler ends a sentence (or is empty).
-static SENTENCE_END: LazyLock<Regex> =
-    LazyLock::new(|| js::fixed_plain(r#"(?:^|[.!?\n]["'”’)\]]*)[ \t]*$"#));
+static SENTENCE_END: LazyLock<Regex> = LazyLock::new(|| js::fixed_plain(r#"(?:^|[.!?\n]["'”’)\]]*)[ \t]*$"#));
 
 fn strip_fillers(text: &str) -> Result<String, js::RuleError> {
     js::replace_all(&FILLER_PATTERN, text, |caps| {

@@ -11,7 +11,7 @@ use std::sync::OnceLock;
 
 use serde_json::{Map, Value};
 
-use super::{Config, ConfigIssue, PathSeg, CONFIG_VERSION, DEFAULT_LOCAL_MODEL};
+use super::{CONFIG_VERSION, Config, ConfigIssue, DEFAULT_LOCAL_MODEL, PathSeg};
 
 /// A validated config and the problems found on the way.
 #[derive(Debug, Clone, PartialEq)]
@@ -163,7 +163,14 @@ fn config_schema() -> &'static Schema {
             (
                 "position",
                 default(
-                    Schema::Enum(&["bottom-center", "bottom-left", "bottom-right", "top-center", "top-left", "top-right"]),
+                    Schema::Enum(&[
+                        "bottom-center",
+                        "bottom-left",
+                        "bottom-right",
+                        "top-center",
+                        "top-left",
+                        "top-right",
+                    ]),
                     "bottom-center",
                 ),
             ),

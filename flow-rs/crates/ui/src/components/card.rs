@@ -12,9 +12,7 @@
 
 use std::borrow::Cow;
 
-use egui::{
-    Align, Id, Layout, Margin, Rect, Response, Sense, Shape, Ui, UiBuilder, Vec2, pos2, vec2,
-};
+use egui::{Align, Id, Layout, Margin, Rect, Response, Sense, Shape, Ui, UiBuilder, Vec2, pos2, vec2};
 
 use super::measure;
 use crate::design::text::{self, TextStyle};
@@ -23,12 +21,7 @@ use crate::design::{Weight, shadow, tokens};
 /// The page title (`h1`, title size, weight 840) and an optional lead paragraph.
 pub fn page_header(ui: &mut Ui, title: &str, lead: Option<&str>) {
     let t = tokens(ui.ctx());
-    text::paragraph(
-        ui,
-        title,
-        TextStyle::TITLE.weight(Weight::Black).heading(),
-        t.fg,
-    );
+    text::paragraph(ui, title, TextStyle::TITLE.weight(Weight::Black).heading(), t.fg);
     if let Some(lead) = lead {
         ui.add_space(4.0);
         let max = 72.0 * text::ch(ui, TextStyle::BODY);
@@ -40,22 +33,11 @@ pub fn page_header(ui: &mut Ui, title: &str, lead: Option<&str>) {
 /// [`page_header`] with a lead built from UI (links, code).
 pub fn page_header_with(ui: &mut Ui, title: &str, lead: impl FnOnce(&mut Ui)) {
     let t = tokens(ui.ctx());
-    text::paragraph(
-        ui,
-        title,
-        TextStyle::TITLE.weight(Weight::Black).heading(),
-        t.fg,
-    );
+    text::paragraph(ui, title, TextStyle::TITLE.weight(Weight::Black).heading(), t.fg);
     ui.add_space(4.0);
     let max = 72.0 * text::ch(ui, TextStyle::BODY);
     let width = ui.available_width().min(max);
-    ui.scope_builder(
-        UiBuilder::new().max_rect(Rect::from_min_size(
-            ui.cursor().min,
-            vec2(width, f32::INFINITY),
-        )),
-        lead,
-    );
+    ui.scope_builder(UiBuilder::new().max_rect(Rect::from_min_size(ui.cursor().min, vec2(width, f32::INFINITY))), lead);
     ui.add_space(24.0);
 }
 
@@ -72,11 +54,7 @@ pub struct Group<'a> {
 
 impl<'a> Group<'a> {
     pub fn new(title: impl Into<Cow<'a, str>>) -> Self {
-        Self {
-            title: title.into(),
-            description: None,
-            action: None,
-        }
+        Self { title: title.into(), description: None, action: None }
     }
 
     pub fn description(mut self, description: impl Into<Cow<'a, str>>) -> Self {
@@ -99,50 +77,25 @@ impl<'a> Group<'a> {
             Some(_) => measure::remembered(ui.ctx(), id.with("action")).unwrap_or(Vec2::ZERO),
             None => Vec2::ZERO,
         };
-        let text_w = if self.action.is_some() {
-            width - 16.0 - action_size.x
-        } else {
-            width
-        }
-        .max(40.0);
-        let title = text::galley(
-            ui,
-            self.title.as_ref(),
-            TextStyle::BODY.weight(Weight::Semibold).heading(),
-            t.fg,
-            text_w,
-        );
+        let text_w = if self.action.is_some() { width - 16.0 - action_size.x } else { width }.max(40.0);
+        let title =
+            text::galley(ui, self.title.as_ref(), TextStyle::BODY.weight(Weight::Semibold).heading(), t.fg, text_w);
         let description = self.description.as_ref().map(|d| {
             let max = 78.0 * text::ch(ui, TextStyle::CAPTION);
             text::galley(ui, d.as_ref(), TextStyle::CAPTION, t.fg_2, text_w.min(max))
         });
-        let text_h = title.size().y
-            + description
-                .as_ref()
-                .map(|d| 2.0 + d.size().y)
-                .unwrap_or(0.0);
+        let text_h = title.size().y + description.as_ref().map(|d| 2.0 + d.size().y).unwrap_or(0.0);
         // `min-h-8 items-end`: both sides sit on the bottom of the header.
         let header_h = text_h.max(32.0).max(action_size.y);
         let text_top = top.y + header_h - text_h;
-        ui.painter()
-            .galley(pos2(top.x, text_top), title.clone(), t.fg);
+        ui.painter().galley(pos2(top.x, text_top), title.clone(), t.fg);
         if let Some(description) = description {
-            ui.painter().galley(
-                pos2(top.x, text_top + title.size().y + 2.0),
-                description,
-                t.fg_2,
-            );
+            ui.painter().galley(pos2(top.x, text_top + title.size().y + 2.0), description, t.fg_2);
         }
         if let Some(action) = self.action {
-            let area = Rect::from_min_max(
-                pos2(top.x + width - action_size.x, top.y),
-                pos2(top.x + width, top.y + header_h),
-            );
-            let mut child = ui.new_child(
-                UiBuilder::new()
-                    .max_rect(area)
-                    .layout(Layout::left_to_right(Align::Max)),
-            );
+            let area =
+                Rect::from_min_max(pos2(top.x + width - action_size.x, top.y), pos2(top.x + width, top.y + header_h));
+            let mut child = ui.new_child(UiBuilder::new().max_rect(area).layout(Layout::left_to_right(Align::Max)));
             child.spacing_mut().item_spacing = vec2(8.0, 0.0);
             action(&mut child);
             measure::record(ui.ctx(), id.with("action"), child.min_rect().size());
@@ -171,18 +124,11 @@ pub fn card<R>(ui: &mut Ui, padding: Margin, content: impl FnOnce(&mut Ui) -> R)
         pos2(top.x + padding.leftf(), top.y + padding.topf()),
         vec2(width - padding.sum().x, f32::INFINITY),
     );
-    let mut child = ui.new_child(
-        UiBuilder::new()
-            .max_rect(inner_rect)
-            .layout(Layout::top_down(Align::Min)),
-    );
+    let mut child = ui.new_child(UiBuilder::new().max_rect(inner_rect).layout(Layout::top_down(Align::Min)));
     let inner = content(&mut child);
     let height = child.min_rect().height().max(0.0) + padding.sum().y;
     let rect = Rect::from_min_size(top, vec2(width, height));
-    ui.painter().set(
-        slot,
-        shadow::surface(rect, 10.0, t.card, &t.shadow_card, t.hc_border),
-    );
+    ui.painter().set(slot, shadow::surface(rect, 10.0, t.card, &t.shadow_card, t.hc_border));
     let response = ui.allocate_rect(rect, Sense::hover());
     (inner, response)
 }
@@ -205,19 +151,11 @@ pub struct SettingRow<'a> {
 
 impl<'a> SettingRow<'a> {
     pub fn new(label: impl Into<Cow<'a, str>>, description: impl Into<Cow<'a, str>>) -> Self {
-        Self {
-            label: label.into(),
-            description: Description::Text(description.into()),
-            disabled: false,
-            id_salt: None,
-        }
+        Self { label: label.into(), description: Description::Text(description.into()), disabled: false, id_salt: None }
     }
 
     /// A description built from UI (text plus a path line, say). Draw it at caption size.
-    pub fn new_with(
-        label: impl Into<Cow<'a, str>>,
-        description: impl FnOnce(&mut Ui) + 'a,
-    ) -> Self {
+    pub fn new_with(label: impl Into<Cow<'a, str>>, description: impl FnOnce(&mut Ui) + 'a) -> Self {
         Self {
             label: label.into(),
             description: Description::Ui(Box::new(description)),
@@ -241,19 +179,12 @@ impl<'a> SettingRow<'a> {
     /// The row with a control. The control closure lays out left to right with
     /// 8 px gaps (`flex items-center gap-2`), right-aligned in the card.
     pub fn show<R>(self, ui: &mut Ui, control: impl FnOnce(&mut Ui) -> R) -> R {
-        self.layout(ui, Some(control), None::<fn(&mut Ui)>)
-            .expect("control given")
+        self.layout(ui, Some(control), None::<fn(&mut Ui)>).expect("control given")
     }
 
     /// The row with a control and children under it.
-    pub fn show_with<R>(
-        self,
-        ui: &mut Ui,
-        control: impl FnOnce(&mut Ui) -> R,
-        children: impl FnOnce(&mut Ui),
-    ) -> R {
-        self.layout(ui, Some(control), Some(children))
-            .expect("control given")
+    pub fn show_with<R>(self, ui: &mut Ui, control: impl FnOnce(&mut Ui) -> R, children: impl FnOnce(&mut Ui)) -> R {
+        self.layout(ui, Some(control), Some(children)).expect("control given")
     }
 
     /// A row without a control, with children under the text.
@@ -274,9 +205,7 @@ impl<'a> SettingRow<'a> {
     ) -> Option<R> {
         let ctx = ui.ctx().clone();
         let t = tokens(&ctx);
-        let id = self
-            .id_salt
-            .unwrap_or_else(|| ui.auto_id_with(("flow-row", self.label.as_ref())));
+        let id = self.id_salt.unwrap_or_else(|| ui.auto_id_with(("flow-row", self.label.as_ref())));
         let slot = ui.painter().add(Shape::Noop);
         let width = ui.available_width();
         let top = ui.cursor().min;
@@ -289,75 +218,37 @@ impl<'a> SettingRow<'a> {
         } else {
             Vec2::ZERO
         };
-        let text_w = (right
-            - left
-            - if control.is_some() {
-                24.0 + control_size.x
-            } else {
-                0.0
-            })
-        .max(40.0);
+        let text_w = (right - left - if control.is_some() { 24.0 + control_size.x } else { 0.0 }).max(40.0);
         let label_color = if self.disabled { t.fg_3 } else { t.fg };
-        let label = text::galley(
-            ui,
-            self.label.as_ref(),
-            TextStyle::BODY,
-            label_color,
-            text_w,
-        );
+        let label = text::galley(ui, self.label.as_ref(), TextStyle::BODY, label_color, text_w);
         let (description_h, description) = match self.description {
             Description::Text(text) => {
                 let g = text::galley(ui, text.as_ref(), TextStyle::CAPTION, t.fg_2, text_w);
                 (g.size().y, Some(Ok(g)))
             }
-            Description::Ui(f) => (
-                measure::remembered(&ctx, id.with("description"))
-                    .map(|s| s.y)
-                    .unwrap_or(16.0),
-                Some(Err(f)),
-            ),
+            Description::Ui(f) => {
+                (measure::remembered(&ctx, id.with("description")).map(|s| s.y).unwrap_or(16.0), Some(Err(f)))
+            }
         };
         let text_h = label.size().y + 2.0 + description_h;
         let row_h = text_h.max(40.0).max(control_size.y);
         let text_top = content_top + (row_h - text_h) / 2.0;
         let label_h = label.size().y;
-        ui.painter()
-            .galley(pos2(left, text_top), label, label_color);
+        ui.painter().galley(pos2(left, text_top), label, label_color);
         match description {
-            Some(Ok(galley)) => {
-                ui.painter()
-                    .galley(pos2(left, text_top + label_h + 2.0), galley, t.fg_2)
-            }
+            Some(Ok(galley)) => ui.painter().galley(pos2(left, text_top + label_h + 2.0), galley, t.fg_2),
             Some(Err(f)) => {
-                let area = Rect::from_min_size(
-                    pos2(left, text_top + label_h + 2.0),
-                    vec2(text_w, f32::INFINITY),
-                );
-                let mut child = ui.new_child(
-                    UiBuilder::new()
-                        .max_rect(area)
-                        .layout(Layout::top_down(Align::Min)),
-                );
+                let area = Rect::from_min_size(pos2(left, text_top + label_h + 2.0), vec2(text_w, f32::INFINITY));
+                let mut child = ui.new_child(UiBuilder::new().max_rect(area).layout(Layout::top_down(Align::Min)));
                 f(&mut child);
-                measure::record(
-                    &ctx,
-                    id.with("description"),
-                    vec2(text_w, child.min_rect().height()),
-                );
+                measure::record(&ctx, id.with("description"), vec2(text_w, child.min_rect().height()));
             }
             None => {}
         }
 
         let result = control.map(|control| {
-            let area = Rect::from_min_max(
-                pos2(right - control_size.x, content_top),
-                pos2(right, content_top + row_h),
-            );
-            let mut child = ui.new_child(
-                UiBuilder::new()
-                    .max_rect(area)
-                    .layout(Layout::left_to_right(Align::Center)),
-            );
+            let area = Rect::from_min_max(pos2(right - control_size.x, content_top), pos2(right, content_top + row_h));
+            let mut child = ui.new_child(UiBuilder::new().max_rect(area).layout(Layout::left_to_right(Align::Center)));
             child.spacing_mut().item_spacing = vec2(8.0, 0.0);
             let r = control(&mut child);
             measure::record(&ctx, id.with("control"), child.min_rect().size());
@@ -367,19 +258,12 @@ impl<'a> SettingRow<'a> {
         let mut bottom = content_top + row_h;
         if let Some(children) = children {
             let area = Rect::from_min_size(pos2(left, bottom), vec2(right - left, f32::INFINITY));
-            let mut child = ui.new_child(
-                UiBuilder::new()
-                    .max_rect(area)
-                    .layout(Layout::top_down(Align::Min)),
-            );
+            let mut child = ui.new_child(UiBuilder::new().max_rect(area).layout(Layout::top_down(Align::Min)));
             children(&mut child);
             bottom += child.min_rect().height().max(0.0);
         }
         let rect = Rect::from_min_max(top, pos2(top.x + width, bottom + 12.0));
-        ui.painter().set(
-            slot,
-            shadow::surface(rect, 10.0, t.card, &t.shadow_card, t.hc_border),
-        );
+        ui.painter().set(slot, shadow::surface(rect, 10.0, t.card, &t.shadow_card, t.hc_border));
         ui.advance_cursor_after_rect(rect);
         result
     }
@@ -398,27 +282,13 @@ pub fn empty_state(ui: &mut Ui, sentence: &str, action: impl FnOnce(&mut Ui)) {
     let text_w = (right - left - 24.0 - action_size.x).max(40.0);
     let galley = text::galley(ui, sentence, TextStyle::BODY, t.fg_2, text_w);
     let row_h = galley.size().y.max(action_size.y);
-    ui.painter().galley(
-        pos2(left, top.y + 16.0 + (row_h - galley.size().y) / 2.0),
-        galley,
-        t.fg_2,
-    );
-    let area = Rect::from_min_max(
-        pos2(right - action_size.x, top.y + 16.0),
-        pos2(right, top.y + 16.0 + row_h),
-    );
-    let mut child = ui.new_child(
-        UiBuilder::new()
-            .max_rect(area)
-            .layout(Layout::left_to_right(Align::Center)),
-    );
+    ui.painter().galley(pos2(left, top.y + 16.0 + (row_h - galley.size().y) / 2.0), galley, t.fg_2);
+    let area = Rect::from_min_max(pos2(right - action_size.x, top.y + 16.0), pos2(right, top.y + 16.0 + row_h));
+    let mut child = ui.new_child(UiBuilder::new().max_rect(area).layout(Layout::left_to_right(Align::Center)));
     child.spacing_mut().item_spacing = vec2(8.0, 0.0);
     action(&mut child);
     measure::record(&ctx, id, child.min_rect().size());
     let rect = Rect::from_min_size(top, vec2(width, row_h + 32.0));
-    ui.painter().set(
-        slot,
-        shadow::surface(rect, 10.0, t.card, &t.shadow_card, t.hc_border),
-    );
+    ui.painter().set(slot, shadow::surface(rect, 10.0, t.card, &t.shadow_card, t.hc_border));
     ui.advance_cursor_after_rect(rect);
 }

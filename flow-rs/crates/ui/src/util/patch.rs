@@ -21,27 +21,15 @@ mod tests {
     #[test]
     fn sets_a_nested_value_without_touching_the_original() {
         let config = Config::default();
-        let next = patched_config(
-            &config,
-            &[ConfigPatch::set(path!["audio", "sounds"], false)],
-        );
+        let next = patched_config(&config, &[ConfigPatch::set(path!["audio", "sounds"], false)]);
         assert!(!next.audio.sounds);
         assert!(config.audio.sounds);
     }
 
     #[test]
     fn creates_missing_tables_on_the_way_down() {
-        let next = apply_patches(
-            &json!({}),
-            &[ConfigPatch::set(
-                path!["prompts", "standup", "text"],
-                "Short notes.",
-            )],
-        );
-        assert_eq!(
-            next,
-            json!({ "prompts": { "standup": { "text": "Short notes." } } })
-        );
+        let next = apply_patches(&json!({}), &[ConfigPatch::set(path!["prompts", "standup", "text"], "Short notes.")]);
+        assert_eq!(next, json!({ "prompts": { "standup": { "text": "Short notes." } } }));
     }
 
     #[test]
@@ -54,24 +42,15 @@ mod tests {
     #[test]
     fn splices_an_array_item_and_ignores_removals_under_a_missing_parent() {
         let start = json!({ "list": ["a", "b", "c"] });
-        assert_eq!(
-            apply_patches(&start, &[ConfigPatch::remove(path!["list", 1usize])]),
-            json!({ "list": ["a", "c"] })
-        );
-        assert_eq!(
-            apply_patches(&start, &[ConfigPatch::remove(path!["nope", "x"])]),
-            start
-        );
+        assert_eq!(apply_patches(&start, &[ConfigPatch::remove(path!["list", 1usize])]), json!({ "list": ["a", "c"] }));
+        assert_eq!(apply_patches(&start, &[ConfigPatch::remove(path!["nope", "x"])]), start);
     }
 
     #[test]
     fn replaces_whole_arrays() {
         let next = patched_config(
             &Config::default(),
-            &[ConfigPatch::set(
-                path!["dictionary"],
-                json!([{ "heard": ["tory"], "write": "Tauri" }]),
-            )],
+            &[ConfigPatch::set(path!["dictionary"], json!([{ "heard": ["tory"], "write": "Tauri" }]))],
         );
         assert_eq!(next.dictionary.len(), 1);
         assert_eq!(next.dictionary[0].write, "Tauri");
@@ -79,13 +58,7 @@ mod tests {
 
     #[test]
     fn joins_keys_with_dots_and_indexes_with_brackets() {
-        assert_eq!(
-            format_path(&path!["audio", "max_recording_seconds"]),
-            "audio.max_recording_seconds"
-        );
-        assert_eq!(
-            format_path(&path!["profiles", 1usize, "name"]),
-            "profiles[1].name"
-        );
+        assert_eq!(format_path(&path!["audio", "max_recording_seconds"]), "audio.max_recording_seconds");
+        assert_eq!(format_path(&path!["profiles", 1usize, "name"]), "profiles[1].name");
     }
 }

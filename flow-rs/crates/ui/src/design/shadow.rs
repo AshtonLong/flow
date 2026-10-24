@@ -41,20 +41,10 @@ pub fn paint_surface(
 /// The shape of [`paint_surface`]. Reserve a slot with `painter.add(Shape::Noop)`
 /// before drawing the content, then `painter.set(slot, surface(...))` once the
 /// size is known.
-pub fn surface(
-    rect: Rect,
-    radius: f32,
-    fill: Color32,
-    shadows: &[BoxShadow],
-    border: Option<Color32>,
-) -> Shape {
+pub fn surface(rect: Rect, radius: f32, fill: Color32, shadows: &[BoxShadow], border: Option<Color32>) -> Shape {
     let mut shapes = Vec::new();
     box_shadow_shapes(&mut shapes, rect, radius, shadows);
-    shapes.push(Shape::Rect(RectShape::filled(
-        rect,
-        CornerRadius::from(radius),
-        fill,
-    )));
+    shapes.push(Shape::Rect(RectShape::filled(rect, CornerRadius::from(radius), fill)));
     if let Some(border) = border {
         shapes.push(Shape::Rect(RectShape::stroke(
             rect,
@@ -96,8 +86,7 @@ fn shadow_shape(out: &mut Vec<Shape>, rect: Rect, radius: f32, shadow: &BoxShado
     let sigma = shadow.blur / 2.0;
     let half = vec2(shape.width().max(0.0), shape.height().max(0.0)) / 2.0;
     // Peak opacity of a blurred box smaller than the blur.
-    let peak = erf(half.x / (sigma * std::f32::consts::SQRT_2))
-        * erf(half.y / (sigma * std::f32::consts::SQRT_2));
+    let peak = erf(half.x / (sigma * std::f32::consts::SQRT_2)) * erf(half.y / (sigma * std::f32::consts::SQRT_2));
     let inner_limit = half.x.min(half.y);
     let reach = 3.0 * sigma;
     let start = -reach.min(inner_limit);
@@ -112,9 +101,7 @@ fn shadow_shape(out: &mut Vec<Shape>, rect: Rect, radius: f32, shadow: &BoxShado
         let d = start + (reach - start) * ring as f32 / (RINGS - 1) as f32;
         let color = alpha(shadow.color, (profile(d, sigma) * peak).clamp(0.0, 1.0));
         let ring_rect = shape.expand(d);
-        let r = (base_radius + d)
-            .max(0.0)
-            .min(ring_rect.width().min(ring_rect.height()).max(0.0) / 2.0);
+        let r = (base_radius + d).max(0.0).min(ring_rect.width().min(ring_rect.height()).max(0.0) / 2.0);
         for p in rounded_points(ring_rect, r) {
             mesh.colored_vertex(p, color);
         }
@@ -154,8 +141,7 @@ fn erf(x: f32) -> f32 {
     let x = x.abs();
     let t = 1.0 / (1.0 + 0.327_591_1 * x);
     let y = 1.0
-        - (((((1.061_405_4 * t - 1.453_152_1) * t) + 1.421_413_7) * t - 0.284_496_74) * t
-            + 0.254_829_6)
+        - (((((1.061_405_4 * t - 1.453_152_1) * t) + 1.421_413_7) * t - 0.284_496_74) * t + 0.254_829_6)
             * t
             * (-x * x).exp();
     sign * y
@@ -166,15 +152,9 @@ fn erf(x: f32) -> f32 {
 fn rounded_points(rect: Rect, r: f32) -> impl Iterator<Item = Pos2> {
     let corners = [
         (pos2(rect.left() + r, rect.top() + r), std::f32::consts::PI),
-        (
-            pos2(rect.right() - r, rect.top() + r),
-            1.5 * std::f32::consts::PI,
-        ),
+        (pos2(rect.right() - r, rect.top() + r), 1.5 * std::f32::consts::PI),
         (pos2(rect.right() - r, rect.bottom() - r), 0.0),
-        (
-            pos2(rect.left() + r, rect.bottom() - r),
-            0.5 * std::f32::consts::PI,
-        ),
+        (pos2(rect.left() + r, rect.bottom() - r), 0.5 * std::f32::consts::PI),
     ];
     corners.into_iter().flat_map(move |(c, start)| {
         (0..=CORNER_STEPS).map(move |i| {

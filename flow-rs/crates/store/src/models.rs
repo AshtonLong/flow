@@ -270,26 +270,44 @@ impl ModelManager {
             let ready = self.provider_ready(&entry.provider, &config, &catalog);
             status.insert(
                 entry.id.clone(),
-                ModelStatus { id: entry.id.clone(), ready, active: active == entry.id, loaded: false, download: None, custom: false },
+                ModelStatus {
+                    id: entry.id.clone(),
+                    ready,
+                    active: active == entry.id,
+                    loaded: false,
+                    download: None,
+                    custom: false,
+                },
             );
         }
 
         let mut custom: Vec<ModelEntry> = Vec::new();
         for entry in self.custom_local(&config, &catalog) {
-            status.insert(entry.id.clone(), ModelStatus { custom: true, ..local_status(&entry.id, entry.size_bytes > 0) });
+            status.insert(
+                entry.id.clone(),
+                ModelStatus { custom: true, ..local_status(&entry.id, entry.size_bytes > 0) },
+            );
             custom.push(ModelEntry::Local(entry));
         }
         for entry in self.custom_cloud(&config, &catalog) {
             let ready = self.provider_ready(&entry.provider, &config, &catalog);
             status.insert(
                 entry.id.clone(),
-                ModelStatus { id: entry.id.clone(), ready, active: active == entry.id, loaded: false, download: None, custom: true },
+                ModelStatus {
+                    id: entry.id.clone(),
+                    ready,
+                    active: active == entry.id,
+                    loaded: false,
+                    download: None,
+                    custom: true,
+                },
             );
             custom.push(ModelEntry::Cloud(entry));
         }
 
         let mut keys: IndexMap<String, bool> = IndexMap::new();
-        let provider_ids = catalog.providers.iter().map(|p| p.id.as_str()).chain(config.providers.keys().map(String::as_str));
+        let provider_ids =
+            catalog.providers.iter().map(|p| p.id.as_str()).chain(config.providers.keys().map(String::as_str));
         for id in provider_ids {
             keys.insert(id.to_string(), (self.deps.has_secret)(&secret_id(id, &config)));
         }
@@ -356,13 +374,16 @@ impl ModelManager {
                 let _ = result.await;
                 this.download(&id).await
             });
-            return async move { restart.await.unwrap_or_else(|error| Err(ModelError::Failed(error.to_string()))) }.boxed();
+            return async move { restart.await.unwrap_or_else(|error| Err(ModelError::Failed(error.to_string()))) }
+                .boxed();
         }
 
         let Some(entry) = state.catalog.local_entry(id).cloned() else {
             drop(state);
             let message = match self.local_entry(id) {
-                Some(custom) => format!("{} is a file you registered yourself; there is nothing to download", custom.name),
+                Some(custom) => {
+                    format!("{} is a file you registered yourself; there is nothing to download", custom.name)
+                }
                 None => format!("Unknown model: {id}"),
             };
             return futures_util::future::ready(Err(ModelError::Failed(message))).boxed();
@@ -379,7 +400,9 @@ impl ModelManager {
         // The lock is held until the download is registered, so its first step waits for that.
         let task = tokio::spawn(async move { this.run_download(entry, token, generation).await });
         let result: SharedResult =
-            async move { task.await.unwrap_or_else(|error| Err(ModelError::Failed(error.to_string()))) }.boxed().shared();
+            async move { task.await.unwrap_or_else(|error| Err(ModelError::Failed(error.to_string()))) }
+                .boxed()
+                .shared();
         state.downloads.insert(id.to_string(), ActiveDownload { generation, cancel, result: result.clone() });
         result.boxed()
     }
@@ -552,9 +575,10 @@ impl ModelManager {
             // Missing: listed, but not ready.
             let size_bytes = std::fs::metadata(&path).ok().filter(|m| m.is_file()).map_or(0, |m| m.len());
             let file = path.to_string_lossy().into_owned();
-            let name = model.name.clone().unwrap_or_else(|| {
-                path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()
-            });
+            let name = model
+                .name
+                .clone()
+                .unwrap_or_else(|| path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default());
             entries.push(LocalModelEntry {
                 id: model.id.clone(),
                 name,
@@ -626,7 +650,12 @@ impl ModelManager {
         }
     }
 
-    async fn run_download(&self, entry: LocalModelEntry, cancel: CancellationToken, generation: u64) -> Result<(), ModelError> {
+    async fn run_download(
+        &self,
+        entry: LocalModelEntry,
+        cancel: CancellationToken,
+        generation: u64,
+    ) -> Result<(), ModelError> {
         let id = entry.id.clone();
         let total = entry.size_bytes;
         let dest_path = self.path_of(&entry);
@@ -904,7 +933,9 @@ impl ModelManager {
             changed = true;
             if actual == expected {
                 let mut state = self.state.lock();
-                state.verified.insert(entry.file.clone(), VerifiedFile { sha256: expected, size_bytes, mtime_ms: modified });
+                state
+                    .verified
+                    .insert(entry.file.clone(), VerifiedFile { sha256: expected, size_bytes, mtime_ms: modified });
                 state.corrupt.remove(&entry.file);
                 continue;
             }

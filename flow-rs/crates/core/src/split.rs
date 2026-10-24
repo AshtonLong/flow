@@ -24,10 +24,7 @@ fn js_round(value: f64) -> f64 {
 /// (30 when it is not positive; `sample_rate` 0 means 16 kHz).
 /// Pieces concatenate back to the input exactly; they are views of it, not copies.
 pub fn split_at_pauses(audio: &[f32], max_seconds: f64, sample_rate: u32) -> Vec<&[f32]> {
-    split_ranges(audio, max_seconds, sample_rate)
-        .into_iter()
-        .map(|range| &audio[range])
-        .collect()
+    split_ranges(audio, max_seconds, sample_rate).into_iter().map(|range| &audio[range]).collect()
 }
 
 /// [`split_at_pauses`] as index ranges into `audio`.

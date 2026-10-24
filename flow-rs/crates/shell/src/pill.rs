@@ -13,8 +13,8 @@ use std::time::Duration;
 use flow_core::config::{OverlaySize, OverlayStyle};
 use flow_core::types::{OverlayAppearance, OverlayPhase, OverlayState};
 use tiny_skia::{
-    FillRule, FilterQuality, LineCap, LineJoin, Mask, Paint, Path, PathBuilder, Pixmap, PixmapPaint, Rect,
-    Stroke, Transform,
+    FillRule, FilterQuality, LineCap, LineJoin, Mask, Paint, Path, PathBuilder, Pixmap, PixmapPaint, Rect, Stroke,
+    Transform,
 };
 
 use crate::anim::CubicBezier;
@@ -262,8 +262,8 @@ fn layout(font: &Font, look: &PillLook, style: &PillStyle, palette: &Palette, dp
     if phase == OverlayPhase::Error {
         push(ItemKind::Icon(Icon::Bang), icon, icon);
     }
-    let label_shown = !look.label.is_empty()
-        && (!minimal || matches!(phase, OverlayPhase::Error | OverlayPhase::Notice));
+    let label_shown =
+        !look.label.is_empty() && (!minimal || matches!(phase, OverlayPhase::Error | OverlayPhase::Notice));
     let label_size = 14.0 * k;
     if label_shown {
         let shaped = font.shape(&look.label, &[]);
@@ -383,8 +383,7 @@ fn draw_text(pixmap: &mut Pixmap, font: &Font, item: &Item, layout: &Layout) {
     let ItemKind::Text { shaped, size, color } = &item.kind else { return };
     // The line box is `line-height: 1`; the baseline lands on a whole pixel.
     let baseline = (item.y + font.baseline_offset(*size, item.h)).round();
-    let Some(line) = font.rasterize(shaped, *size, item.x, baseline, item.x + item.w + 0.5, TextLook::default())
-    else {
+    let Some(line) = font.rasterize(shaped, *size, item.x, baseline, item.x + item.w + 0.5, TextLook::default()) else {
         return;
     };
     // Paint the colour through the line's coverage.
@@ -479,7 +478,13 @@ fn draw_dots(pixmap: &mut Pixmap, item: &Item, layout: &Layout, time: f32, reduc
         let cx = item.x + i as f32 * 9.0 * k + r;
         let cy = item.y + r - lift * 3.0 * k;
         if let Some(path) = PathBuilder::from_circle(cx, cy, r) {
-            pixmap.fill_path(&path, &paint(color.with_alpha(color.a * opacity)), FillRule::Winding, Transform::identity(), None);
+            pixmap.fill_path(
+                &path,
+                &paint(color.with_alpha(color.a * opacity)),
+                FillRule::Winding,
+                Transform::identity(),
+                None,
+            );
         }
     }
 }
@@ -774,7 +779,9 @@ mod tests {
     fn long_labels_are_cut_with_an_ellipsis() {
         let s = OverlayState {
             phase: OverlayPhase::Error,
-            message: Some("The model could not be loaded because the file on disk is damaged; download it again".into()),
+            message: Some(
+                "The model could not be loaded because the file on disk is damaged; download it again".into(),
+            ),
             ..Default::default()
         };
         let p = render_pill(&s, &appearance(), 1.0, 0.0, &[]);

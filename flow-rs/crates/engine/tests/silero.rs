@@ -8,7 +8,8 @@ use flow_core::vad::{DEFAULT_SEGMENT_OPTIONS, Segment, extract_segments, segment
 use flow_engine::silero::SileroVad;
 
 fn reference() -> Vec<f32> {
-    let text = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/jfk_silero_ts.json")).unwrap();
+    let text =
+        std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/jfk_silero_ts.json")).unwrap();
     let json: serde_json::Value = serde_json::from_str(&text).unwrap();
     json["probs"].as_array().unwrap().iter().map(|v| v.as_f64().unwrap() as f32).collect()
 }
@@ -34,10 +35,7 @@ fn trims_jfk_like_the_electron_engine() {
     assert_eq!(segments, expected);
     // Speech starts after ~0.35 s of silence; the pauses between phrases go.
     let ms = |s: f64, e: f64| Segment { start_ms: s, end_ms: e };
-    assert_eq!(
-        segments,
-        [ms(152.0, 2440.0), ms(3096.0, 4616.0), ms(5208.0, 7848.0), ms(7992.0, 11_000.0)]
-    );
+    assert_eq!(segments, [ms(152.0, 2440.0), ms(3096.0, 4616.0), ms(5208.0, 7848.0), ms(7992.0, 11_000.0)]);
     assert_eq!(samples_to_ms(extract_segments(&audio, &segments).len()), 9456.0);
 }
 

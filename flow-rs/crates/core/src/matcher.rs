@@ -14,7 +14,9 @@ use crate::hotkeys::{Binding, binding_satisfied, format_binding, generic_of, key
 pub enum HotkeyEvent {
     HoldStart,
     /// `aborted`: a foreign key was pressed during the hold, so it was a different shortcut.
-    HoldEnd { aborted: bool },
+    HoldEnd {
+        aborted: bool,
+    },
     /// Double-tap of the hold binding: start hands-free.
     Lock,
     Toggle,

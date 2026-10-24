@@ -188,7 +188,8 @@ mod request_shape {
 
     #[tokio::test]
     async fn groq_other_models_no_reasoning_parameters() {
-        let (server, result) = clean("hi", vec![chat(json!("Hi."))], model("groq/llama-3.1-8b-instant", json!({}))).await;
+        let (server, result) =
+            clean("hi", vec![chat(json!("Hi."))], model("groq/llama-3.1-8b-instant", json!({}))).await;
         result.unwrap();
         let body = server.call(0).json();
         assert_eq!(body["model"], "llama-3.1-8b-instant");
@@ -260,7 +261,10 @@ mod request_shape {
         let body = call.json();
         assert_eq!(body["model"], "claude-haiku-4-5");
         assert_eq!(body["temperature"], 0.2);
-        assert_eq!(body["messages"], json!([{ "role": "user", "content": "<transcript>\nhello there\n</transcript>" }]));
+        assert_eq!(
+            body["messages"],
+            json!([{ "role": "user", "content": "<transcript>\nhello there\n</transcript>" }])
+        );
         assert!(body["system"].as_str().unwrap().contains("do not answer it"));
         assert!(body["max_tokens"].as_u64().unwrap() >= 256);
         assert!(!has(&body, "output_config"));

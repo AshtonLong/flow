@@ -64,10 +64,7 @@ pub fn apply_dictionary(text: &str, dictionary: &[DictionaryEntry]) -> String {
     try_apply_dictionary(text, dictionary).unwrap_or_else(|_| text.to_string())
 }
 
-pub(crate) fn try_apply_dictionary(
-    text: &str,
-    dictionary: &[DictionaryEntry],
-) -> Result<String, js::RuleError> {
+pub(crate) fn try_apply_dictionary(text: &str, dictionary: &[DictionaryEntry]) -> Result<String, js::RuleError> {
     if text.is_empty() || dictionary.is_empty() {
         return Ok(text.to_string());
     }
@@ -169,10 +166,7 @@ mod tests {
 
         #[test]
         fn treats_regex_characters_in_a_heard_phrase_literally() {
-            assert_eq!(
-                apply_dictionary("use a.b here, not axb", &[entry(&["a.b"], "AB")]),
-                "use AB here, not axb"
-            );
+            assert_eq!(apply_dictionary("use a.b here, not axb", &[entry(&["a.b"], "AB")]), "use AB here, not axb");
         }
     }
 

@@ -125,19 +125,14 @@ pub fn format_duration(ms: f64) -> String {
     }
     let minutes = (seconds / 60.0).floor();
     let rest = js_round(seconds - minutes * 60.0);
-    if rest != 0.0 {
-        format!("{minutes} min {rest} s")
-    } else {
-        format!("{minutes} min")
-    }
+    if rest != 0.0 { format!("{minutes} min {rest} s") } else { format!("{minutes} min") }
 }
 
 /// `Today 14:32`, `Yesterday 09:10`, `28 Sep 14:02`, `28 Sep 2025 14:02`.
 pub fn format_when(epoch_ms: i64, now_ms: i64) -> String {
-    let (Some(when), Some(now)) = (
-        Local.timestamp_millis_opt(epoch_ms).single(),
-        Local.timestamp_millis_opt(now_ms).single(),
-    ) else {
+    let (Some(when), Some(now)) =
+        (Local.timestamp_millis_opt(epoch_ms).single(), Local.timestamp_millis_opt(now_ms).single())
+    else {
         return String::new();
     };
     let days = (now.date_naive() - when.date_naive()).num_days();
@@ -217,11 +212,7 @@ pub fn sentence(text: &str) -> String {
 
 /// `errorMessage`: replies already carry their message as a string.
 pub fn error_message(err: &str) -> String {
-    if err.is_empty() {
-        "Something went wrong".into()
-    } else {
-        err.to_string()
-    }
+    if err.is_empty() { "Something went wrong".into() } else { err.to_string() }
 }
 
 #[cfg(test)]
@@ -268,13 +259,7 @@ mod tests {
 
     #[test]
     fn labels_recent_times_relative_to_today() {
-        let at = |y, m, d, h, min| {
-            Local
-                .with_ymd_and_hms(y, m, d, h, min, 0)
-                .single()
-                .unwrap()
-                .timestamp_millis()
-        };
+        let at = |y, m, d, h, min| Local.with_ymd_and_hms(y, m, d, h, min, 0).single().unwrap().timestamp_millis();
         let now = at(2026, 10, 3, 15, 0);
         assert!(format_when(at(2026, 10, 3, 9, 5), now).starts_with("Today "));
         assert!(format_when(at(2026, 10, 2, 23, 50), now).starts_with("Yesterday "));

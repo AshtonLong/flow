@@ -39,10 +39,7 @@ pub struct Pending<T> {
 /// pending call can sit in egui memory (component state), which needs `Clone`.
 impl<T: Clone> Clone for Pending<T> {
     fn clone(&self) -> Self {
-        Self {
-            rx: self.rx.clone(),
-            done: self.done.clone(),
-        }
+        Self { rx: self.rx.clone(), done: self.done.clone() }
     }
 }
 
@@ -50,10 +47,7 @@ impl<T> Pending<T> {
     /// A pending value that is already settled (for code paths that need no call).
     pub fn ready(value: Result<T, String>) -> Self {
         let (_tx, rx) = crossbeam_channel::bounded(1);
-        Self {
-            rx,
-            done: Some(value),
-        }
+        Self { rx, done: Some(value) }
     }
 
     /// Settles when something is sent on the other end of `rx`.

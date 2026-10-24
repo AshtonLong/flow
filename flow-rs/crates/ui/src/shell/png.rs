@@ -8,11 +8,7 @@ fn crc32(data: &[u8], mut crc: u32) -> u32 {
     for &byte in data {
         crc ^= byte as u32;
         for _ in 0..8 {
-            crc = if crc & 1 != 0 {
-                0xedb8_8320 ^ (crc >> 1)
-            } else {
-                crc >> 1
-            };
+            crc = if crc & 1 != 0 { 0xedb8_8320 ^ (crc >> 1) } else { crc >> 1 };
         }
     }
     crc

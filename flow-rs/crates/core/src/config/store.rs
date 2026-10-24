@@ -16,19 +16,20 @@ use notify::{EventKind, RecursiveMode, Watcher};
 use parking_lot::{Mutex, RwLock};
 use serde_json::Value as Json;
 
-use super::migrations::{diff_patches, file_version, run_migrations, Migration, PlainObject, MIGRATIONS};
-use super::patch::{patch_toml, TomlPatchError};
+use super::migrations::{MIGRATIONS, Migration, PlainObject, diff_patches, file_version, run_migrations};
+use super::patch::{TomlPatchError, patch_toml};
 use super::toml_doc::create_line_locator;
-use super::toml_parse::{parse_toml, TomlSyntaxError};
+use super::toml_parse::{TomlSyntaxError, parse_toml};
 use super::toml_write::js_number_string;
 use super::validate::CONFIG_KEYS;
 use super::value::toml_to_json;
 use super::{
-    validate_config, write_file_atomic, Config, ConfigIssue, ConfigPatch, ConfigSnapshot, PathSeg, CONFIG_VERSION,
+    CONFIG_VERSION, Config, ConfigIssue, ConfigPatch, ConfigSnapshot, PathSeg, validate_config, write_file_atomic,
 };
 
 /// What a new `config.toml` contains.
-pub const DEFAULT_CONFIG_TEXT: &str = "# Flow settings. Edit this file by hand or use the settings window: changes apply when you save.
+pub const DEFAULT_CONFIG_TEXT: &str =
+    "# Flow settings. Edit this file by hand or use the settings window: changes apply when you save.
 # Every option has a default, so anything left out keeps its default value.
 # API keys are never stored here. Providers hold a reference such as api_key = \"secret:groq\".
 
@@ -96,7 +97,9 @@ pub fn strip_api_keys(text: &str) -> String {
         patch_toml(text, &patches).ok()
     });
     // The text does not parse, so it cannot be patched: drop the lines instead.
-    patched.unwrap_or_else(|| text.split('\n').filter(|line| !api_key_line().is_match(line)).collect::<Vec<_>>().join("\n"))
+    patched.unwrap_or_else(|| {
+        text.split('\n').filter(|line| !api_key_line().is_match(line)).collect::<Vec<_>>().join("\n")
+    })
 }
 
 /// `yyyyMMdd-HHmmss` in local time, for backup names.
@@ -265,9 +268,10 @@ impl ConfigStore {
             if matches!(event.kind, EventKind::Access(_)) {
                 return;
             }
-            let ours = event.paths.iter().any(|path| {
-                path.file_name().map(|file| file.to_string_lossy().to_lowercase()) == name
-            });
+            let ours = event
+                .paths
+                .iter()
+                .any(|path| path.file_name().map(|file| file.to_string_lossy().to_lowercase()) == name);
             if ours {
                 let _ = tx.send(());
             }
@@ -491,7 +495,13 @@ impl ConfigStore {
 
     /// Runs the migrations from `version` and writes the result back in place.
     /// Returns the version reached.
-    fn migrate(&self, file: &mut FileState, text: &mut String, raw: &mut PlainObject, version: f64) -> Result<f64, String> {
+    fn migrate(
+        &self,
+        file: &mut FileState,
+        text: &mut String,
+        raw: &mut PlainObject,
+        version: f64,
+    ) -> Result<f64, String> {
         let (migrated, reached) = run_migrations(raw, version, self.version, &self.migrations)?;
         if reached != version {
             let next = patch_toml(text, &diff_patches(raw, &migrated, &[])).map_err(|error| error_message(&error))?;
