@@ -182,7 +182,7 @@ pub fn read_frame<R: Read, T: for<'de> Deserialize<'de>>(input: &mut R) -> io::R
     }
     let mut raw = vec![0u8; samples as usize * 4];
     input.read_exact(&mut raw)?;
-    let pcm = raw.chunks_exact(4).map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]])).collect();
+    let pcm = raw.as_chunks::<4>().0.iter().map(|b| f32::from_le_bytes(*b)).collect();
     let header = serde_json::from_slice(&json).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
     Ok(Some((header, pcm)))
 }

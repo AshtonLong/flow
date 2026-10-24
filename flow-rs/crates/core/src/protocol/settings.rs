@@ -112,7 +112,9 @@ pub struct RequestEnvelope {
     pub request: Request,
 }
 
-/// A push from the main process to the window.
+/// A push from the main process to the window. Sent rarely, so the size of
+/// the snapshot variants doesn't matter.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "event", content = "payload")]
 pub enum Event {
@@ -131,6 +133,7 @@ pub enum Event {
 }
 
 /// A message from the main process to the window.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Downstream {
@@ -250,7 +253,7 @@ mod tests {
         match serde_json::from_str::<Downstream>(&text).unwrap() {
             Downstream::Response { id, result } => {
                 assert_eq!(id, 3);
-                assert_eq!(result.decode::<bool>().unwrap(), true);
+                assert!(result.decode::<bool>().unwrap());
             }
             other => panic!("unexpected {other:?}"),
         }

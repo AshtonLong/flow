@@ -524,7 +524,7 @@ pub type ConfigPath = Vec<PathSeg>;
 /// Builds a [`ConfigPath`]: `path!["audio", "sounds"]`, `path!["dictionary", 0usize]`.
 #[macro_export]
 macro_rules! path {
-    ($($seg:expr),* $(,)?) => { vec![$($crate::config::PathSeg::from($seg)),*] };
+    ($($seg:expr),* $(,)?) => { <$crate::config::ConfigPath>::from([$($crate::config::PathSeg::from($seg)),*]) };
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
