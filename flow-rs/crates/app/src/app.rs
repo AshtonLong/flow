@@ -618,7 +618,10 @@ async fn build(paths: Paths, rt: tokio::runtime::Handle, tx: mpsc::UnboundedSend
             router: router.clone(),
             trim,
             cleanup_llm,
-            capture: Arc::new(CaptureAdapter(capture.clone())),
+            capture: match crate::test_mode::FakeMic::from_env(tx.clone()) {
+                Some(fake) if crate::test_mode::enabled() => Arc::new(fake),
+                _ => Arc::new(CaptureAdapter(capture.clone())),
+            },
             overlay: Arc::new(OverlayAdapter(overlay.clone())),
             set_cancel_armed,
             add_history,

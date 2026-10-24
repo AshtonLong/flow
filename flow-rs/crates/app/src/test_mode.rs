@@ -94,3 +94,53 @@ pub fn spawn_reader(tx: UnboundedSender<AppMsg>, on_command: impl Fn(Command) + 
         })
         .expect("spawn the test command reader");
 }
+
+/// Reads a 16-bit PCM mono WAV into float samples.
+pub fn read_wav(path: &std::path::Path) -> std::io::Result<Vec<f32>> {
+    let bytes = std::fs::read(path)?;
+    let mut offset = 12;
+    while offset + 8 <= bytes.len() {
+        let id = &bytes[offset..offset + 4];
+        let size = u32::from_le_bytes([bytes[offset + 4], bytes[offset + 5], bytes[offset + 6], bytes[offset + 7]]) as usize;
+        if id == b"data" {
+            let data = &bytes[offset + 8..(offset + 8 + size).min(bytes.len())];
+            return Ok(data.chunks_exact(2).map(|b| i16::from_le_bytes([b[0], b[1]]) as f32 / 32768.0).collect());
+        }
+        offset += 8 + size + (size & 1);
+    }
+    Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "no data chunk"))
+}
+
+/// `FLOW_FAKE_MIC=<wav>`: a microphone that "speaks" the whole file as soon as
+/// it starts, in 100 ms chunks, then flushes when stopped.
+pub struct FakeMic {
+    samples: std::sync::Arc<Vec<f32>>,
+    tx: UnboundedSender<AppMsg>,
+}
+
+impl FakeMic {
+    pub fn from_env(tx: UnboundedSender<AppMsg>) -> Option<Self> {
+        let path = std::env::var_os("FLOW_FAKE_MIC")?;
+        match read_wav(std::path::Path::new(&path)) {
+            Ok(samples) => Some(Self { samples: std::sync::Arc::new(samples), tx }),
+            Err(err) => {
+                log::error!(target: "test", "FLOW_FAKE_MIC: {err}");
+                None
+            }
+        }
+    }
+}
+
+impl crate::session::SessionCapture for FakeMic {
+    fn start_capture(&self, _options: flow_core::types::CaptureStart) {
+        use flow_audio::CaptureEvent;
+        let _ = self.tx.send(AppMsg::Capture(CaptureEvent::Started));
+        for chunk in self.samples.chunks(1600) {
+            let _ = self.tx.send(AppMsg::Capture(CaptureEvent::Chunk(chunk.to_vec())));
+        }
+    }
+
+    fn stop_capture(&self) {
+        let _ = self.tx.send(AppMsg::Capture(flow_audio::CaptureEvent::Stopped));
+    }
+}
