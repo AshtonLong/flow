@@ -74,3 +74,4 @@ features = [
 tempfile = { workspace = true }
 
 [build-dependencies]
+embed-resource = "3"
