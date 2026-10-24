@@ -7,6 +7,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+flow-core = { workspace = true }
 cpal = { workspace = true }
 rubato = { workspace = true }
 nnnoiseless = { workspace = true }
@@ -15,3 +16,20 @@ parking_lot = { workspace = true }
 crossbeam-channel = { workspace = true }
 log = { workspace = true }
 thiserror = { workspace = true }
+
+# `#[implement]` (IMMNotificationClient) expands to `windows_core` paths. Already
+# in the workspace through cpal.
+[target.'cfg(windows)'.dependencies.windows-core]
+version = "0.62"
+
+[target.'cfg(windows)'.dependencies.windows]
+workspace = true
+features = [
+  "Win32_Foundation",
+  "Win32_Media_Audio",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_Registry",
+  "Win32_System_Variant",
+  "Win32_UI_Shell_PropertiesSystem",
+]
