@@ -145,7 +145,7 @@ pub fn create_cloud_transcriber(model_id: &str, deps: &CloudDeps) -> Result<Clou
         provider,
         adapter,
         // The catalog opts a model in to hints (`hints` defaults to false in the Rust schema).
-        use_hints: entry.hints,
+        use_hints: entry.hints != Some(false),
         http: deps.http.clone(),
     })
 }

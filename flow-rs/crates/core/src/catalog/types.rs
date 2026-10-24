@@ -91,9 +91,9 @@ pub struct CloudModelEntry {
     pub price_per_hour: f64,
     #[serde(default, skip_serializing_if = "is_false")]
     pub recommended: bool,
-    /// Supports dictionary terms as a hint.
-    #[serde(default, skip_serializing_if = "is_false")]
-    pub hints: bool,
+    /// Supports dictionary terms as a hint. Absent means yes (`hints !== false` in the TS).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hints: Option<bool>,
     /// Minimum billed seconds per request.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub min_billed_seconds: Option<f64>,
@@ -271,7 +271,7 @@ mod tests {
             description: String::new(),
             price_per_hour: 0.04,
             recommended: false,
-            hints: false,
+            hints: None,
             min_billed_seconds: Some(10.0),
             docs_url: None,
         };

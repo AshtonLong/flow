@@ -13,7 +13,7 @@ use super::{deps_with, providers, with_secrets};
 use crate::{CloudDeps, TranscribeOptions, create_cloud_transcriber, test_provider_key};
 
 /// A catalog cloud entry. The TS helper leaves `hints` unset, which means "on";
-/// the Rust schema defaults it to off, so the caller says which.
+/// `false` here sets it to off explicitly.
 fn cloud(id: &str, provider: &str, model: &str, hints: bool) -> CloudModelEntry {
     CloudModelEntry {
         id: id.into(),
@@ -23,7 +23,7 @@ fn cloud(id: &str, provider: &str, model: &str, hints: bool) -> CloudModelEntry 
         description: String::new(),
         price_per_hour: 0.0,
         recommended: false,
-        hints,
+        hints: if hints { None } else { Some(false) },
         min_billed_seconds: None,
         docs_url: None,
     }

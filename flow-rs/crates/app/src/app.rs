@@ -89,7 +89,6 @@ impl App {
             config,
             get_secret: self.secret_getter(),
             http: self.http.clone(),
-            ..CloudDeps::default_for(self.http.clone())
         }
     }
 
@@ -403,7 +402,7 @@ pub fn run(args: Vec<String>) -> i32 {
 
 async fn build(paths: Paths, rt: tokio::runtime::Handle, tx: mpsc::UnboundedSender<AppMsg>) -> anyhow::Result<Arc<App>> {
     let mut degraded = Vec::new();
-    let http = reqwest::Client::builder().user_agent(concat!("Flow/", env!("CARGO_PKG_VERSION"))).build()?;
+    let http = reqwest::Client::builder().user_agent(concat!("Flow/", env!("CARGO_PKG_VERSION"))).no_proxy().build()?;
 
     // ── Services ─────────────────────────────────────────────────────────────
     let config = ConfigStore::new(paths.config_file());
@@ -582,8 +581,7 @@ async fn build(paths: Paths, rt: tokio::runtime::Handle, tx: mpsc::UnboundedSend
                             catalog,
                             config,
                             get_secret: Arc::new(move |id: &str| secrets.get(id)),
-                            http: http.clone(),
-                            ..CloudDeps::default_for(http)
+                            http,
                         };
                         flow_cloud::cleanup_with_llm(&text, &deps, Some(&cancel)).await.map_err(|e| e.to_string())
                     })

@@ -11,7 +11,7 @@ use flow_core::catalog::{Catalog, is_cloud_model_id};
 use flow_core::config::{Config, DeviceSetting};
 use flow_core::errors::{TranscribeError, TranscribeErrorCode};
 use flow_core::protocol::engine::{EngineDevice, EngineModelRef};
-use flow_core::split::split_at_pauses;
+use flow_core::split::split_ranges;
 use flow_core::types::{SAMPLE_RATE, Transcript};
 use tokio_util::sync::CancellationToken;
 
@@ -117,7 +117,6 @@ impl Router {
             config: config.clone(),
             get_secret: self.get_secret.clone(),
             http: self.http.clone(),
-            ..CloudDeps::default_for(self.http.clone())
         }
     }
 
@@ -184,7 +183,7 @@ impl Router {
 
     async fn run(&self, transcriber: &Transcriber, audio: &[f32], opts: &TranscribeOpts) -> Result<Transcript, TranscribeError> {
         let pieces = if audio.len() as f64 > MAX_PIECE_SECONDS * SAMPLE_RATE as f64 {
-            split_at_pauses(audio, MAX_PIECE_SECONDS, SAMPLE_RATE)
+            split_ranges(audio, MAX_PIECE_SECONDS, SAMPLE_RATE)
         } else {
             vec![0..audio.len()]
         };
@@ -370,7 +369,7 @@ mod tests {
                 description: String::new(),
                 price_per_hour: 0.04,
                 recommended: false,
-                hints: false,
+                hints: None,
                 min_billed_seconds: None,
                 docs_url: None,
             }],
