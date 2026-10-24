@@ -124,7 +124,10 @@ impl SettingsHost {
             self.rt.spawn(async move {
                 let mut lines = BufReader::new(stderr).lines();
                 while let Ok(Some(line)) = lines.next_line().await {
-                    log::warn!(target: "settings", "{line}");
+                    let (level, text) = flow_core::protocol::parse_child_log(line.trim());
+                    if !text.is_empty() {
+                        log::log!(target: "settings", level, "{text}");
+                    }
                 }
             });
         }

@@ -75,7 +75,8 @@ pub fn spawn_reader(tx: UnboundedSender<AppMsg>, on_command: impl Fn(Command) + 
         .spawn(move || {
             for line in std::io::stdin().lock().lines() {
                 let Ok(line) = line else { break };
-                let mut words = line.split_whitespace();
+                // .NET writes a byte-order mark before the first line.
+                let mut words = line.trim_start_matches('\u{feff}').split_whitespace();
                 match (words.next(), words.next()) {
                     (Some("hotkey"), Some(name)) => {
                         if let Some(event) = hotkey(name) {

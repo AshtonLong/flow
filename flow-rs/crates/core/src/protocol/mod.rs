@@ -6,6 +6,33 @@ pub mod settings;
 use base64::Engine as _;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+/// A log line as a child process (engine, settings window) writes it to stderr:
+/// a level letter, a space, then `[target] message`.
+pub fn child_log_line(level: log::Level, target: &str, message: &std::fmt::Arguments<'_>) -> String {
+    let letter = match level {
+        log::Level::Error => 'E',
+        log::Level::Warn => 'W',
+        log::Level::Info => 'I',
+        log::Level::Debug => 'D',
+        log::Level::Trace => 'T',
+    };
+    format!("{letter} [{target}] {message}")
+}
+
+/// Reads a child's stderr line back: its level and the rest. Lines without a
+/// level letter (native libraries printing on their own) count as warnings.
+pub fn parse_child_log(line: &str) -> (log::Level, &str) {
+    let level = match line.get(..2) {
+        Some("E ") => log::Level::Error,
+        Some("W ") => log::Level::Warn,
+        Some("I ") => log::Level::Info,
+        Some("D ") => log::Level::Debug,
+        Some("T ") => log::Level::Trace,
+        _ => return (log::Level::Warn, line),
+    };
+    (level, &line[2..])
+}
+
 /// 16 kHz mono PCM. Travels in JSON as base64 of little-endian `f32`s.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Pcm(pub Vec<f32>);

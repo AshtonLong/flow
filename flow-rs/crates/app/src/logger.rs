@@ -56,7 +56,7 @@ pub fn init_stderr() {
         }
         fn log(&self, record: &log::Record) {
             if self.enabled(record.metadata()) {
-                eprintln!("[{}] {}", record.target(), record.args());
+                eprintln!("{}", flow_core::protocol::child_log_line(record.level(), record.target(), record.args()));
             }
         }
         fn flush(&self) {}
