@@ -1,0 +1,17 @@
+[package]
+name = "flow-audio"
+description = "Microphone capture at 16 kHz mono, level metering and the waveform analyser"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+cpal = { workspace = true }
+rubato = { workspace = true }
+nnnoiseless = { workspace = true }
+realfft = { workspace = true }
+parking_lot = { workspace = true }
+crossbeam-channel = { workspace = true }
+log = { workspace = true }
+thiserror = { workspace = true }

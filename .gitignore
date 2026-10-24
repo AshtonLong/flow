@@ -12,3 +12,7 @@ playwright-report/
 .env.*
 screenshots/tmp/
 tests/unit/**/_tmp/
+
+# Rust port build output
+flow-rs/target/
+flow-rs/target-*/

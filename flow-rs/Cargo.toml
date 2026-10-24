@@ -1,0 +1,84 @@
+[workspace]
+resolver = "3"
+members = [
+  "crates/core",
+  "crates/audio",
+  "crates/engine",
+  "crates/win",
+  "crates/cloud",
+  "crates/store",
+  "crates/shell",
+  "crates/ui",
+  "crates/app",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+authors = ["Flow contributors"]
+repository = "https://github.com/AshtonLong/flow"
+rust-version = "1.95"
+
+[workspace.dependencies]
+flow-core = { path = "crates/core" }
+flow-audio = { path = "crates/audio" }
+flow-engine = { path = "crates/engine" }
+flow-ui = { path = "crates/ui" }
+flow-win = { path = "crates/win" }
+flow-cloud = { path = "crates/cloud" }
+flow-store = { path = "crates/store" }
+flow-shell = { path = "crates/shell" }
+
+aes-gcm = "0.10"
+anyhow = "1"
+base64 = "0.22"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+cpal = "0.18"
+crossbeam-channel = "0.5"
+ed25519-dalek = { version = "2", default-features = false, features = ["std"] }
+eframe = { version = "0.37", default-features = false, features = ["glow", "accesskit"] }
+egui = "0.37"
+fancy-regex = "0.14"
+libloading = "0.9"
+log = "0.4"
+nnnoiseless = { version = "0.5", default-features = false }
+notify = "8"
+parking_lot = "0.12"
+realfft = "3"
+regex = "1"
+reqwest = { version = "0.13", default-features = false, features = ["native-tls", "http2", "json", "multipart", "stream", "charset", "system-proxy"] }
+rfd = { version = "0.17", default-features = false }
+rubato = "0.16"
+rusqlite = { version = "0.37", features = ["bundled"] }
+semver = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+sha2 = "0.10"
+silero-vad-pure = { version = "0.1", default-features = false }
+tempfile = "3"
+thiserror = "2"
+tiny-skia = "0.11"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "process", "io-util", "fs"] }
+toml = "0.9"
+ttf-parser = "0.25"
+url = "2"
+futures-util = "0.3"
+indexmap = { version = "2", features = ["serde"] }
+png = "0.17"
+tokio-util = "0.7"
+windows = { version = "0.62" }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 4
+strip = true
+panic = "unwind"
+
+[profile.dev]
+debug = "line-tables-only"
+
+# Debug builds of the DSP and VAD code are slow enough to distort timing; optimise deps.
+[profile.dev.package."*"]
+opt-level = 2

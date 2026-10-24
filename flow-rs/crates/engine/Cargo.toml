@@ -1,0 +1,19 @@
+[package]
+name = "flow-engine"
+description = "Flow's engine process: voice detection and local speech models through transcribe.cpp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+flow-core = { workspace = true }
+libloading = { workspace = true }
+silero-vad-pure = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+log = { workspace = true }
+thiserror = { workspace = true }
+parking_lot = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }

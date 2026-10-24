@@ -1,0 +1,30 @@
+[package]
+name = "flow-ui"
+description = "Flow's settings window"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+flow-core = { workspace = true }
+flow-audio = { workspace = true }
+eframe = { workspace = true }
+egui = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+base64 = { workspace = true }
+chrono = { workspace = true }
+crossbeam-channel = { workspace = true }
+parking_lot = { workspace = true }
+rfd = { workspace = true }
+log = { workspace = true }
+
+[dependencies.windows]
+workspace = true
+features = [
+  "Win32_Foundation",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_Graphics_Dwm",
+  "Win32_System_Threading",
+]
