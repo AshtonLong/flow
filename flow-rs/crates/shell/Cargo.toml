@@ -19,6 +19,10 @@ png = { workspace = true }
 # workspace through egui, so it adds no new package.
 harfrust = "0.12"
 
+[dev-dependencies.windows]
+workspace = true
+features = ["Win32_System_ProcessStatus", "Win32_System_WindowsProgramming"]
+
 [dependencies.windows]
 workspace = true
 features = [
