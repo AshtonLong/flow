@@ -261,7 +261,7 @@ mod tests {
             description: description.into(),
             price_per_hour: price,
             recommended: false,
-            hints: false,
+            hints: None,
             min_billed_seconds: None,
             docs_url: None,
         }

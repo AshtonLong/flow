@@ -384,6 +384,14 @@ pub fn run(args: Vec<String>) -> i32 {
             models.refresh_catalog().await;
         });
     }
+    {
+        // The cleanup rules compile their patterns on first use (~30 ms, more
+        // with a long dictionary); do it now rather than in the first dictation.
+        let config = app.config.get();
+        rt.spawn_blocking(move || {
+            flow_core::cleanup::apply_rules("warm up", &config, &flow_core::cleanup::RulesContext::default())
+        });
+    }
     app.updater.schedule_check();
     log::info!(target: "app", "tray ready in {} ms", started.elapsed().as_millis());
     if test_mode {
