@@ -199,8 +199,6 @@ impl SecretStore {
 
 // ── The system cipher ──────────────────────────────────────────────────────
 
-/// Tag on values this build encrypts: DPAPI output follows it.
-const DPAPI_PREFIX: &[u8] = b"dp1";
 /// Tag on values Electron's `safeStorage` (Chromium `OSCrypt`) encrypted: a
 /// 12-byte nonce and the AES-256-GCM ciphertext with its 16-byte tag follow it.
 const SAFE_STORAGE_PREFIX: &[u8] = b"v10";
@@ -272,19 +270,17 @@ impl SecretCipher for SystemCipher {
         *self.available.get_or_init(|| dpapi::protect(b"flow").is_ok())
     }
 
+    /// A bare DPAPI blob: Chromium's format before "v10", which Electron's
+    /// `safeStorage` still decrypts, so keys saved here survive going back to the
+    /// Electron build. DPAPI blobs start with a version dword, never "v10".
     fn encrypt(&self, plain: &str) -> Result<Vec<u8>, SecretError> {
-        let mut out = DPAPI_PREFIX.to_vec();
-        out.extend(dpapi::protect(plain.as_bytes())?);
-        Ok(out)
+        dpapi::protect(plain.as_bytes())
     }
 
     fn decrypt(&self, data: &[u8]) -> Result<String, SecretError> {
-        let plain = if let Some(blob) = data.strip_prefix(DPAPI_PREFIX) {
-            dpapi::unprotect(blob)?
-        } else if let Some(rest) = data.strip_prefix(SAFE_STORAGE_PREFIX) {
+        let plain = if let Some(rest) = data.strip_prefix(SAFE_STORAGE_PREFIX) {
             self.decrypt_safe_storage(rest)?
         } else {
-            // Chromium's format before "v10": a bare DPAPI blob. OSCrypt still reads it.
             dpapi::unprotect(data)?
         };
         String::from_utf8(plain).map_err(|_| SecretError::Cipher("The stored value is not text.".into()))

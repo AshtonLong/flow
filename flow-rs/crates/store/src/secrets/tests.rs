@@ -258,12 +258,13 @@ fn keeps_every_value_when_writes_overlap() {
 // ── The system cipher ───────────────────────────────────────────────────────
 
 #[test]
-fn system_cipher_round_trips_through_dpapi_with_its_prefix() {
+fn system_cipher_round_trips_through_bare_dpapi() {
     let root = tempfile::tempdir().unwrap();
     let cipher = system_cipher(root.path());
     assert!(cipher.is_available());
     let data = cipher.encrypt("gsk_abc123 ünïcode 🔑").unwrap();
-    assert!(data.starts_with(DPAPI_PREFIX));
+    // A DPAPI blob (version 1), readable by Electron's safeStorage too.
+    assert!(data.starts_with(&[1, 0, 0, 0]));
     assert!(!data.windows(10).any(|w| w == b"gsk_abc123"));
     assert_eq!(cipher.decrypt(&data).unwrap(), "gsk_abc123 ünïcode 🔑");
     // Tampered ciphertext does not decrypt.

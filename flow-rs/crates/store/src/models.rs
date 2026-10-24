@@ -595,7 +595,7 @@ impl ModelManager {
                 description: format!("Custom endpoint at {base_url}"),
                 price_per_hour: 0.0,
                 recommended: false,
-                hints: false,
+                hints: None,
                 min_billed_seconds: None,
                 docs_url: None,
             });

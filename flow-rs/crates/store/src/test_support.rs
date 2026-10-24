@@ -311,7 +311,7 @@ fn cloud(id: &str, provider: &str, model: &str, name: &str, description: &str, p
         description: description.into(),
         price_per_hour: price,
         recommended: false,
-        hints: false,
+        hints: None,
         min_billed_seconds: None,
         docs_url: None,
     }
