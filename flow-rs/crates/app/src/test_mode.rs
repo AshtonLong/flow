@@ -12,7 +12,10 @@
 //! - Events leave on stdout as JSON lines: `{"type":"ready"}`,
 //!   `{"type":"insert","text":…}`, `{"type":"dictation",…}`,
 //!   `{"type":"overlay",…}`.
-//! - The global key hook is not started and nothing is pasted anywhere.
+//! - `{"type":"event","event":…}` repeats every push to the settings window.
+//! - The global key hook is not started and nothing is pasted anywhere, unless
+//!   `FLOW_TEST_REAL_INSERT=1` asks for the real inserter (the test then owns
+//!   the focused window).
 //! - `FLOW_FAKE_MIC=<wav>` (read by flow-audio) replaces the microphone.
 
 use std::io::{BufRead, Write};
@@ -28,6 +31,11 @@ use crate::app::AppMsg;
 
 pub fn enabled() -> bool {
     std::env::var("FLOW_TEST").as_deref() == Ok("1")
+}
+
+/// `FLOW_TEST_REAL_INSERT=1`: insert with the real inserter as well.
+pub fn real_insert() -> bool {
+    std::env::var("FLOW_TEST_REAL_INSERT").as_deref() == Ok("1")
 }
 
 static STDOUT: Mutex<()> = Mutex::new(());
@@ -57,6 +65,12 @@ pub fn overlay(state: &OverlayState) {
 
 pub fn reply(id: u64, reply: &Reply) {
     emit(json!({ "type": "reply", "id": id, "reply": reply }));
+}
+
+pub fn event(event: &flow_core::protocol::settings::Event) {
+    if enabled() {
+        emit(json!({ "type": "event", "event": event }));
+    }
 }
 
 pub fn settings_opened(pid: u32) {

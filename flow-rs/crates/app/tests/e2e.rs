@@ -41,10 +41,15 @@ impl Flow {
     }
 
     fn launch_with(config: &str, args: &[&str]) -> Self {
+        Self::launch_env(config, args, &[])
+    }
+
+    fn launch_env(config: &str, args: &[&str], env: &[(&str, &str)]) -> Self {
         let user_data = tempfile::tempdir().unwrap();
         std::fs::write(user_data.path().join("config.toml"), config).unwrap();
         let mut child = Command::new(env!("CARGO_BIN_EXE_Flow"))
             .args(args)
+            .envs(env.iter().copied())
             .env("FLOW_TEST", "1")
             .env("FLOW_USER_DATA", user_data.path())
             .env("FLOW_MODELS_DIR", models_dir())
@@ -236,4 +241,204 @@ fn api_keys_are_encrypted_and_never_written_to_the_config_file() {
 
     flow.call(Request::SecretsDelete("groq".into()));
     assert_eq!(flow.call(Request::SecretsHas("groq".into())), false);
+}
+
+fn read_wav(path: &Path) -> Vec<f32> {
+    let bytes = std::fs::read(path).unwrap();
+    let mut offset = 12;
+    while offset + 8 <= bytes.len() {
+        let size = u32::from_le_bytes(bytes[offset + 4..offset + 8].try_into().unwrap()) as usize;
+        if &bytes[offset..offset + 4] == b"data" {
+            let data = &bytes[offset + 8..(offset + 8 + size).min(bytes.len())];
+            return data.as_chunks::<2>().0.iter().map(|b| i16::from_le_bytes(*b) as f32 / 32768.0).collect();
+        }
+        offset += 8 + size + (size & 1);
+    }
+    panic!("no data chunk in {}", path.display());
+}
+
+#[test]
+#[ignore = "needs the local Parakeet model and the staged engine"]
+fn transcribes_a_recorded_phrase_and_runs_the_test_bench() {
+    let mut flow = Flow::launch(ONBOARDED);
+    flow.wait_for("ready", Duration::from_secs(20));
+    let samples = read_wav(&repo().join("tests/fixtures/jfk.wav"));
+
+    let transcript = flow.call(Request::DictationTest(flow_core::protocol::Pcm(samples.clone())));
+    assert_eq!(transcript["model"], "parakeet-tdt-0.6b-v2");
+    let text = transcript["text"].as_str().unwrap().to_lowercase();
+    assert!(text.contains("ask not what your country can do for you"), "{text}");
+    // One second for a 10 s clip once the model is loaded; a cold load is included here.
+    assert!(transcript["elapsedMs"].as_f64().unwrap() < 15_000.0, "{transcript}");
+
+    let info = flow.call(Request::AppInfo);
+    assert!(!info["devices"].as_array().unwrap().is_empty(), "{info}");
+    assert_eq!(info["degraded"], json!([]));
+
+    // The test bench runs the same phrase through chosen models side by side.
+    let run = flow.call(Request::BenchRun {
+        audio: flow_core::protocol::Pcm(samples),
+        model_ids: vec!["parakeet-tdt-0.6b-v2".into()],
+    });
+    let deadline = Instant::now() + Duration::from_secs(60);
+    let result = loop {
+        let left = deadline.saturating_duration_since(Instant::now());
+        let line = flow.lines.recv_timeout(left).expect("no bench result");
+        let event = &line["event"];
+        if line["type"] == "event"
+            && event["event"] == "BenchResult"
+            && event["payload"]["runId"] == run
+            && event["payload"]["done"] == true
+        {
+            break event["payload"].clone();
+        }
+    };
+    assert_eq!(result["ok"], true, "{result}");
+    assert!(result["text"].as_str().unwrap().to_lowercase().contains("fellow americans"), "{result}");
+    eprintln!("warm Parakeet: {} ms for an 11 s clip", result["elapsedMs"]);
+}
+
+/// A window with a text box, owned by the test, for the real inserter to type into.
+mod target {
+    use std::sync::mpsc;
+
+    use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
+    use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+    use windows::Win32::UI::Input::KeyboardAndMouse::SetFocus;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        CreateWindowExW, DispatchMessageW, ES_AUTOHSCROLL, GetForegroundWindow, GetMessageW, MSG, SW_SHOW,
+        SendMessageW, SetForegroundWindow, ShowWindow, TranslateMessage, WINDOW_EX_STYLE, WINDOW_STYLE, WM_CLOSE,
+        WM_GETTEXT, WM_GETTEXTLENGTH, WS_BORDER, WS_CHILD, WS_OVERLAPPEDWINDOW, WS_VISIBLE,
+    };
+    use windows::core::w;
+
+    pub struct Target {
+        top: isize,
+        edit: isize,
+    }
+
+    impl Target {
+        pub fn open() -> Self {
+            let (tx, rx) = mpsc::channel();
+            std::thread::spawn(move || unsafe {
+                let instance = GetModuleHandleW(None).unwrap();
+                // The built-in STATIC class works as a plain parent window.
+                let top = CreateWindowExW(
+                    WINDOW_EX_STYLE(0),
+                    w!("STATIC"),
+                    w!("Flow e2e target"),
+                    WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+                    200,
+                    200,
+                    520,
+                    140,
+                    None,
+                    None,
+                    Some(instance.into()),
+                    None,
+                )
+                .unwrap();
+                let edit = CreateWindowExW(
+                    WINDOW_EX_STYLE(0),
+                    w!("EDIT"),
+                    w!(""),
+                    WS_CHILD | WS_VISIBLE | WS_BORDER | WINDOW_STYLE(ES_AUTOHSCROLL as u32),
+                    10,
+                    10,
+                    480,
+                    28,
+                    Some(top),
+                    None,
+                    Some(instance.into()),
+                    None,
+                )
+                .unwrap();
+                let _ = ShowWindow(top, SW_SHOW);
+                let _ = SetForegroundWindow(top);
+                let _ = SetFocus(Some(edit));
+                tx.send((top.0 as isize, edit.0 as isize)).unwrap();
+                let mut msg = MSG::default();
+                while GetMessageW(&mut msg, None, 0, 0).as_bool() {
+                    let _ = TranslateMessage(&msg);
+                    DispatchMessageW(&msg);
+                }
+            });
+            let (top, edit) = rx.recv().unwrap();
+            Self { top, edit }
+        }
+
+        /// True while this window is in the foreground, so a paste lands here.
+        pub fn has_focus(&self) -> bool {
+            unsafe { GetForegroundWindow().0 as isize == self.top }
+        }
+
+        pub fn text(&self) -> String {
+            unsafe {
+                let edit = HWND(self.edit as *mut _);
+                let len = SendMessageW(edit, WM_GETTEXTLENGTH, None, None).0 as usize;
+                let mut buf = vec![0u16; len + 1];
+                let got =
+                    SendMessageW(edit, WM_GETTEXT, Some(WPARAM(buf.len())), Some(LPARAM(buf.as_mut_ptr() as isize)));
+                String::from_utf16_lossy(&buf[..got.0 as usize])
+            }
+        }
+    }
+
+    impl Drop for Target {
+        fn drop(&mut self) {
+            unsafe {
+                let _ = SendMessageW(HWND(self.top as *mut _), WM_CLOSE, None, None);
+            }
+        }
+    }
+}
+
+#[test]
+#[ignore = "needs the local Parakeet model and the staged engine; types into a window of its own"]
+fn hold_to_talk_types_the_transcript_into_the_focused_field() {
+    let config = format!("{ONBOARDED}\n[history]\nenabled = true\n");
+    let mut flow = Flow::launch_env(&config, &["--hidden"], &[("FLOW_TEST_REAL_INSERT", "1")]);
+    flow.wait_for("ready", Duration::from_secs(20));
+    let target = target::Target::open();
+    std::thread::sleep(Duration::from_millis(300));
+    // The paste goes to whatever window has focus, so make sure it is ours.
+    if !target.has_focus() {
+        eprintln!("skipped: another window has focus; not pasting into it");
+        return;
+    }
+    flow.send("hotkey hold-start");
+    std::thread::sleep(Duration::from_millis(1500));
+    if !target.has_focus() {
+        flow.send("hotkey cancel");
+        eprintln!("skipped: focus moved to another window during the recording");
+        return;
+    }
+    flow.send("hotkey hold-end");
+    flow.wait_for("insert", Duration::from_secs(60));
+
+    // Text lands at the cursor, with the trailing space.
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let text = loop {
+        let text = target.text();
+        if text.to_lowercase().contains("ask not what your country can do for you") || Instant::now() > deadline {
+            break text;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    };
+    assert!(text.to_lowercase().contains("ask not what your country can do for you"), "{text:?}");
+    assert!(text.ends_with(' '), "{text:?}");
+
+    // History is on in this config, so the dictation is recorded locally.
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let found = loop {
+        let found = flow.call(Request::HistorySearch { query: "fellow".into(), limit: 10, offset: 0 });
+        if !found.as_array().unwrap().is_empty() || Instant::now() > deadline {
+            break found;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    };
+    assert_eq!(found.as_array().unwrap().len(), 1, "{found}");
+    let entry = &found[0];
+    assert_eq!(entry["model"], "parakeet-tdt-0.6b-v2");
+    eprintln!("key release to text: {} ms for {} ms of audio", entry["elapsedMs"], entry["audioMs"]);
 }

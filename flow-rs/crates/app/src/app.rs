@@ -557,7 +557,9 @@ async fn build(
                 Box::pin(async move {
                     if crate::test_mode::enabled() {
                         crate::test_mode::inserted(&text, request.target.as_ref().map(|t| t.process_name.as_str()));
-                        return InsertResult::ok(flow_core::types::InsertOutcome::Pasted);
+                        if !crate::test_mode::real_insert() {
+                            return InsertResult::ok(flow_core::types::InsertOutcome::Pasted);
+                        }
                     }
                     let options = InsertOptions {
                         method: request.method,

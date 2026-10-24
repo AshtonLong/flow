@@ -160,6 +160,7 @@ impl SettingsHost {
 
     /// Pushes an event to the window, if it is open.
     pub fn send(&self, event: Event) {
+        crate::test_mode::event(&event);
         if let Some(child) = self.child.lock().as_ref() {
             send_line(&child.out, &Downstream::Event(event));
         }
