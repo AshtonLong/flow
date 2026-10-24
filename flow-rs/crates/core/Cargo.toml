@@ -10,7 +10,7 @@ rust-version.workspace = true
 serde = { workspace = true }
 serde_json = { workspace = true }
 indexmap = { workspace = true }
-toml = { workspace = true }
+toml = { workspace = true, features = ["preserve_order"] }
 fancy-regex = { workspace = true }
 regex = { workspace = true }
 thiserror = { workspace = true }
@@ -21,6 +21,7 @@ url = { workspace = true }
 notify = { workspace = true }
 parking_lot = { workspace = true }
 log = { workspace = true }
+chrono = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
