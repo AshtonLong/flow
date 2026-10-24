@@ -6,3 +6,5 @@ resources/catalog.json.sig text eol=lf
 *.ico binary
 *.png binary
 *.wav binary
+*.ttf binary
+*.woff2 binary
