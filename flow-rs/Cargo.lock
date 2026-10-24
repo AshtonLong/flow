@@ -1337,12 +1337,15 @@ version = "0.1.0"
 dependencies = [
  "cpal",
  "crossbeam-channel",
+ "flow-core",
  "log",
  "nnnoiseless",
  "parking_lot",
  "realfft",
  "rubato",
  "thiserror 2.0.21",
+ "windows",
+ "windows-core",
 ]
 
 [[package]]
@@ -1406,6 +1409,7 @@ dependencies = [
  "crossbeam-channel",
  "flow-audio",
  "flow-core",
+ "harfrust",
  "log",
  "parking_lot",
  "png 0.17.16",
