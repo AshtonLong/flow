@@ -1373,10 +1373,11 @@ dependencies = [
  "flow-core",
  "libloading 0.9.0",
  "log",
+ "matrixmultiply",
  "parking_lot",
  "serde",
  "serde_json",
- "silero-vad-pure",
+ "tempfile",
  "thiserror 2.0.21",
  "tokio",
  "tokio-util",
@@ -3779,15 +3780,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77549399552de45a898a580c1b41d445bf730df867cc44e6c0233bbc4b8329de"
 dependencies = [
  "rand_core",
-]
-
-[[package]]
-name = "silero-vad-pure"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0abf30794e6660d518ea199048c484d0e72b0f80f398b462b0e59bccae6fff9"
-dependencies = [
- "matrixmultiply",
 ]
 
 [[package]]

@@ -9,7 +9,6 @@ rust-version.workspace = true
 [dependencies]
 flow-core = { workspace = true }
 libloading = { workspace = true }
-silero-vad-pure = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 log = { workspace = true }
@@ -17,3 +16,8 @@ thiserror = { workspace = true }
 parking_lot = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
+# sgemm for the Silero forward pass (pure Rust; optimised even in dev builds).
+matrixmultiply = "0.3"
+
+[dev-dependencies]
+tempfile = { workspace = true }
