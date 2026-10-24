@@ -284,10 +284,10 @@ impl SessionOverlay for OverlayAdapter {
 /// Runs the main process. Returns the exit code.
 pub fn run(args: Vec<String>) -> i32 {
     system::init_process();
-    if !system::acquire_single_instance(&args) {
+    let paths = Paths::resolve();
+    if !system::acquire_single_instance(&args, &paths.user_data) {
         return 0;
     }
-    let paths = Paths::resolve();
     crate::logger::init(&paths.logs);
     log::info!(target: "app", "Flow {} starting (Rust)", env!("CARGO_PKG_VERSION"));
     let started = Instant::now();

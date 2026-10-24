@@ -63,16 +63,32 @@ fn wide(text: &str) -> Vec<u16> {
     text.encode_utf16().chain(std::iter::once(0)).collect()
 }
 
-/// Takes the single-instance lock. On failure, forwards `args` to the running
-/// instance and returns false.
-pub fn acquire_single_instance(args: &[String]) -> bool {
+/// Names this instance's lock and window. Like Electron's single-instance lock
+/// it is per user-data folder, so test instances with their own folder coexist.
+static INSTANCE_KEY: OnceLock<String> = OnceLock::new();
+
+fn instance_key(user_data: &Path) -> &'static str {
+    INSTANCE_KEY.get_or_init(|| {
+        // FNV-1a of the folder, case-folded as Windows paths are.
+        let folder = user_data.to_string_lossy().to_lowercase();
+        let hash = folder.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ b as u64).wrapping_mul(0x100_0000_01b3));
+        format!("computer.flow.dictation.rs.{hash:016x}")
+    })
+}
+
+/// Takes the single-instance lock for `user_data`. On failure, forwards `args`
+/// to the running instance and returns false.
+pub fn acquire_single_instance(args: &[String], user_data: &Path) -> bool {
+    let key = instance_key(user_data);
+    let mutex = wide(&format!("Local\\{key}"));
     // The handle is deliberately leaked: the lock lives as long as the process.
-    let handle = unsafe { CreateMutexW(None, true, w!("Local\\computer.flow.dictation.rs")) };
+    let handle = unsafe { CreateMutexW(None, true, PCWSTR(mutex.as_ptr())) };
     let already = unsafe { GetLastError() } == ERROR_ALREADY_EXISTS;
     if handle.is_ok() && !already {
         return true;
     }
-    if let Ok(hwnd) = unsafe { FindWindowW(WINDOW_CLASS, PCWSTR::null()) } {
+    let title = wide(key);
+    if let Ok(hwnd) = unsafe { FindWindowW(WINDOW_CLASS, PCWSTR(title.as_ptr())) } {
         let payload = args.join("\u{1f}");
         let bytes = payload.as_bytes();
         let data = COPYDATASTRUCT { dwData: COPYDATA_ARGS, cbData: bytes.len() as u32, lpData: bytes.as_ptr() as *mut c_void };
@@ -137,11 +153,13 @@ pub fn create_main_window(handler: Handler, wake: Box<dyn Fn() + Send + Sync>) -
         let instance = GetModuleHandleW(None)?;
         let class = WNDCLASSW { lpfnWndProc: Some(wndproc), hInstance: instance.into(), lpszClassName: WINDOW_CLASS, ..Default::default() };
         RegisterClassW(&class);
+        // Titled with the instance key so a second instance finds this one.
+        let title = wide(INSTANCE_KEY.get().map_or("Flow", String::as_str));
         // A real top-level window (never shown): message-only windows miss broadcasts.
         let hwnd = CreateWindowExW(
             WS_EX_TOOLWINDOW,
             WINDOW_CLASS,
-            w!("Flow"),
+            PCWSTR(title.as_ptr()),
             WS_OVERLAPPED,
             0,
             0,
