@@ -22,7 +22,8 @@ cargo run -p flow-ui --example preview -- --gallery --demo select --screenshot s
 ```
 
 Flags: `--page`, `--theme light|dark`, `--screenshot <png>`, `--scroll <pt>`,
-`--contrast high`, `--motion reduced`, `--gallery`, `--demo select|confirm|modal`,
+`--contrast high`, `--motion reduced`, `--gallery`, `--demo select|confirm|modal`
+(with `--onboarding`: `--demo hotkey|model|cloud|try` starts on a later step),
 and the mock's states `--fresh --onboarding --noissues --history-off
 --downloading <id> --degraded`. Screenshots are taken once config, catalog and
 app info have loaded, at the window's own size (1000×700 at 100 %).
@@ -37,7 +38,7 @@ app info have loaded, at the window's own size (1000×700 at 100 %).
 | `design/` | `brand.css`, `styles.css` | tokens, Recursive families, text styles, box shadows, lucide icons, motion, focus rings |
 | `components/` | `components/*.tsx` | buttons, cards/rows, toggle, select, text fields, chips, dialogs, hotkey recorder, key caps, meters, notices, issues banner, error boundary, tooltip |
 | `pages/<page>.rs` | `pages/*.tsx` | one module per page; `pages/models/*` for the Models sections |
-| `onboarding/` | `onboarding/Onboarding.tsx` | the first-run flow (stub) |
+| `onboarding/` | `onboarding/Onboarding.tsx` | the first-run flow: steps, the model choice, the key form, the dictation test |
 | `shell/` | `App.tsx`, `main.tsx` | the eframe app: title strip, caption buttons, nav rail, status footer, content panel, Boot/Onboarding/Shell |
 | `adapters/` | `common/capture.ts`, `shared/hotkeys.ts` | the window's view of `flow_audio` (microphone list, level monitor) and the hotkey grammar from `flow_core::hotkeys` |
 | `platform.rs` | — | Win32: system theme fallback, high-contrast colours, DWM, clipboard |
