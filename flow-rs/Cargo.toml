@@ -37,8 +37,9 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 cpal = "0.18"
 crossbeam-channel = "0.5"
 ed25519-dalek = { version = "2", default-features = false, features = ["std"] }
-eframe = { version = "0.37", default-features = false, features = ["glow", "accesskit"] }
+eframe = { version = "0.37", default-features = false, features = ["glow", "wgpu", "accesskit"] }
 egui = "0.37"
+egui-winit = { version = "0.37", default-features = false, features = ["accesskit"] }
 fancy-regex = "0.14"
 libloading = "0.9"
 log = "0.4"
@@ -65,6 +66,7 @@ url = "2"
 futures-util = "0.3"
 indexmap = { version = "2", features = ["serde"] }
 png = "0.17"
+raw-window-handle = "0.6"
 tokio-util = "0.7"
 windows = { version = "0.62" }
 

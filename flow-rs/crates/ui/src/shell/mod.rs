@@ -54,6 +54,16 @@ pub struct RunOptions {
     /// Opens an overlay in the gallery for a screenshot: `select`, `confirm`, `modal`.
     #[doc(hidden)]
     pub demo: Option<String>,
+    /// Scrolls the page up and down for this many frames, repainting as fast
+    /// as possible, prints the frame times and exits (preview only).
+    #[doc(hidden)]
+    pub bench: Option<u32>,
+}
+
+struct Bench {
+    frames: u32,
+    times: Vec<f64>,
+    last: Option<std::time::Instant>,
 }
 
 struct Shot {
@@ -81,17 +91,29 @@ pub(crate) struct SettingsApp {
     root_boundary: ErrorBoundary,
     scroll: PageScroll,
     window: Option<platform::window::Handle>,
-    styled_dark: Option<bool>,
+    styled: Option<(bool, bool)>,
     was_focused: bool,
     pause: Option<Pending<()>>,
     shot: Option<Shot>,
+    bench: Option<Bench>,
+    /// The window background: `--mica` (paper).
     mica: Color32,
+    high_contrast: bool,
+    /// Whether the Mica backdrop is behind the window, so the paper is drawn at 84 %.
+    backdrop: bool,
 }
 
 impl SettingsApp {
-    pub(crate) fn new(cc: &eframe::CreationContext<'_>, backend: Arc<dyn Backend>, options: RunOptions) -> Self {
-        let ctx = cc.egui_ctx.clone();
+    /// `hwnd` is the window's raw handle (0 when there is none).
+    pub(crate) fn new(ctx: &egui::Context, backend: Arc<dyn Backend>, options: RunOptions, hwnd: isize) -> Self {
+        let ctx = ctx.clone();
         design::fonts::install(&ctx);
+        let window = platform::window::Handle::from_raw(hwnd);
+        if let Some(handle) = window
+            && !platform::caption::install(handle, &ctx)
+        {
+            log::warn!(target: "settings", "snap layouts unavailable: the window could not be subclassed");
+        }
         let link = Link::new(Arc::clone(&backend), ctx.clone());
         let events = EventQueue::subscribe(&backend, &ctx);
         let page_id = options.page.as_deref().and_then(PageId::parse).unwrap_or(PageId::General);
@@ -99,6 +121,7 @@ impl SettingsApp {
         if let Some(offset) = options.scroll {
             scroll.scroll_to(offset);
         }
+        let bench = options.bench.map(|frames| Bench { frames, times: Vec::new(), last: None });
         let shot = options.screenshot.clone().map(|path| Shot {
             path,
             ready_frames: 0,
@@ -120,12 +143,15 @@ impl SettingsApp {
             boundary: ErrorBoundary::new(),
             root_boundary: ErrorBoundary::new(),
             scroll,
-            window: None,
-            styled_dark: None,
+            window,
+            styled: None,
             was_focused: true,
             pause: None,
             shot,
+            bench,
             mica: Tokens::light().mica,
+            high_contrast: false,
+            backdrop: false,
             link,
             events,
         }
@@ -151,6 +177,7 @@ impl SettingsApp {
         }
     }
 
+    /// Applies the appearance; returns whether it is dark.
     fn apply_theme(&mut self, ctx: &egui::Context) -> bool {
         let setting = if self.config.loaded() { self.config.config().general.theme } else { ThemeSetting::System };
         let mut appearance = stores::appearance(self.theme.info(), self.options.theme.unwrap_or(setting));
@@ -162,6 +189,7 @@ impl SettingsApp {
         }
         let tokens = Tokens::new(appearance, &self.system_colors);
         self.mica = tokens.mica;
+        self.high_contrast = appearance.high_contrast;
         design::apply(ctx, tokens);
         appearance.dark
     }
@@ -288,6 +316,44 @@ impl SettingsApp {
         self.root_boundary.show(&mut child, "onboarding", |ui| page.ui(ui, &mut cx));
     }
 
+    /// The page background: `color-mix(in srgb, var(--mica) 84%, transparent)`
+    /// over Mica, solid paper without it.
+    fn window_fill(&self) -> Color32 {
+        if self.backdrop { self.mica.gamma_multiply_u8(214) } else { self.mica }
+    }
+
+    fn bench(&mut self, ctx: &egui::Context) {
+        let ready = self.config.loaded() && self.catalog.snapshot().is_some();
+        let Some(bench) = self.bench.as_mut() else { return };
+        ctx.request_repaint();
+        if !ready {
+            return;
+        }
+        let now = std::time::Instant::now();
+        if let Some(last) = bench.last {
+            bench.times.push((now - last).as_secs_f64() * 1000.0);
+        }
+        bench.last = Some(now);
+        let n = bench.times.len() as u32;
+        // Down the page and back, 4 pt a frame.
+        let phase = n % 200;
+        let offset = if phase < 100 { phase as f32 * 4.0 } else { (200 - phase) as f32 * 4.0 };
+        self.scroll.scroll_to(offset);
+        if n >= bench.frames {
+            let mut t = bench.times.clone();
+            t.sort_by(f64::total_cmp);
+            let avg = t.iter().sum::<f64>() / t.len() as f64;
+            let p95 = t[(t.len() * 95 / 100).min(t.len() - 1)];
+            eprintln!(
+                "bench: {} frames, frame interval avg {avg:.2} ms, p95 {p95:.2} ms, max {:.2} ms",
+                t.len(),
+                t[t.len() - 1]
+            );
+            ctx.send_viewport_cmd(ViewportCommand::Close);
+            self.bench = None;
+        }
+    }
+
     fn screenshot(&mut self, ctx: &egui::Context) {
         let ready = self.config.loaded() && self.catalog.snapshot().is_some() && self.app_info.info().is_some();
         let Some(shot) = self.shot.as_mut() else {
@@ -325,8 +391,8 @@ impl SettingsApp {
     }
 }
 
-impl eframe::App for SettingsApp {
-    fn ui(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
+impl crate::runner::App for SettingsApp {
+    fn ui(&mut self, ui: &mut Ui) {
         let ctx = ui.ctx().clone();
         let events = self.events.drain();
         let mut nav: Option<PageId> = None;
@@ -351,18 +417,19 @@ impl eframe::App for SettingsApp {
 
         let dark = self.apply_theme(&ctx);
         focus::update(&ctx);
-        if self.window.is_none() {
-            self.window = platform::window::own_window();
-        }
+        // Mica as Electron's `backgroundMaterial`: none under high contrast, and
+        // none in screenshots (they compare against the opaque preview).
+        let want_mica = !self.high_contrast && self.shot.is_none();
         if let Some(handle) = self.window
-            && self.styled_dark != Some(dark)
+            && self.styled != Some((dark, want_mica))
         {
             platform::window::style(handle, dark);
-            self.styled_dark = Some(dark);
+            self.backdrop = platform::window::backdrop(handle, want_mica);
+            self.styled = Some((dark, want_mica));
         }
 
         let window = ui.max_rect();
-        ui.painter().rect_filled(window, 0.0, self.mica);
+        ui.painter().rect_filled(window, 0.0, self.window_fill());
         if !self.config.loaded() {
             self.boot(ui, window);
         } else if !self.config.config().general.onboarded && self.gallery.is_none() {
@@ -385,7 +452,7 @@ impl eframe::App for SettingsApp {
             ctx.request_repaint();
         }
 
-        // eframe is built without its clipboard feature; copies go out through Win32.
+        // egui-winit is built without its clipboard feature; copies go out through Win32.
         let copied: Vec<String> = ctx.output(|o| {
             o.commands
                 .iter()
@@ -399,10 +466,11 @@ impl eframe::App for SettingsApp {
             platform::clipboard::set_text(&text);
         }
         self.screenshot(&ctx);
+        self.bench(&ctx);
     }
 
-    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
-        self.mica.to_normalized_gamma_f32()
+    fn clear_color(&self) -> Color32 {
+        if self.backdrop { Color32::TRANSPARENT } else { self.mica }
     }
 
     fn raw_input_hook(&mut self, ctx: &egui::Context, raw_input: &mut egui::RawInput) {
@@ -444,5 +512,17 @@ impl eframe::App for SettingsApp {
 
 /// The window icon (`resources/icons/icon.png`).
 pub(crate) fn icon() -> Option<egui::IconData> {
-    eframe::icon_data::from_png_bytes(include_bytes!("../../../../../resources/icons/icon.png")).ok()
+    let mut decoder = ::png::Decoder::new(std::io::Cursor::new(&include_bytes!("../../../../../resources/icons/icon.png")[..]));
+    decoder.set_transformations(::png::Transformations::normalize_to_color8() | ::png::Transformations::ALPHA);
+    let mut reader = decoder.read_info().ok()?;
+    let mut buf = vec![0; reader.output_buffer_size()];
+    let info = reader.next_frame(&mut buf).ok()?;
+    let rgba = match info.color_type {
+        ::png::ColorType::Rgba => buf[..info.buffer_size()].to_vec(),
+        ::png::ColorType::GrayscaleAlpha => {
+            buf[..info.buffer_size()].chunks_exact(2).flat_map(|p| [p[0], p[0], p[0], p[1]]).collect()
+        }
+        _ => return None,
+    };
+    Some(egui::IconData { rgba, width: info.width, height: info.height })
 }

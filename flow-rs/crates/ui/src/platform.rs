@@ -1,6 +1,6 @@
 //! The few Win32 calls the settings window makes itself: the system theme
 //! before the main process answers, high-contrast system colours, the window's
-//! DWM attributes, the clipboard, and (for the mock only) the keyboard state.
+//! DWM attributes (Mica), the maximise button for snap layouts, the clipboard, and (for the mock only) the keyboard state.
 
 #![allow(unsafe_code)]
 
@@ -142,14 +142,14 @@ pub fn system_colors() -> SystemColors {
 /// The settings window's HWND and what is done to it.
 #[cfg(windows)]
 pub mod window {
-    use windows::Win32::Foundation::{HWND, LPARAM};
+    use windows::Win32::Foundation::HWND;
     use windows::Win32::Graphics::Dwm::{
-        DWMWA_USE_IMMERSIVE_DARK_MODE, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND, DwmSetWindowAttribute,
+        DWM_SYSTEMBACKDROP_TYPE, DWMSBT_MAINWINDOW, DWMSBT_NONE, DWMWA_SYSTEMBACKDROP_TYPE,
+        DWMWA_USE_IMMERSIVE_DARK_MODE, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND, DwmExtendFrameIntoClientArea,
+        DwmSetWindowAttribute,
     };
-    use windows::Win32::System::Threading::GetCurrentThreadId;
-    use windows::Win32::UI::WindowsAndMessaging::{
-        EnumThreadWindows, GetClassNameW, IsIconic, IsWindowVisible, SW_RESTORE, SetForegroundWindow, ShowWindow,
-    };
+    use windows::Win32::UI::Controls::MARGINS;
+    use windows::Win32::UI::WindowsAndMessaging::{IsIconic, SW_RESTORE, SetForegroundWindow, ShowWindow};
     use windows::core::BOOL;
 
     /// A window handle that can be stored (HWND itself is not `Send`).
@@ -157,38 +157,18 @@ pub mod window {
     pub struct Handle(isize);
 
     impl Handle {
-        fn hwnd(self) -> HWND {
+        /// The raw HWND (from raw-window-handle); `None` for 0.
+        pub fn from_raw(hwnd: isize) -> Option<Self> {
+            (hwnd != 0).then_some(Self(hwnd))
+        }
+
+        pub(super) fn hwnd(self) -> HWND {
             HWND(self.0 as *mut _)
         }
     }
 
-    unsafe extern "system" fn collect(hwnd: HWND, lparam: LPARAM) -> BOOL {
-        // SAFETY: `lparam` is the `Vec` passed by `own_window`, alive for the enumeration.
-        let found = unsafe { &mut *(lparam.0 as *mut Vec<HWND>) };
-        found.push(hwnd);
-        BOOL(1)
-    }
-
-    /// The top-level winit window created on this (the UI) thread.
-    pub fn own_window() -> Option<Handle> {
-        let mut found: Vec<HWND> = Vec::new();
-        // SAFETY: the callback only pushes into `found`, which outlives the call.
-        unsafe {
-            let _ = EnumThreadWindows(GetCurrentThreadId(), Some(collect), LPARAM((&raw mut found) as isize));
-        }
-        let mut class = [0u16; 64];
-        found
-            .into_iter()
-            .find(|&hwnd| {
-                // SAFETY: `class` is a valid buffer; hwnd came from the enumeration.
-                let len = unsafe { GetClassNameW(hwnd, &mut class) };
-                let name = String::from_utf16_lossy(&class[..len.max(0) as usize]);
-                name == "Window Class" && unsafe { IsWindowVisible(hwnd) }.as_bool()
-            })
-            .map(|hwnd| Handle(hwnd.0 as isize))
-    }
-
-    /// Rounded corners (Windows 11) and a dark or light system frame.
+    /// Rounded corners (Windows 11) and a dark or light system frame (which
+    /// also tints Mica).
     pub fn style(handle: Handle, dark: bool) {
         let hwnd = handle.hwnd();
         let corner = DWMWCP_ROUND;
@@ -210,6 +190,31 @@ pub mod window {
         }
     }
 
+    /// Puts the Mica backdrop behind the whole window (`backgroundMaterial:
+    /// 'mica'`), or takes it away. Mica shows through wherever the frame is
+    /// not opaque, so the frame is extended over the client area. Returns
+    /// whether Mica is on: it needs Windows 11 22H2, and older systems keep a
+    /// solid window.
+    pub fn backdrop(handle: Handle, mica: bool) -> bool {
+        let hwnd = handle.hwnd();
+        let kind: DWM_SYSTEMBACKDROP_TYPE = if mica { DWMSBT_MAINWINDOW } else { DWMSBT_NONE };
+        // SAFETY: the attribute gets a pointer to a DWORD-sized value; MARGINS is plain data.
+        unsafe {
+            let set = DwmSetWindowAttribute(
+                hwnd,
+                DWMWA_SYSTEMBACKDROP_TYPE,
+                (&raw const kind).cast(),
+                std::mem::size_of_val(&kind) as u32,
+            )
+            .is_ok();
+            let on = mica && set;
+            let inset = if on { -1 } else { 0 };
+            let margins = MARGINS { cxLeftWidth: inset, cxRightWidth: inset, cyTopHeight: inset, cyBottomHeight: inset };
+            let _ = DwmExtendFrameIntoClientArea(hwnd, &margins);
+            on
+        }
+    }
+
     /// Restores and raises the window (the tray asked for Settings again).
     pub fn bring_to_front(handle: Handle) {
         let hwnd = handle.hwnd();
@@ -227,11 +232,207 @@ pub mod window {
 pub mod window {
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct Handle;
-    pub fn own_window() -> Option<Handle> {
-        None
+    impl Handle {
+        pub fn from_raw(_hwnd: isize) -> Option<Self> {
+            None
+        }
     }
     pub fn style(_handle: Handle, _dark: bool) {}
+    pub fn backdrop(_handle: Handle, _mica: bool) -> bool {
+        false
+    }
     pub fn bring_to_front(_handle: Handle) {}
+}
+
+/// The caption buttons, as Windows sees them. Flow draws its own minimise,
+/// maximise and close buttons; the window procedure is subclassed so that
+/// `WM_NCHITTEST` answers `HTMINBUTTON`, `HTMAXBUTTON` and `HTCLOSE` over
+/// them, as for Electron's native `titleBarOverlay` buttons. That gives
+/// Windows 11's snap-layouts flyout on maximise, and keeps the buttons out of
+/// egui's reach: they work above a modal's backdrop, and a click on them is
+/// not a click outside a dialog. Hover, press and click arrive as `WM_NC*`
+/// messages and are kept here for [`crate::shell`] to draw and act on.
+#[cfg(windows)]
+pub mod caption {
+    use std::sync::OnceLock;
+    use std::sync::atomic::{AtomicBool, AtomicI32, AtomicIsize, Ordering};
+
+    use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
+    use windows::Win32::Graphics::Gdi::ScreenToClient;
+    use windows::Win32::UI::Input::KeyboardAndMouse::{TME_LEAVE, TME_NONCLIENT, TRACKMOUSEEVENT, TrackMouseEvent};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        CallWindowProcW, GWLP_WNDPROC, HTCLOSE, HTMAXBUTTON, HTMINBUTTON, SetWindowLongPtrW, WM_NCHITTEST,
+        WM_NCLBUTTONDBLCLK, WM_NCLBUTTONDOWN, WM_NCLBUTTONUP, WM_NCMOUSELEAVE, WM_NCMOUSEMOVE, WM_NCRBUTTONDOWN,
+        WM_NCRBUTTONUP, WNDPROC,
+    };
+
+    use super::window::Handle;
+
+    /// The buttons left to right: minimise, maximise, close.
+    const CODES: [u32; 3] = [HTMINBUTTON, HTMAXBUTTON, HTCLOSE];
+    const NONE: i32 = -1;
+
+    struct Shared {
+        ctx: egui::Context,
+        previous: AtomicIsize,
+        /// The three buttons in client pixels: left, top, right, bottom (empty when hidden).
+        strip: [AtomicI32; 4],
+        hover: AtomicI32,
+        pressed: AtomicI32,
+        clicked: AtomicI32,
+        tracking: AtomicBool,
+    }
+
+    static SHARED: OnceLock<Shared> = OnceLock::new();
+
+    fn button_of(code: usize) -> i32 {
+        CODES.iter().position(|&c| c as usize == code).map_or(NONE, |i| i as i32)
+    }
+
+    impl Shared {
+        /// The button under the screen point in `lparam`, if any.
+        fn hit(&self, hwnd: HWND, lparam: LPARAM) -> i32 {
+            let mut p = POINT { x: (lparam.0 & 0xffff) as i16 as i32, y: ((lparam.0 >> 16) & 0xffff) as i16 as i32 };
+            // SAFETY: `p` is a valid POINT; hwnd is the window being subclassed.
+            if !unsafe { ScreenToClient(hwnd, &mut p) }.as_bool() {
+                return NONE;
+            }
+            let [l, t, r, b] = self.strip.each_ref().map(|v| v.load(Ordering::Relaxed));
+            if r <= l || p.x < l || p.x >= r || p.y < t || p.y >= b {
+                return NONE;
+            }
+            (((p.x - l) * 3 / (r - l)) as i32).min(2)
+        }
+
+        fn set(&self, slot: &AtomicI32, value: i32) {
+            if slot.swap(value, Ordering::Relaxed) != value {
+                self.ctx.request_repaint();
+            }
+        }
+    }
+
+    unsafe extern "system" fn procedure(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+        let Some(shared) = SHARED.get() else { return LRESULT(0) };
+        let button = button_of(wparam.0);
+        match msg {
+            WM_NCHITTEST => {
+                let hit = shared.hit(hwnd, lparam);
+                if hit != NONE {
+                    return LRESULT(CODES[hit as usize] as isize);
+                }
+            }
+            WM_NCMOUSEMOVE => {
+                shared.set(&shared.hover, button);
+                if shared.pressed.load(Ordering::Relaxed) != button {
+                    shared.set(&shared.pressed, NONE);
+                }
+                if !shared.tracking.swap(true, Ordering::Relaxed) {
+                    let mut track = TRACKMOUSEEVENT {
+                        cbSize: std::mem::size_of::<TRACKMOUSEEVENT>() as u32,
+                        dwFlags: TME_LEAVE | TME_NONCLIENT,
+                        hwndTrack: hwnd,
+                        dwHoverTime: 0,
+                    };
+                    // SAFETY: a correctly sized TRACKMOUSEEVENT for our window.
+                    let _ = unsafe { TrackMouseEvent(&mut track) };
+                }
+                if button != NONE {
+                    return LRESULT(0);
+                }
+            }
+            WM_NCMOUSELEAVE => {
+                shared.tracking.store(false, Ordering::Relaxed);
+                shared.set(&shared.hover, NONE);
+                shared.set(&shared.pressed, NONE);
+            }
+            // Swallowed: DefWindowProc would draw classic buttons and track the press itself.
+            WM_NCLBUTTONDOWN | WM_NCLBUTTONDBLCLK if button != NONE => {
+                shared.set(&shared.pressed, button);
+                return LRESULT(0);
+            }
+            WM_NCLBUTTONUP if button != NONE => {
+                if shared.pressed.load(Ordering::Relaxed) == button {
+                    shared.clicked.store(button, Ordering::Relaxed);
+                }
+                shared.set(&shared.pressed, NONE);
+                shared.ctx.request_repaint();
+                return LRESULT(0);
+            }
+            // No system menu from a right click on the buttons.
+            WM_NCRBUTTONDOWN | WM_NCRBUTTONUP if button != NONE => return LRESULT(0),
+            _ => {}
+        }
+        // SAFETY: `previous` holds the window procedure SetWindowLongPtrW replaced.
+        let previous = unsafe { std::mem::transmute::<isize, WNDPROC>(shared.previous.load(Ordering::Relaxed)) };
+        // SAFETY: forwarding the message to the original procedure.
+        unsafe { CallWindowProcW(previous, hwnd, msg, wparam, lparam) }
+    }
+
+    /// Subclasses the window (once per process). Returns whether it is in place.
+    pub fn install(handle: Handle, ctx: &egui::Context) -> bool {
+        let shared = Shared {
+            ctx: ctx.clone(),
+            previous: AtomicIsize::new(0),
+            strip: [AtomicI32::new(0), AtomicI32::new(0), AtomicI32::new(0), AtomicI32::new(0)],
+            hover: AtomicI32::new(NONE),
+            pressed: AtomicI32::new(NONE),
+            clicked: AtomicI32::new(NONE),
+            tracking: AtomicBool::new(false),
+        };
+        if SHARED.set(shared).is_err() {
+            return installed();
+        }
+        let Some(shared) = SHARED.get() else { return false };
+        let procedure: unsafe extern "system" fn(HWND, u32, WPARAM, LPARAM) -> LRESULT = procedure;
+        // SAFETY: replaces the window procedure of our own window on its thread;
+        // `procedure` forwards everything it does not handle.
+        let previous = unsafe { SetWindowLongPtrW(handle.hwnd(), GWLP_WNDPROC, procedure as *const () as isize) };
+        shared.previous.store(previous, Ordering::Relaxed);
+        previous != 0
+    }
+
+    /// Whether Windows is reporting the buttons (else egui handles them).
+    pub fn installed() -> bool {
+        SHARED.get().is_some_and(|s| s.previous.load(Ordering::Relaxed) != 0)
+    }
+
+    /// Where the three buttons are, in client pixels (`None` hides them from Windows).
+    pub fn set_strip(rect: Option<[i32; 4]>) {
+        if let Some(shared) = SHARED.get() {
+            for (slot, v) in shared.strip.iter().zip(rect.unwrap_or_default()) {
+                slot.store(v, Ordering::Relaxed);
+            }
+        }
+    }
+
+    /// The hovered and the pressed button (0 minimise, 1 maximise, 2 close).
+    pub fn state() -> (Option<usize>, Option<usize>) {
+        let get = |slot: &AtomicI32| usize::try_from(slot.load(Ordering::Relaxed)).ok();
+        SHARED.get().map_or((None, None), |s| (get(&s.hover), get(&s.pressed)))
+    }
+
+    /// The button clicked since the last call.
+    pub fn take_click() -> Option<usize> {
+        SHARED.get().and_then(|s| usize::try_from(s.clicked.swap(NONE, Ordering::Relaxed)).ok())
+    }
+}
+
+#[cfg(not(windows))]
+pub mod caption {
+    use super::window::Handle;
+    pub fn install(_handle: Handle, _ctx: &egui::Context) -> bool {
+        false
+    }
+    pub fn installed() -> bool {
+        false
+    }
+    pub fn set_strip(_rect: Option<[i32; 4]>) {}
+    pub fn state() -> (Option<usize>, Option<usize>) {
+        (None, None)
+    }
+    pub fn take_click() -> Option<usize> {
+        None
+    }
 }
 
 /// Plain-text clipboard. eframe is built without its clipboard feature (it

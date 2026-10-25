@@ -27,6 +27,8 @@ pub mod design;
 pub mod onboarding;
 pub mod pages;
 mod platform;
+mod render;
+mod runner;
 mod shell;
 pub mod stores;
 pub mod util;
@@ -53,22 +55,15 @@ pub fn run(backend: Arc<dyn Backend>, options: RunOptions) -> i32 {
     if let Some(icon) = shell::icon() {
         viewport = viewport.with_icon(Arc::new(icon));
     }
-    let native = eframe::NativeOptions {
+    if std::env::var("FLOW_RENDERER").is_ok_and(|r| r.starts_with("glow") || r.starts_with("wgpu")) {
+        return glow_experiment::run(viewport, backend, options);
+    }
+    // Benchmarks repaint as fast as they can; the window paces to the monitor.
+    let paced = options.bench.is_none();
+    let result = runner::run(
         viewport,
-        renderer: eframe::Renderer::Glow,
-        centered: true,
-        persist_window: false,
-        // Copy and paste go through Win32 (eframe's clipboard feature is off).
-        clipboard_shortcuts: false,
-        multisampling: 0,
-        depth_buffer: 0,
-        stencil_buffer: 0,
-        ..Default::default()
-    };
-    let result = eframe::run_native(
-        "Flow",
-        native,
-        Box::new(move |cc| Ok(Box::new(shell::SettingsApp::new(cc, backend, options)))),
+        paced,
+        Box::new(move |ctx, hwnd| shell::SettingsApp::new(ctx, backend, options, hwnd)),
     );
     match result {
         Ok(()) => 0,
@@ -76,5 +71,69 @@ pub fn run(backend: Arc<dyn Backend>, options: RunOptions) -> i32 {
             log::error!(target: "settings", "the settings window failed: {err}");
             1
         }
+    }
+}
+
+mod glow_experiment {
+    use super::*;
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+
+    struct Glow(shell::SettingsApp);
+    impl eframe::App for Glow {
+        fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+            runner::App::ui(&mut self.0, ui);
+        }
+        fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
+            runner::App::clear_color(&self.0).to_normalized_gamma_f32()
+        }
+        fn raw_input_hook(&mut self, ctx: &egui::Context, raw_input: &mut egui::RawInput) {
+            runner::App::raw_input_hook(&mut self.0, ctx, raw_input);
+        }
+    }
+
+    pub fn run(viewport: egui::ViewportBuilder, backend: Arc<dyn Backend>, options: RunOptions) -> i32 {
+        let which = std::env::var("FLOW_RENDERER").unwrap_or_default();
+        let mut wgpu_options = eframe::egui_wgpu::WgpuConfiguration::default();
+        let backends = match which.as_str() {
+            "wgpu-dx12" => Some(eframe::wgpu::Backends::DX12),
+            "wgpu-vulkan" => Some(eframe::wgpu::Backends::VULKAN),
+            "wgpu-gl" => Some(eframe::wgpu::Backends::GL),
+            _ => None,
+        };
+        if let Some(backends) = backends
+            && let eframe::egui_wgpu::WgpuSetup::CreateNew(ref mut create) = wgpu_options.wgpu_setup
+        {
+            create.instance_descriptor.backends = backends;
+            create.power_preference = eframe::wgpu::PowerPreference::LowPower;
+        }
+        let mut glow_options = eframe::egui_glow::GlowConfiguration::default();
+        if which == "glow-novsync" || options.bench.is_some() {
+            glow_options.vsync = false;
+        }
+        let native = eframe::NativeOptions {
+            viewport,
+            wgpu_options,
+            glow_options,
+            renderer: if backends.is_some() { eframe::Renderer::Wgpu } else { eframe::Renderer::Glow },
+            centered: true,
+            persist_window: false,
+            clipboard_shortcuts: false,
+            multisampling: 0,
+            depth_buffer: 0,
+            stencil_buffer: 0,
+            ..Default::default()
+        };
+        let result = eframe::run_native(
+            "Flow",
+            native,
+            Box::new(move |cc| {
+                let hwnd = match cc.window_handle().map(|h| h.as_raw()) {
+                    Ok(RawWindowHandle::Win32(h)) => h.hwnd.get(),
+                    _ => 0,
+                };
+                Ok(Box::new(Glow(shell::SettingsApp::new(&cc.egui_ctx, backend, options, hwnd))))
+            }),
+        );
+        i32::from(result.is_err())
     }
 }

@@ -43,6 +43,7 @@ fn main() {
             "--motion" => mock.reduced_motion = args.next().as_deref() == Some("reduced"),
             "--gallery" => options.gallery = true,
             "--demo" => options.demo = args.next(),
+            "--bench" => options.bench = args.next().and_then(|v| v.parse().ok()),
             "--fresh" => mock.fresh = true,
             "--onboarding" => mock.onboarding = true,
             "--noissues" => mock.no_issues = true,

@@ -1,11 +1,17 @@
 //! The window frame Flow draws itself: the window has no native decorations,
 //! so this provides the 40 px drag strip, Windows 11-style minimise / maximise
 //! / close buttons (the colours Electron's `titleBarOverlay` used: symbols
-//! `#ffffff` dark / `#1b1b1b` light, close hover `#c42b1c`), and resizing from
-//! the window edges. Dragging and resizing hand over to Windows
+//! `#ffffff` dark / `#1b1b1b` light, close hover `#c42b1c`) that Windows
+//! treats as caption buttons (snap layouts), and resizing from the window
+//! edges. Dragging and resizing hand over to Windows
 //! (`WM_NCLBUTTONDOWN`), so Aero Snap works.
 
-use egui::{Color32, CursorIcon, Id, Pos2, Rect, ResizeDirection, Sense, Stroke, Ui, ViewportCommand, pos2, vec2};
+use egui::{
+    Color32, CursorIcon, Id, LayerId, Order, Painter, Pos2, Rect, ResizeDirection, Sense, Stroke, Ui, ViewportCommand,
+    pos2, vec2,
+};
+
+use crate::platform;
 
 /// Height of the title strip (`h-10`).
 pub const TITLE_H: f32 = 40.0;
@@ -43,6 +49,13 @@ enum Caption {
 }
 
 /// The three caption buttons at the top right of `window`. Returns their rect.
+///
+/// On Windows the buttons are non-client areas (see [`platform::caption`]):
+/// Windows reports their hover, press and click, shows the snap-layouts
+/// flyout over maximise, and egui never sees the pointer there, so they keep
+/// working above a dialog's backdrop. They are painted on the topmost layer,
+/// over any backdrop, as Electron's native overlay buttons were. Without the
+/// subclass (tests) egui handles them.
 pub fn caption_buttons(ui: &Ui, window: Rect, dark: bool) -> Rect {
     let ctx = ui.ctx().clone();
     let (maximized, focused) = ctx.input(|i| (i.viewport().maximized.unwrap_or(false), i.focused));
@@ -50,12 +63,26 @@ pub fn caption_buttons(ui: &Ui, window: Rect, dark: bool) -> Rect {
         pos2(window.right() - 3.0 * BUTTON_W, window.top()),
         pos2(window.right(), window.top() + TITLE_H),
     );
+    let native = platform::caption::installed();
+    let ppp = ctx.pixels_per_point();
+    if native {
+        let px = |v: f32| (v * ppp).round() as i32;
+        // The top edge above the buttons still resizes the window.
+        let top = if maximized { all.top() } else { all.top() + EDGE };
+        platform::caption::set_strip(Some([px(all.left()), px(top), px(all.right()), px(all.bottom())]));
+    }
+    let (native_hover, native_pressed) = platform::caption::state();
+    let native_click = if native { platform::caption::take_click() } else { None };
+    let painter = ctx.layer_painter(LayerId::new(Order::Debug, Id::new("flow-caption-buttons")));
     let symbol = if dark { Color32::WHITE } else { Color32::from_rgb(0x1b, 0x1b, 0x1b) };
     for (i, kind) in [Caption::Minimize, Caption::Maximize, Caption::Close].into_iter().enumerate() {
         let rect = Rect::from_min_size(pos2(all.left() + i as f32 * BUTTON_W, all.top()), vec2(BUTTON_W, TITLE_H));
-        let response = ui.interact(rect, Id::unique(("flow-caption", i)), Sense::click());
-        let pressed = response.is_pointer_button_down_on();
-        let hovered = response.hovered();
+        let (pressed, hovered, clicked) = if native {
+            (native_pressed == Some(i), native_hover == Some(i), native_click == Some(i))
+        } else {
+            let response = ui.interact(rect, Id::unique(("flow-caption", i)), Sense::click());
+            (response.is_pointer_button_down_on(), response.hovered(), response.clicked())
+        };
         // Windows 11 caption colours (SubtleFillColorSecondary / Tertiary; close is #c42b1c).
         let (fill, mut color) = match (kind, pressed, hovered) {
             (Caption::Close, true, _) => {
@@ -74,12 +101,11 @@ pub fn caption_buttons(ui: &Ui, window: Rect, dark: bool) -> Rect {
         if !focused && !hovered {
             color = color.gamma_multiply(0.45);
         }
-        let painter = ui.painter();
         if fill.a() > 0 {
             painter.rect_filled(rect, 0.0, fill);
         }
-        paint_symbol(ui, rect.center(), kind, maximized, color);
-        if response.clicked() {
+        paint_symbol(&painter, ppp, rect.center(), kind, maximized, color);
+        if clicked {
             match kind {
                 Caption::Minimize => ctx.send_viewport_cmd(ViewportCommand::Minimized(true)),
                 Caption::Maximize => ctx.send_viewport_cmd(ViewportCommand::Maximized(!maximized)),
@@ -91,9 +117,7 @@ pub fn caption_buttons(ui: &Ui, window: Rect, dark: bool) -> Rect {
 }
 
 /// The Segoe Fluent caption glyphs, drawn as 1 px lines in a 10 px box.
-fn paint_symbol(ui: &Ui, center: Pos2, kind: Caption, maximized: bool, color: Color32) {
-    let painter = ui.painter();
-    let ppp = ui.ctx().pixels_per_point();
+fn paint_symbol(painter: &Painter, ppp: f32, center: Pos2, kind: Caption, maximized: bool, color: Color32) {
     // Snap to the pixel grid so 1 px lines stay crisp.
     let snap = |v: f32| ((v * ppp).floor() + 0.5) / ppp;
     let (cx, cy) = (snap(center.x), snap(center.y));
