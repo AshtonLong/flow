@@ -166,7 +166,7 @@ fn noise(x: i64, y: i64, height: usize) -> f32 {
     let fy = (height as i64 - 1 - y) as f32 + 0.5;
     let f = 0.067_110_56 * fx + 0.005_837_15 * fy;
     let f = f - floor(f);
-    let n = 52.982_918_9 * f;
+    let n = 52.982_918 * f;
     let n = n - floor(n);
     (n - 0.5) * 0.95
 }
@@ -521,14 +521,20 @@ impl Band<'_> {
             // Texels per pixel from the affine uv mapping.
             let du = [v[1].uv.x - v[0].uv.x, v[2].uv.x - v[0].uv.x];
             let dv = [v[1].uv.y - v[0].uv.y, v[2].uv.y - v[0].uv.y];
-            let dp = [(p[1].0 - p[0].0) as f32, (p[1].1 - p[0].1) as f32, (p[2].0 - p[0].0) as f32, (p[2].1 - p[0].1) as f32];
+            let dp = [
+                (p[1].0 - p[0].0) as f32,
+                (p[1].1 - p[0].1) as f32,
+                (p[2].0 - p[0].0) as f32,
+                (p[2].1 - p[0].1) as f32,
+            ];
             let det = dp[0] * dp[3] - dp[1] * dp[2];
             let s = SUB as f32 / det;
             let dudx = (du[0] * dp[3] - du[1] * dp[1]) * s;
             let dudy = (du[1] * dp[0] - du[0] * dp[2]) * s;
             let dvdx = (dv[0] * dp[3] - dv[1] * dp[1]) * s;
             let dvdy = (dv[1] * dp[0] - dv[0] * dp[2]) * s;
-            let rho = (dudx.abs().max(dudy.abs()) * tex.width as f32).max(dvdx.abs().max(dvdy.abs()) * tex.height as f32);
+            let rho =
+                (dudx.abs().max(dudy.abs()) * tex.width as f32).max(dvdx.abs().max(dvdy.abs()) * tex.height as f32);
             Some(Sampler::new(tex, rho))
         };
         // Per vertex: colour in 8-bit units, then uv.
@@ -538,8 +544,7 @@ impl Band<'_> {
         });
         let dw2 = edges[0].0 as f32 * SUB as f32 * inv_area;
         let dw1 = edges[2].0 as f32 * SUB as f32 * inv_area;
-        let step: [f32; 6] =
-            std::array::from_fn(|i| dw1 * (attr[1][i] - attr[0][i]) + dw2 * (attr[2][i] - attr[0][i]));
+        let step: [f32; 6] = std::array::from_fn(|i| dw1 * (attr[1][i] - attr[0][i]) + dw2 * (attr[2][i] - attr[0][i]));
         let src_flat = pack(colors[0]);
         let height = self.height;
         let inv: [f64; 3] = edges.map(|e| if e.0 == 0 { 0.0 } else { 1.0 / (e.0 * SUB) as f64 });

@@ -112,9 +112,10 @@ mod imp {
             unsafe { std::slice::from_raw_parts_mut(self.bits, self.width * self.height) }
         }
 
-        /// Copies the buffer to the window.
-        pub fn present(&self) {
-            if self.bits.is_null() {
+        /// Copies `rows` of the buffer to the window.
+        pub fn present(&self, rows: std::ops::Range<usize>) {
+            let rows = rows.start.min(self.height)..rows.end.min(self.height);
+            if self.bits.is_null() || rows.is_empty() {
                 return;
             }
             // SAFETY: plain GDI calls on our window and our memory DC.
@@ -123,17 +124,8 @@ mod imp {
                 if window_dc.is_invalid() {
                     return;
                 }
-                let _ = BitBlt(
-                    window_dc,
-                    0,
-                    0,
-                    self.width as i32,
-                    self.height as i32,
-                    Some(self.dc),
-                    0,
-                    0,
-                    SRCCOPY,
-                );
+                let (y, h) = (rows.start as i32, rows.len() as i32);
+                let _ = BitBlt(window_dc, 0, y, self.width as i32, h, Some(self.dc), 0, y, SRCCOPY);
                 ReleaseDC(Some(self.hwnd), window_dc);
             }
         }
@@ -169,7 +161,7 @@ mod imp {
         pub fn pixels(&mut self) -> &mut [u32] {
             &mut self.pixels
         }
-        pub fn present(&self) {}
+        pub fn present(&self, _rows: std::ops::Range<usize>) {}
     }
 }
 

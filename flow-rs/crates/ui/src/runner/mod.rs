@@ -68,6 +68,9 @@ struct Runner<A> {
     frame_interval: Duration,
     stats: Option<Stats>,
     error: Option<String>,
+    /// We asked for the coming `RedrawRequested` (else Windows did, and wants every pixel).
+    redraw_requested: bool,
+    full_present: bool,
 }
 
 /// Frame timings, printed every 120 frames when `FLOW_FRAME_STATS` is set.
@@ -132,6 +135,8 @@ pub(crate) fn run<A: App + 'static>(
         frame_interval: if paced { Duration::from_micros(16_667) } else { Duration::ZERO },
         stats: std::env::var_os("FLOW_FRAME_STATS").map(|_| Stats::default()),
         error: None,
+        redraw_requested: false,
+        full_present: false,
     };
     event_loop.run_app(&mut runner).map_err(|e| e.to_string())?;
     match runner.error {
@@ -232,7 +237,7 @@ impl<A: App> Runner<A> {
                 self.renderer.invalidate();
             }
             let pixels = surface.pixels();
-            self.renderer.paint(
+            let mut changed = self.renderer.paint(
                 Target { pixels, width, height },
                 app.clear_color(),
                 &primitives,
@@ -240,20 +245,22 @@ impl<A: App> Runner<A> {
             );
             let raster_done = Instant::now();
             raster = raster_done - ui_done;
-            surface.present();
+            // Windows asking for a paint (not us) gets the whole frame.
+            if std::mem::take(&mut self.full_present) || new_buffer {
+                changed = 0..height;
+            }
+            surface.present(changed);
             present = raster_done.elapsed();
             for action in actions {
                 if let egui_winit::ActionRequested::Screenshot(callback) = action {
                     let pixels = surface.pixels();
-                    let image = egui::ColorImage::new(
-                        [width, height],
-                        pixels.iter().map(|&p| render::unpack(p)).collect(),
-                    );
+                    let image =
+                        egui::ColorImage::new([width, height], pixels.iter().map(|&p| render::unpack(p)).collect());
                     callback.complete(Arc::new(image));
                 }
             }
         }
-        self.renderer.free_textures(&output.textures_delta);
+        self.renderer.free_textures(output.textures_delta);
         if let Some(stats) = self.stats.as_mut() {
             stats.add(ui_done - frame_start, raster, present);
         }
@@ -315,18 +322,17 @@ impl<A: App> ApplicationHandler<UserEvent> for Runner<A> {
         match event {
             WindowEvent::RedrawRequested => {
                 self.repaint_at = None;
+                self.full_present |= !std::mem::take(&mut self.redraw_requested);
                 self.paint(event_loop);
             }
             WindowEvent::CloseRequested | WindowEvent::Destroyed => event_loop.exit(),
             event => {
                 let Some(running) = self.running.as_mut() else { return };
-                if self.stats.is_some() && matches!(event, WindowEvent::Focused(_)) {
-                    eprintln!("event {event:?}");
-                }
                 let response = running.egui.on_window_event(&running.window, &event);
                 if matches!(event, WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. }) {
                     // Live resizing runs a modal loop; paint straight away so the frame follows the edge.
                     running.window.request_redraw();
+                    self.redraw_requested = true;
                 } else if response.repaint {
                     self.schedule(Instant::now());
                 }
@@ -359,6 +365,7 @@ impl<A: App> ApplicationHandler<UserEvent> for Runner<A> {
             self.paint(event_loop);
         } else {
             running.window.request_redraw();
+            self.redraw_requested = true;
         }
     }
 }

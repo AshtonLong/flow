@@ -3,16 +3,25 @@
 //!
 //! - Commands arrive on stdin, one per line: `hotkey hold-start`,
 //!   `hotkey hold-end`, `hotkey toggle`, `hotkey cancel`, `hotkey lock`,
-//!   `hotkey paste-last`, `settings [page]`, `quit`.
+//!   `hotkey paste-last`, `settings [page]`, `quit`, and
+//!   `ipc {"id":1,"method":"ConfigGet"}`: a settings-window request, answered
+//!   by the same handler the window uses (the Electron suite's
+//!   `settings.evaluate(() => window.flow.…)`).
+//! - `{"type":"reply","id":…,"reply":…}` answers an `ipc` command and
+//!   `{"type":"settings","pid":…}` reports that the settings window opened.
 //! - Events leave on stdout as JSON lines: `{"type":"ready"}`,
 //!   `{"type":"insert","text":…}`, `{"type":"dictation",…}`,
 //!   `{"type":"overlay",…}`.
-//! - The global key hook is not started and nothing is pasted anywhere.
+//! - `{"type":"event","event":…}` repeats every push to the settings window.
+//! - The global key hook is not started and nothing is pasted anywhere, unless
+//!   `FLOW_TEST_REAL_INSERT=1` asks for the real inserter (the test then owns
+//!   the focused window).
 //! - `FLOW_FAKE_MIC=<wav>` (read by flow-audio) replaces the microphone.
 
 use std::io::{BufRead, Write};
 
 use flow_core::matcher::HotkeyEvent;
+use flow_core::protocol::settings::{Reply, RequestEnvelope};
 use flow_core::types::{DictationEvent, OverlayState};
 use parking_lot::Mutex;
 use serde_json::json;
@@ -22,6 +31,11 @@ use crate::app::AppMsg;
 
 pub fn enabled() -> bool {
     std::env::var("FLOW_TEST").as_deref() == Ok("1")
+}
+
+/// `FLOW_TEST_REAL_INSERT=1`: insert with the real inserter as well.
+pub fn real_insert() -> bool {
+    std::env::var("FLOW_TEST_REAL_INSERT").as_deref() == Ok("1")
 }
 
 static STDOUT: Mutex<()> = Mutex::new(());
@@ -49,6 +63,22 @@ pub fn overlay(state: &OverlayState) {
     emit(json!({ "type": "overlay", "state": state }));
 }
 
+pub fn reply(id: u64, reply: &Reply) {
+    emit(json!({ "type": "reply", "id": id, "reply": reply }));
+}
+
+pub fn event(event: &flow_core::protocol::settings::Event) {
+    if enabled() {
+        emit(json!({ "type": "event", "event": event }));
+    }
+}
+
+pub fn settings_opened(pid: u32) {
+    if enabled() {
+        emit(json!({ "type": "settings", "pid": pid }));
+    }
+}
+
 fn hotkey(name: &str) -> Option<HotkeyEvent> {
     Some(match name {
         "hold-start" => HotkeyEvent::HoldStart,
@@ -65,6 +95,7 @@ fn hotkey(name: &str) -> Option<HotkeyEvent> {
 /// Commands that are not hotkeys.
 pub enum Command {
     OpenSettings(Option<String>),
+    Ipc(RequestEnvelope),
     Quit,
 }
 
@@ -75,7 +106,8 @@ pub fn spawn_reader(tx: UnboundedSender<AppMsg>, on_command: impl Fn(Command) + 
         .spawn(move || {
             for line in std::io::stdin().lock().lines() {
                 let Ok(line) = line else { break };
-                let mut words = line.split_whitespace();
+                // .NET writes a byte-order mark before the first line.
+                let mut words = line.trim_start_matches('\u{feff}').split_whitespace();
                 match (words.next(), words.next()) {
                     (Some("hotkey"), Some(name)) => {
                         if let Some(event) = hotkey(name) {
@@ -83,6 +115,13 @@ pub fn spawn_reader(tx: UnboundedSender<AppMsg>, on_command: impl Fn(Command) + 
                         }
                     }
                     (Some("settings"), page) => on_command(Command::OpenSettings(page.map(str::to_string))),
+                    (Some("ipc"), Some(_)) => {
+                        let json = line.split_once("ipc").map_or("", |(_, rest)| rest.trim());
+                        match serde_json::from_str::<RequestEnvelope>(json) {
+                            Ok(envelope) => on_command(Command::Ipc(envelope)),
+                            Err(err) => emit(json!({ "type": "error", "message": err.to_string() })),
+                        }
+                    }
                     (Some("quit"), _) => {
                         on_command(Command::Quit);
                         return;

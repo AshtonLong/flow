@@ -385,9 +385,9 @@ impl EngineClient {
         tokio::spawn(async move {
             let mut lines = BufReader::new(stderr).lines();
             while let Ok(Some(line)) = lines.next_line().await {
-                let line = line.trim();
-                if !line.is_empty() {
-                    log::warn!(target: "engine", "{line}");
+                let (level, text) = flow_core::protocol::parse_child_log(line.trim());
+                if !text.is_empty() {
+                    log::log!(target: "engine", level, "{text}");
                 }
             }
         });

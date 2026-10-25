@@ -73,7 +73,7 @@ pub fn caption_buttons(ui: &Ui, window: Rect, dark: bool) -> Rect {
     }
     let (native_hover, native_pressed) = platform::caption::state();
     let native_click = if native { platform::caption::take_click() } else { None };
-    let painter = ctx.layer_painter(LayerId::new(Order::Debug, Id::new("flow-caption-buttons")));
+    let painter = ctx.layer_painter(LayerId::new(Order::Debug, Id::unique("flow-caption-buttons")));
     let symbol = if dark { Color32::WHITE } else { Color32::from_rgb(0x1b, 0x1b, 0x1b) };
     for (i, kind) in [Caption::Minimize, Caption::Maximize, Caption::Close].into_iter().enumerate() {
         let rect = Rect::from_min_size(pos2(all.left() + i as f32 * BUTTON_W, all.top()), vec2(BUTTON_W, TITLE_H));

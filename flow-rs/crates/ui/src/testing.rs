@@ -15,16 +15,25 @@ use crate::design::{self, Tokens};
 use crate::pages::{Cx, Page, PageId};
 use crate::stores::{AppInfoStore, Appearance, CatalogStore, ConfigStore, Microphones};
 
+/// A test's own answers, tried before the defaults (`None` falls through).
+type Responder = Box<dyn Fn(&Request) -> Option<Reply> + Send + Sync>;
+
 /// Answers at once: config reads and writes against an in-memory file, and
 /// empty answers for everything else. Records every request.
 pub(crate) struct Instant {
     raw: Mutex<Value>,
     pub requests: Mutex<Vec<Request>>,
+    responder: Mutex<Option<Responder>>,
 }
 
 impl Instant {
     pub(crate) fn new(raw: Value) -> Arc<Self> {
-        Arc::new(Self { raw: Mutex::new(raw), requests: Mutex::new(Vec::new()) })
+        Arc::new(Self { raw: Mutex::new(raw), requests: Mutex::new(Vec::new()), responder: Mutex::new(None) })
+    }
+
+    /// Answers requests with `respond` first; `None` falls back to the defaults.
+    pub(crate) fn respond_with(&self, respond: impl Fn(&Request) -> Option<Reply> + Send + Sync + 'static) {
+        *self.responder.lock() = Some(Box::new(respond));
     }
 
     fn snapshot(&self) -> ConfigSnapshot {
@@ -40,6 +49,11 @@ impl Instant {
 impl Backend for Instant {
     fn request(&self, request: Request, reply: Box<dyn FnOnce(Reply) + Send>) {
         self.requests.lock().push(request.clone());
+        let custom = self.responder.lock().as_ref().and_then(|respond| respond(&request));
+        if let Some(answer) = custom {
+            reply(answer);
+            return;
+        }
         let answer = match request {
             Request::ConfigGet => Reply::ok(&self.snapshot()),
             Request::ConfigSet(patches) => {
@@ -63,6 +77,10 @@ pub(crate) struct Harness {
     pub time: f64,
     pending: Vec<Event>,
     pointer: Pos2,
+    /// What the last frame painted.
+    pub shapes: Vec<egui::epaint::ClippedShape>,
+    /// The window size (1000×700); make it taller to see a whole long page.
+    pub screen: egui::Vec2,
 }
 
 impl Harness {
@@ -71,20 +89,53 @@ impl Harness {
         design::fonts::install(&ctx);
         let appearance = Appearance { dark: false, high_contrast: false, reduced_motion: true };
         design::apply(&ctx, Tokens::new(appearance, &crate::platform::system_colors()));
-        Self { ctx, time: 0.0, pending: Vec::new(), pointer: Pos2::ZERO }
+        Self {
+            ctx,
+            time: 0.0,
+            pending: Vec::new(),
+            pointer: Pos2::ZERO,
+            shapes: Vec::new(),
+            screen: vec2(1000.0, 700.0),
+        }
     }
 
     /// Runs one frame (egui may run extra passes for measured rows).
     pub(crate) fn frame(&mut self, mut ui_fn: impl FnMut(&mut Ui)) {
         self.time += 1.0 / 60.0;
         let input = RawInput {
-            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(1000.0, 700.0))),
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, self.screen)),
             time: Some(self.time),
             focused: true,
             events: std::mem::take(&mut self.pending),
             ..RawInput::default()
         };
-        self.ctx.run_ui(input, |ui| ui_fn(ui)).drop_without_applying_deltas();
+        let mut output = self.ctx.run_ui(input, |ui| ui_fn(ui));
+        self.shapes = std::mem::take(&mut output.shapes);
+        output.drop_without_applying_deltas();
+    }
+
+    /// Everywhere the last frame painted a run of text that reads exactly `text`, in paint order.
+    pub(crate) fn text_rects(&self, text: &str) -> Vec<Rect> {
+        fn find(shape: &egui::Shape, text: &str, out: &mut Vec<Rect>) {
+            match shape {
+                egui::Shape::Text(t) if t.galley.text() == text => out.push(t.galley.rect.translate(t.pos.to_vec2())),
+                egui::Shape::Vec(shapes) => shapes.iter().for_each(|s| find(s, text, out)),
+                _ => {}
+            }
+        }
+        let mut out = Vec::new();
+        self.shapes.iter().for_each(|s| find(&s.shape, text, &mut out));
+        out
+    }
+
+    /// Where the last frame first painted a run of text that reads exactly `text`.
+    pub(crate) fn text_rect(&self, text: &str) -> Option<Rect> {
+        self.text_rects(text).into_iter().next()
+    }
+
+    /// True when the last frame painted `text` as one run.
+    pub(crate) fn shows(&self, text: &str) -> bool {
+        self.text_rect(text).is_some()
     }
 
     pub(crate) fn wait(&mut self, seconds: f64) {
@@ -113,15 +164,20 @@ impl Harness {
     }
 
     pub(crate) fn key(&mut self, key: Key) {
+        self.key_with(key, Modifiers::NONE);
+    }
+
+    /// A key with modifiers held: `key_with(Key::Tab, Modifiers::SHIFT)`.
+    pub(crate) fn key_with(&mut self, key: Key, modifiers: Modifiers) {
         for pressed in [true, false] {
-            self.pending.push(Event::Key {
-                key,
-                physical_key: None,
-                pressed,
-                repeat: false,
-                modifiers: Modifiers::NONE,
-            });
+            self.pending.push(Event::Key { key, physical_key: None, pressed, repeat: false, modifiers });
         }
+    }
+
+    /// Where the widget with keyboard focus is, if any.
+    pub(crate) fn focused_rect(&self) -> Option<Rect> {
+        let id = self.ctx.memory(|m| m.focused())?;
+        self.ctx.read_response(id).map(|r| r.rect)
     }
 
     pub(crate) fn type_text(&mut self, text: &str) {
@@ -148,6 +204,8 @@ pub(crate) struct PageHarness {
     mics: Microphones,
     page: Box<dyn Page>,
     pub nav: Option<PageId>,
+    /// Pushes from the main process, delivered with the next frame.
+    pub events: Vec<BackendEvent>,
 }
 
 impl PageHarness {
@@ -165,12 +223,16 @@ impl PageHarness {
             backend,
             h,
             nav: None,
+            events: Vec::new(),
         }
     }
 
     pub(crate) fn frame(&mut self) {
-        let Self { h, config, catalog, app_info, mics, page, link, nav, .. } = self;
+        let Self { h, config, catalog, app_info, mics, page, link, nav, events, .. } = self;
+        let events = std::mem::take(events);
         h.frame(|ui| {
+            // As the shell does at the start of every frame.
+            design::focus::update(ui.ctx());
             config.pump(&[]);
             catalog.pump(&[]);
             app_info.pump(false);
@@ -179,7 +241,7 @@ impl PageHarness {
             }
             let column = Rect::from_min_size(pos2(0.0, 0.0), vec2(696.0, 5000.0));
             let mut col = ui.new_child(egui::UiBuilder::new().max_rect(column));
-            let mut cx = Cx { config, catalog, app_info, mics, link, events: &[], nav };
+            let mut cx = Cx { config, catalog, app_info, mics, link, events: &events, nav };
             page.ui(&mut col, &mut cx);
         });
     }
@@ -193,6 +255,17 @@ impl PageHarness {
 
     pub(crate) fn config(&self) -> &flow_core::config::Config {
         self.config.config()
+    }
+
+    /// Clicks the middle of the text `label` painted last frame (a button's label).
+    pub(crate) fn click_text(&mut self, label: &str) {
+        let rect = self.h.text_rect(label).unwrap_or_else(|| panic!("“{label}” is not on screen"));
+        self.click(rect.center());
+    }
+
+    /// The requests sent so far.
+    pub(crate) fn requests(&self) -> Vec<Request> {
+        self.backend.requests.lock().clone()
     }
 }
 
@@ -298,6 +371,29 @@ mod tests {
         h.frame(&mut draw);
         assert_eq!(*value.borrow(), "Ctrl+V!");
         assert_eq!(commits.get(), 1);
+    }
+
+    #[test]
+    fn escape_in_a_text_field_reverts_the_draft_and_keeps_focus() {
+        let mut h = Harness::new();
+        let value = std::cell::RefCell::new("Ctrl+V".to_string());
+        let mut draw = |ui: &mut Ui| {
+            let current = value.borrow().clone();
+            if let Some(v) = crate::components::TextField::new("test.text", &current).show(ui).committed {
+                *value.borrow_mut() = v;
+            }
+        };
+        h.frame(&mut draw);
+        h.click(pos2(100.0, 16.0), &mut draw);
+        h.type_text("!");
+        h.frame(&mut draw);
+        h.key(Key::Escape);
+        h.frame(&mut draw);
+        h.frame(&mut draw);
+        assert!(h.focused_rect().is_some(), "Chromium keeps focus in the box");
+        h.wait(1.0);
+        h.frame(&mut draw);
+        assert_eq!(*value.borrow(), "Ctrl+V", "the typing is undone, not saved");
     }
 
     #[test]

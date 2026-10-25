@@ -122,8 +122,14 @@ pub fn snap_baselines(galley: Arc<Galley>, style: TextStyle) -> Arc<Galley> {
 /// Lays out one run of text. `wrap` is the maximum width (`f32::INFINITY` for one line).
 pub fn galley(ui: &Ui, text: impl Into<String>, style: TextStyle, color: Color32, wrap: f32) -> Arc<Galley> {
     let mut job = LayoutJob::single_section(text.into(), style.format(color));
-    job.wrap = TextWrapping { max_width: wrap, ..TextWrapping::default() };
+    job.wrap = TextWrapping { max_width: css_wrap_width(wrap), ..TextWrapping::default() };
     snap_baselines(ui.painter().layout_job(job), style)
+}
+
+/// egui lets a line run 0.5 px past its wrap width (`LayoutJob::effective_wrap_width`);
+/// Chromium breaks as soon as the text is wider than its box. Cancel the slack.
+pub fn css_wrap_width(width: f32) -> f32 {
+    if width.is_finite() { (width - 0.5).max(0.0) } else { width }
 }
 
 /// One line, cut with an ellipsis to fit `max_width` (`truncate`).
@@ -316,4 +322,28 @@ pub fn baseline(galley: &Galley) -> f32 {
 /// The size of one line box in a style.
 pub fn line_size(width: f32, style: TextStyle) -> Vec2 {
     Vec2::new(width, style.line_height)
+}
+
+#[cfg(test)]
+mod wrap_tests {
+    use super::*;
+
+    /// A line that fits, but only without its trailing space, stays whole
+    /// (vendor/epaint); one a little too wide still wraps.
+    #[test]
+    fn wraps_where_chromium_wraps() {
+        let mut h = crate::testing::Harness::new();
+        h.frame(|ui| {
+            let line = "Fix words Flow mishears: names, product terms, acronyms. The right spellings are also given";
+            let fits = width(ui, line, TextStyle::CAPTION);
+            let rows = |wrap: f32| {
+                let galley =
+                    galley(ui, format!("{line} to the speech model."), TextStyle::CAPTION, Color32::WHITE, wrap);
+                galley.rows.first().map(|r| r.row.text().trim_end().to_string()).unwrap_or_default()
+            };
+            assert_eq!(rows(fits + 1.0), line);
+            assert_eq!(rows(fits), line);
+            assert!(rows(fits - 2.0).ends_with("also"));
+        });
+    }
 }

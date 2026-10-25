@@ -16,6 +16,7 @@ pub mod card;
 pub mod chips_input;
 pub mod dialog;
 pub mod error_boundary;
+pub mod file_dialog;
 pub mod hotkey_recorder;
 pub mod issues_banner;
 pub mod key_caps;
@@ -38,5 +39,7 @@ pub use key_caps::key_caps;
 pub use level_meter::{MicMeter, capture_help, level_meter, mic_select};
 pub use notice::{BadgeTone, Notice, Tone, badge, progress_bar, spinner};
 pub use select::{Select, SelectOption, SelectResponse};
-pub use text_field::{FieldResponse, NumberField, TextArea, TextField, input};
+pub use text_field::{
+    FieldResponse, Input, NumberField, TextArea, TextField, input, input_area, input_invalid, search_input,
+};
 pub use toggle::{Toggle, ToggleResponse, checkbox, radio};

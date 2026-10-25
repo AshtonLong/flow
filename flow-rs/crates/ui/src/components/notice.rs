@@ -39,11 +39,19 @@ impl Tone {
 pub struct Notice<'a> {
     tone: Tone,
     text: &'a str,
+    mono_suffix: Option<&'a str>,
 }
 
 impl<'a> Notice<'a> {
     pub fn new(tone: Tone, text: &'a str) -> Self {
-        Self { tone, text }
+        Self { tone, text, mono_suffix: None }
+    }
+
+    /// Appends ` <suffix>` in the mono face and `fg-2`, as in
+    /// `{effect} <span className="font-mono text-fg-2">({module})</span>`.
+    pub fn mono_suffix(mut self, suffix: &'a str) -> Self {
+        self.mono_suffix = Some(suffix);
+        self
     }
 
     pub fn show(self, ui: &mut Ui) -> Response {
@@ -87,7 +95,16 @@ impl<'a> Notice<'a> {
         let text_left = left + 16.0 + 10.0;
         let text_w = (right - text_left - if action.is_some() { 10.0 + action_size.x } else { 0.0 }).max(40.0);
         let content_top = top.y + 1.0 + 8.0;
-        let galley = text::galley(ui, self.text, TextStyle::CAPTION, fg, text_w);
+        let galley = match self.mono_suffix {
+            None => text::galley(ui, self.text, TextStyle::CAPTION, fg, text_w),
+            Some(suffix) => {
+                let mut job = egui::text::LayoutJob::default();
+                job.append(&format!("{} ", self.text), 0.0, TextStyle::CAPTION.format(fg));
+                job.append(suffix, 0.0, TextStyle::CAPTION.mono().format(t.fg_2));
+                job.wrap.max_width = text_w;
+                text::snap_baselines(ui.painter().layout_job(job), TextStyle::CAPTION)
+            }
+        };
         let text_h = galley.size().y;
         icons::paint(
             ui,

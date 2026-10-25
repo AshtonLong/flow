@@ -85,6 +85,7 @@ impl SettingsHost {
         *slot = Some(Child { pid, out: out_tx.clone(), kill: kill_tx });
         drop(slot);
         log::info!(target: "settings", "window opened (pid {pid})");
+        crate::test_mode::settings_opened(pid);
 
         // Writer: queued lines to the window's stdin.
         if let Some(mut stdin) = stdin {
@@ -124,7 +125,10 @@ impl SettingsHost {
             self.rt.spawn(async move {
                 let mut lines = BufReader::new(stderr).lines();
                 while let Ok(Some(line)) = lines.next_line().await {
-                    log::warn!(target: "settings", "{line}");
+                    let (level, text) = flow_core::protocol::parse_child_log(line.trim());
+                    if !text.is_empty() {
+                        log::log!(target: "settings", level, "{text}");
+                    }
                 }
             });
         }
@@ -156,6 +160,7 @@ impl SettingsHost {
 
     /// Pushes an event to the window, if it is open.
     pub fn send(&self, event: Event) {
+        crate::test_mode::event(&event);
         if let Some(child) = self.child.lock().as_ref() {
             send_line(&child.out, &Downstream::Event(event));
         }

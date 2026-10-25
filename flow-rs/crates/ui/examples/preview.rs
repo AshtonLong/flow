@@ -6,7 +6,9 @@
 //!
 //! Flags: `--page <id>`, `--theme light|dark` (the mock's Windows theme),
 //! `--screenshot <file.png>`, `--scroll <points>`, `--contrast high`,
-//! `--motion reduced`, `--gallery`, and the mock's starting states: `--fresh`,
+//! `--motion reduced`, `--gallery`, `--demo <name>` (gallery overlays, or with
+//! `--onboarding` a later step: `hotkey`, `model`, `cloud`, `try`), and the
+//! mock's starting states: `--fresh`,
 //! `--onboarding`, `--noissues`, `--history-off`, `--downloading <id>`,
 //! `--degraded`.
 

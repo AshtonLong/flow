@@ -141,7 +141,9 @@ impl App {
         self.hook.set_bindings(&cfg.hotkeys);
         self.engine.set_keep_loaded_minutes(cfg.model.keep_loaded_minutes);
         self.overlay.configure(self.overlay_appearance(cfg), cfg.overlay.position);
+        // A test run (FLOW_TEST) of an installed copy leaves the real autostart entry alone.
         if self.paths.packaged
+            && !crate::test_mode::enabled()
             && let Err(err) = system::set_launch_at_login(cfg.general.launch_at_login, &self.paths.exe)
         {
             log::warn!(target: "app", "launch at login: {err}");
@@ -333,6 +335,14 @@ pub fn run(args: Vec<String>) -> i32 {
         let commands = app.clone();
         crate::test_mode::spawn_reader(tx.clone(), move |command| match command {
             crate::test_mode::Command::OpenSettings(page) => commands.settings.open(page.as_deref()),
+            crate::test_mode::Command::Ipc(envelope) => {
+                let handler = crate::ipc::handler(Arc::downgrade(&commands));
+                commands.rt.spawn(async move {
+                    let id = envelope.id;
+                    let reply = handler(envelope).await;
+                    crate::test_mode::reply(id, &reply);
+                });
+            }
             crate::test_mode::Command::Quit => commands.quit(),
         });
     }
@@ -386,7 +396,7 @@ pub fn run(args: Vec<String>) -> i32 {
             flow_core::cleanup::apply_rules("warm up", &config, &flow_core::cleanup::RulesContext::default())
         });
     }
-    app.updater.schedule_check();
+    app.updater.schedule_check(&rt);
     log::info!(target: "app", "tray ready in {} ms", started.elapsed().as_millis());
     if test_mode {
         crate::test_mode::ready();
@@ -549,7 +559,9 @@ async fn build(
                 Box::pin(async move {
                     if crate::test_mode::enabled() {
                         crate::test_mode::inserted(&text, request.target.as_ref().map(|t| t.process_name.as_str()));
-                        return InsertResult::ok(flow_core::types::InsertOutcome::Pasted);
+                        if !crate::test_mode::real_insert() {
+                            return InsertResult::ok(flow_core::types::InsertOutcome::Pasted);
+                        }
                     }
                     let options = InsertOptions {
                         method: request.method,

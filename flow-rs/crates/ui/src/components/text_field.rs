@@ -16,8 +16,9 @@ use egui::{
     Stroke, TextBuffer, TextEdit, Ui, UiBuilder, pos2, vec2,
 };
 
+use super::dialog;
 use crate::design::text::{self, TextStyle};
-use crate::design::tokens;
+use crate::design::{Icon, icons, tokens};
 
 const DEBOUNCE: f64 = 0.7;
 
@@ -91,6 +92,13 @@ struct EditOutput {
     enter: bool,
 }
 
+/// The keys a focused text box keeps from egui's focus handling: the arrows
+/// move the caret, and Escape does not blur it (Chromium keeps focus in an
+/// `<input>` on Escape; the field reverts its draft, a dialog closes). Tab
+/// still moves focus.
+pub(crate) const FIELD_KEYS: EventFilter =
+    EventFilter { tab: false, horizontal_arrows: true, vertical_arrows: true, escape: true };
+
 /// Everything about one TextEdit inside an `.input` frame.
 struct EditSpec<'a> {
     id: Id,
@@ -105,6 +113,11 @@ struct EditSpec<'a> {
 }
 
 fn edit(ui: &mut Ui, spec: &EditSpec<'_>, text: &mut String) -> EditOutput {
+    edit_padded(ui, spec, text, 10.0, 10.0)
+}
+
+/// [`edit`] with its own side padding (room for an icon or a clear button inside the box).
+fn edit_padded(ui: &mut Ui, spec: &EditSpec<'_>, text: &mut String, left: f32, right: f32) -> EditOutput {
     let ctx = ui.ctx().clone();
     let t = tokens(&ctx);
     let had_focus = ctx.memory(|m| m.has_focus(spec.id));
@@ -115,22 +128,18 @@ fn edit(ui: &mut Ui, spec: &EditSpec<'_>, text: &mut String) -> EditOutput {
         InputLook { hovered, focused: had_focus, disabled: !spec.enabled, invalid: spec.invalid },
     );
     // Escape and Enter belong to the field (revert / commit), not to focus handling.
-    let (escape, enter) = if had_focus {
-        ui.memory_mut(|m| m.set_focus_lock_filter(spec.id, EventFilter { escape: true, ..EventFilter::default() }));
-        ctx.input(|i| (i.key_pressed(Key::Escape), i.key_pressed(Key::Enter)))
-    } else {
-        (false, false)
-    };
+    let (escape, enter) =
+        if had_focus { ctx.input(|i| (i.key_pressed(Key::Escape), i.key_pressed(Key::Enter))) } else { (false, false) };
     let color = if spec.enabled { t.fg } else { t.fg_disabled };
     let inner = spec.rect.shrink(1.0);
     let pad_y = if spec.multiline { 5.0 } else { ((inner.height() - spec.style.line_height) / 2.0).max(0.0) };
     if text.is_empty()
         && let Some(placeholder) = spec.placeholder
     {
-        let galley = text::galley(ui, placeholder, spec.style, t.fg_3, inner.width() - 20.0);
+        let galley = text::galley(ui, placeholder, spec.style, t.fg_3, inner.width() - left - right);
         let x = match spec.align {
-            Align::Max => inner.right() - 10.0 - galley.size().x,
-            _ => inner.left() + 10.0,
+            Align::Max => inner.right() - right - galley.size().x,
+            _ => inner.left() + left,
         };
         ui.painter().with_clip_rect(inner).galley(pos2(x, inner.top() + pad_y), galley, t.fg_3);
     }
@@ -142,15 +151,16 @@ fn edit(ui: &mut Ui, spec: &EditSpec<'_>, text: &mut String) -> EditOutput {
         .id(spec.id)
         // With an explicit frame egui takes the padding from it, not from `.margin()`.
         .frame(Frame::NONE.inner_margin(Margin {
-            left: 10,
-            right: 10,
+            left: left as i8,
+            right: right as i8,
             top: pad_y.floor() as i8,
             bottom: pad_y.ceil() as i8,
         }))
-        .desired_width(inner.width() - 20.0)
+        .desired_width(inner.width() - left - right)
         .min_size(inner.size())
         .align(egui::Align2([spec.align, Align::Min]))
         .password(spec.password)
+        .event_filter(FIELD_KEYS)
         .interactive(spec.enabled)
         .text_color(color)
         .layouter(&mut layout)
@@ -294,7 +304,8 @@ impl<'a> TextField<'a> {
         if out.response.gained_focus() {
             d.focused = true;
         }
-        if out.response.lost_focus() || (d.focused && !out.response.has_focus()) {
+        if out.response.lost_focus() || (d.focused && !out.response.has_focus()) || dialog::closing(&ctx) {
+            // A pending edit is still saved when the dialog around the field closes (React unmounts it).
             d.focused = false;
             flush(&mut d);
         }
@@ -406,7 +417,7 @@ impl<'a> NumberField<'a> {
         if out.response.gained_focus() {
             d.focused = true;
         }
-        if out.response.lost_focus() || (d.focused && !out.response.has_focus()) {
+        if out.response.lost_focus() || (d.focused && !out.response.has_focus()) || dialog::closing(&ctx) {
             d.focused = false;
             settle(&mut d);
         }
@@ -477,7 +488,7 @@ impl<'a> TextArea<'a> {
         if out.response.gained_focus() {
             d.focused = true;
         }
-        if out.response.lost_focus() || (d.focused && !out.response.has_focus()) {
+        if out.response.lost_focus() || (d.focused && !out.response.has_focus()) || dialog::closing(&ctx) {
             d.focused = false;
             flush(&mut d);
         }
@@ -502,6 +513,18 @@ pub fn input(
     width: f32,
     placeholder: Option<&str>,
 ) -> Response {
+    input_invalid(ui, id_salt, text, width, placeholder, false)
+}
+
+/// [`input`] with `aria-invalid`: the bottom edge turns red while `invalid`.
+pub fn input_invalid(
+    ui: &mut Ui,
+    id_salt: impl Hash + std::fmt::Debug,
+    text: &mut String,
+    width: f32,
+    placeholder: Option<&str>,
+    invalid: bool,
+) -> Response {
     let (rect, _) = ui.allocate_exact_size(vec2(width, 32.0), Sense::hover());
     let spec = EditSpec {
         id: Id::unique(("flow-input", id_salt)),
@@ -512,7 +535,152 @@ pub fn input(
         password: false,
         placeholder,
         enabled: true,
+        invalid,
+    };
+    edit(ui, &spec, text).response
+}
+
+/// A bare multi-line `.input` (`<textarea rows>`) for local state that is not
+/// a setting, full width. Edits `text` in place.
+pub fn input_area(
+    ui: &mut Ui,
+    id_salt: impl Hash + std::fmt::Debug,
+    text: &mut String,
+    rows: usize,
+    placeholder: Option<&str>,
+) -> Response {
+    let height = rows as f32 * 20.0 + 12.0 + 2.0;
+    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), height), Sense::hover());
+    let spec = EditSpec {
+        id: Id::unique(("flow-input", id_salt)),
+        rect,
+        style: TextStyle::BODY,
+        align: Align::Min,
+        multiline: true,
+        password: false,
+        placeholder,
+        enabled: true,
         invalid: false,
     };
     edit(ui, &spec, text).response
+}
+
+/// A search box: `<input type="search">` in an `.input` with a leading 15 px
+/// `Search` icon (`gap-2`). As in Chromium, Escape clears it (focus stays),
+/// and a 10 px clear button shows while it has text and is hovered or focused.
+pub fn search_input(
+    ui: &mut Ui,
+    id_salt: impl Hash + std::fmt::Debug,
+    text: &mut String,
+    width: f32,
+    placeholder: Option<&str>,
+) -> Response {
+    let ctx = ui.ctx().clone();
+    let t = tokens(&ctx);
+    let id = Id::unique(("flow-input", id_salt));
+    if ctx.memory(|m| m.had_focus_last_frame(id)) && ctx.input(|i| i.key_pressed(Key::Escape)) {
+        text.clear();
+        ctx.memory_mut(|m| m.request_focus(id));
+    }
+    let (rect, _) = ui.allocate_exact_size(vec2(width, 32.0), Sense::hover());
+    let clear_shown =
+        |ui: &Ui, text: &str| !text.is_empty() && (ctx.memory(|m| m.has_focus(id)) || ui.rect_contains_pointer(rect));
+    let clear = clear_shown(ui, text);
+    let spec = EditSpec {
+        id,
+        rect,
+        style: TextStyle::BODY,
+        align: Align::Min,
+        multiline: false,
+        password: false,
+        placeholder,
+        enabled: true,
+        invalid: false,
+    };
+    // The clear button takes 10 px plus `margin-inline-start: 1px` from the text.
+    let right = if clear { 10.0 + 1.0 + 10.0 } else { 10.0 };
+    let mut out = edit_padded(ui, &spec, text, 10.0 + 15.0 + 8.0, right);
+    let inner = rect.shrink(1.0);
+    let icon = Rect::from_min_size(pos2(inner.left() + 10.0, inner.center().y - 7.5), egui::Vec2::splat(15.0));
+    icons::paint(ui, Icon::Search, icon, 15.0, 2.0, t.fg_2);
+    if clear {
+        let button = Rect::from_min_size(pos2(inner.right() - 20.0, inner.center().y - 5.0), egui::Vec2::splat(10.0));
+        let response = ui.interact(button, id.with("clear"), Sense::click());
+        let stroke = Stroke::new(1.5, if response.hovered() { t.fg } else { t.fg_2 });
+        let cross = button.shrink(1.0);
+        ui.painter().line_segment([cross.left_top(), cross.right_bottom()], stroke);
+        ui.painter().line_segment([cross.right_top(), cross.left_bottom()], stroke);
+        if response.clicked() {
+            text.clear();
+            ctx.memory_mut(|m| m.request_focus(id));
+            out.response.mark_changed();
+        }
+    }
+    if clear_shown(ui, text) != clear {
+        ctx.request_repaint();
+    }
+    out.response
+}
+
+/// [`input`] with the `.input` variants forms need: `font-mono text-[13px]`,
+/// `type="password"`. Edits `text` in place.
+///
+/// ```ignore
+/// let response = Input::new("key", &mut self.key).width(300.0).mono().password().placeholder("Paste the key").show(ui);
+/// let submit = response.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
+/// ```
+pub struct Input<'a> {
+    id: Id,
+    text: &'a mut String,
+    width: f32,
+    placeholder: Option<&'a str>,
+    mono: bool,
+    password: bool,
+}
+
+impl<'a> Input<'a> {
+    /// Same id as [`input`] for the same `id_salt`.
+    pub fn new(id_salt: impl Hash + std::fmt::Debug, text: &'a mut String) -> Self {
+        Self {
+            id: Id::unique(("flow-input", id_salt)),
+            text,
+            width: 200.0,
+            placeholder: None,
+            mono: false,
+            password: false,
+        }
+    }
+    pub fn width(mut self, width: f32) -> Self {
+        self.width = width;
+        self
+    }
+    pub fn placeholder(mut self, placeholder: &'a str) -> Self {
+        self.placeholder = Some(placeholder);
+        self
+    }
+    /// `font-mono text-[13px]`
+    pub fn mono(mut self) -> Self {
+        self.mono = true;
+        self
+    }
+    pub fn password(mut self) -> Self {
+        self.password = true;
+        self
+    }
+
+    pub fn show(self, ui: &mut Ui) -> Response {
+        let (rect, _) = ui.allocate_exact_size(vec2(self.width, 32.0), Sense::hover());
+        let spec = EditSpec {
+            id: self.id,
+            rect,
+            style: if self.mono { TextStyle::BODY.mono().size(13.0, 20.0) } else { TextStyle::BODY },
+            align: Align::Min,
+            multiline: false,
+            password: self.password,
+            placeholder: self.placeholder,
+            enabled: true,
+            invalid: false,
+        };
+        edit(ui, &spec, self.text).response
+    }
 }

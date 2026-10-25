@@ -141,16 +141,6 @@ pub fn create(id: PageId) -> Box<dyn Page> {
     }
 }
 
-/// The body of a page that has not been ported yet. Remove when porting.
-pub(crate) fn not_ported(ui: &mut Ui, title: &str, source: &str) {
-    crate::components::page_header(ui, title, None);
-    crate::components::Notice::new(
-        crate::components::Tone::Info,
-        &format!("This page has not been ported yet ({source})."),
-    )
-    .show(ui);
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -167,6 +167,21 @@ pub mod window {
         }
     }
 
+    impl raw_window_handle::HasWindowHandle for Handle {
+        fn window_handle(&self) -> Result<raw_window_handle::WindowHandle<'_>, raw_window_handle::HandleError> {
+            let hwnd = std::num::NonZeroIsize::new(self.0).ok_or(raw_window_handle::HandleError::Unavailable)?;
+            let raw = raw_window_handle::RawWindowHandle::Win32(raw_window_handle::Win32WindowHandle::new(hwnd));
+            // SAFETY: the window lives as long as the settings process's event loop.
+            Ok(unsafe { raw_window_handle::WindowHandle::borrow_raw(raw) })
+        }
+    }
+
+    impl raw_window_handle::HasDisplayHandle for Handle {
+        fn display_handle(&self) -> Result<raw_window_handle::DisplayHandle<'_>, raw_window_handle::HandleError> {
+            Ok(raw_window_handle::DisplayHandle::windows())
+        }
+    }
+
     /// Rounded corners (Windows 11) and a dark or light system frame (which
     /// also tints Mica).
     pub fn style(handle: Handle, dark: bool) {
@@ -191,10 +206,13 @@ pub mod window {
     }
 
     /// Puts the Mica backdrop behind the whole window (`backgroundMaterial:
-    /// 'mica'`), or takes it away. Mica shows through wherever the frame is
-    /// not opaque, so the frame is extended over the client area. Returns
-    /// whether Mica is on: it needs Windows 11 22H2, and older systems keep a
-    /// solid window.
+    /// 'mica'`), or takes it away. Returns whether Mica is on: it needs
+    /// Windows 11 22H2, and older systems keep a solid window.
+    ///
+    /// Mica shows through wherever the frame is, so the frame is extended
+    /// over the client area, from the bottom edge only: with the usual
+    /// "sheet of glass" (all margins -1) DWM also draws its own caption
+    /// buttons under ours, faintly, at the top right.
     pub fn backdrop(handle: Handle, mica: bool) -> bool {
         let hwnd = handle.hwnd();
         let kind: DWM_SYSTEMBACKDROP_TYPE = if mica { DWMSBT_MAINWINDOW } else { DWMSBT_NONE };
@@ -208,8 +226,8 @@ pub mod window {
             )
             .is_ok();
             let on = mica && set;
-            let inset = if on { -1 } else { 0 };
-            let margins = MARGINS { cxLeftWidth: inset, cxRightWidth: inset, cyTopHeight: inset, cyBottomHeight: inset };
+            // Taller than any window.
+            let margins = MARGINS { cyBottomHeight: if on { 1 << 20 } else { 0 }, ..Default::default() };
             let _ = DwmExtendFrameIntoClientArea(hwnd, &margins);
             on
         }
@@ -235,6 +253,16 @@ pub mod window {
     impl Handle {
         pub fn from_raw(_hwnd: isize) -> Option<Self> {
             None
+        }
+    }
+    impl raw_window_handle::HasWindowHandle for Handle {
+        fn window_handle(&self) -> Result<raw_window_handle::WindowHandle<'_>, raw_window_handle::HandleError> {
+            Err(raw_window_handle::HandleError::Unavailable)
+        }
+    }
+    impl raw_window_handle::HasDisplayHandle for Handle {
+        fn display_handle(&self) -> Result<raw_window_handle::DisplayHandle<'_>, raw_window_handle::HandleError> {
+            Err(raw_window_handle::HandleError::Unavailable)
         }
     }
     pub fn style(_handle: Handle, _dark: bool) {}
@@ -301,7 +329,7 @@ pub mod caption {
             if r <= l || p.x < l || p.x >= r || p.y < t || p.y >= b {
                 return NONE;
             }
-            (((p.x - l) * 3 / (r - l)) as i32).min(2)
+            ((p.x - l) * 3 / (r - l)).min(2)
         }
 
         fn set(&self, slot: &AtomicI32, value: i32) {
@@ -435,7 +463,7 @@ pub mod caption {
     }
 }
 
-/// Plain-text clipboard. eframe is built without its clipboard feature (it
+/// Plain-text clipboard. egui-winit is built without its clipboard feature (it
 /// would pull in `arboard`), so copy and paste go through these.
 #[cfg(windows)]
 pub mod clipboard {

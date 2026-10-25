@@ -50,9 +50,15 @@ pub fn show(ui: &Ui, response: &Response, text: &str) {
         }
         let delay = if now - state.last_closed < SKIP_DELAY { 0.0 } else { DELAY };
         let due = now - state.since >= delay;
-        if due && !state.suppressed {
+        if due && !state.suppressed && state.shown && ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+            // Radix dismisses an open tooltip on Escape (before a dialog under it) until the pointer leaves.
+            state.suppressed = true;
+            state.shown = false;
+            state.last_closed = now;
+        } else if due && !state.suppressed {
             state.shown = true;
             paint(ui, response.rect, text);
+            super::dialog::layer_shown(ctx);
         } else if !due {
             ctx.request_repaint_after(std::time::Duration::from_secs_f64(delay - (now - state.since)));
         }

@@ -1,5 +1,6 @@
-//! The settings window's view of the microphone: the device list and a level
-//! monitor for the meter. Stands in for `listMicrophones` / `startCapture` in
+//! The settings window's view of the microphone: the device list, a level
+//! monitor for the meter and the test bench's clip recorder. Stands in for
+//! `listMicrophones` / `startCapture` / `recordClip` in
 //! `src/renderer/common/capture.ts`, over `flow_audio`.
 
 use std::sync::Arc;
@@ -123,5 +124,101 @@ impl LevelMonitor {
 impl Drop for LevelMonitor {
     fn drop(&mut self) {
         self.device.lock().take();
+    }
+}
+
+/// Records a clip until stopped (`recordClip` in capture.ts), for the "Record
+/// a test" buttons. Starting never blocks: the device opens on a thread, and
+/// `wake` is called whenever the state or the level changes. Dropping it
+/// discards the clip and releases the microphone (`cancel()`).
+pub struct ClipRecording {
+    shared: Arc<Mutex<Shared>>,
+    /// The open recorder. The opening thread fills it; `stop` takes it.
+    recorder: Arc<Mutex<Option<flow_audio::ClipRecorder>>>,
+    /// Set once stopped or dropped, so a device that opens late is released at once.
+    closed: Arc<Mutex<bool>>,
+    wake: Arc<dyn Fn() + Send + Sync>,
+}
+
+impl ClipRecording {
+    pub fn start(device: &str, wake: Arc<dyn Fn() + Send + Sync>) -> Self {
+        let shared = Arc::new(Mutex::new(Shared { state: MonitorState::Opening, level: 0.0 }));
+        let recorder = Arc::new(Mutex::new(None));
+        let closed = Arc::new(Mutex::new(false));
+        let label = device.to_string();
+        let (thread_shared, thread_recorder, thread_closed, thread_wake) =
+            (shared.clone(), recorder.clone(), closed.clone(), wake.clone());
+        let spawned = std::thread::Builder::new().name("flow-mic-clip".into()).spawn(move || {
+            let shared = thread_shared;
+            let wake = thread_wake;
+            let on_level: Arc<dyn Fn(f32) + Send + Sync> = {
+                let (shared, wake) = (shared.clone(), wake.clone());
+                Arc::new(move |level| {
+                    shared.lock().level = level;
+                    wake();
+                })
+            };
+            match flow_audio::ClipRecorder::start(&label, Some(on_level), None) {
+                Ok(clip) => {
+                    let closed = thread_closed.lock();
+                    if *closed {
+                        clip.cancel();
+                    } else {
+                        *thread_recorder.lock() = Some(clip);
+                        let mut shared = shared.lock();
+                        if shared.state == MonitorState::Opening {
+                            shared.state = MonitorState::Listening;
+                        }
+                    }
+                }
+                Err(err) => {
+                    shared.lock().state =
+                        MonitorState::Failed(CaptureError { reason: err.reason, message: err.message });
+                }
+            }
+            wake();
+        });
+        if let Err(err) = spawned {
+            shared.lock().state = MonitorState::Failed(CaptureError {
+                reason: CaptureErrorReason::Unknown,
+                message: format!("Could not open the microphone: {err}"),
+            });
+        }
+        Self { shared, recorder, closed, wake }
+    }
+
+    /// `Opening` until the microphone records, `Failed` if it could not be opened.
+    pub fn state(&self) -> MonitorState {
+        self.shared.lock().state.clone()
+    }
+
+    /// The latest RMS level, 0 to 1.
+    pub fn level(&self) -> f32 {
+        self.shared.lock().level
+    }
+
+    /// Stops recording. The clip (16 kHz mono) arrives on the returned channel
+    /// once the last partial chunk is flushed (at most 250 ms), then `wake` runs.
+    /// A recording that never opened yields an empty clip.
+    pub fn stop(self) -> crossbeam_channel::Receiver<Vec<f32>> {
+        let (tx, rx) = crossbeam_channel::bounded(1);
+        *self.closed.lock() = true;
+        let clip = self.recorder.lock().take();
+        let wake = self.wake.clone();
+        let flush = move || {
+            let _ = tx.send(clip.map(flow_audio::ClipRecorder::stop).unwrap_or_default());
+            wake();
+        };
+        if let Err(err) = std::thread::Builder::new().name("flow-mic-clip-stop".into()).spawn(flush) {
+            log::warn!(target: "settings", "could not stop the recording: {err}");
+        }
+        rx
+    }
+}
+
+impl Drop for ClipRecording {
+    fn drop(&mut self) {
+        *self.closed.lock() = true;
+        self.recorder.lock().take();
     }
 }

@@ -12,6 +12,7 @@
 mod raster;
 
 use std::collections::HashMap;
+use std::ops::Range;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use egui::epaint::{ImageData, Primitive};
@@ -63,10 +64,7 @@ impl Renderer {
     pub fn new() -> Self {
         let cores = std::thread::available_parallelism().map_or(1, |n| n.get());
         // Physical cores at most; past four the bands are too thin to matter.
-        let threads = std::env::var("FLOW_RENDER_THREADS")
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .unwrap_or((cores / 2).clamp(1, 4));
+        let threads = (cores / 2).clamp(1, 4);
         Self::with_threads(threads)
     }
 
@@ -92,8 +90,10 @@ impl Renderer {
                 match image_delta.pos {
                     None => {
                         let texels = texels.collect();
-                        self.textures
-                            .insert(*id, Texture { width: w, height: h, texels, options: image_delta.options, version });
+                        self.textures.insert(
+                            *id,
+                            Texture { width: w, height: h, texels, options: image_delta.options, version },
+                        );
                     }
                     Some([x, y]) => {
                         let Some(tex) = self.textures.get_mut(id) else { continue };
@@ -114,21 +114,29 @@ impl Renderer {
         }
     }
 
-    /// Drops the textures a frame freed (call after [`Self::paint`]).
-    pub fn free_textures(&mut self, delta: &TexturesDelta) {
+    /// Drops the textures a frame freed (call after [`Self::paint`]); the
+    /// delta is done with.
+    pub fn free_textures(&mut self, mut delta: TexturesDelta) {
         for id in &delta.free {
             self.textures.remove(id);
         }
+        delta.clear();
     }
 
     /// Clears `target` to `clear` and paints `primitives` (positions in points)
     /// over it, skipping the bands that would come out as they already are.
     /// `target` must hold the previous frame unless [`Self::invalidate`] was called.
-    /// Returns how many rows were painted.
-    pub fn paint(&mut self, target: Target<'_>, clear: Color32, primitives: &[ClippedPrimitive], ppp: f32) -> usize {
+    /// Returns the rows that changed.
+    pub fn paint(
+        &mut self,
+        target: Target<'_>,
+        clear: Color32,
+        primitives: &[ClippedPrimitive],
+        ppp: f32,
+    ) -> Range<usize> {
         let Target { pixels, width, height } = target;
         if width == 0 || height == 0 {
-            return 0;
+            return 0..0;
         }
         let pixels = &mut pixels[..width * height];
         let clear = pack(clear);
@@ -151,7 +159,8 @@ impl Renderer {
             // A hash of 0 never matches below.
             self.bands.iter_mut().for_each(|h| *h = 0);
         }
-        let mut painted = 0;
+        // The rows painted, as (first, end); empty while first >= end.
+        let mut painted = (usize::MAX, 0);
         let mut bands: Vec<Option<Band<'_>>> = pixels
             .chunks_mut(width * BAND_ROWS)
             .enumerate()
@@ -168,7 +177,7 @@ impl Renderer {
                     return None;
                 }
                 self.bands[i] = hash;
-                painted += rows;
+                painted = (painted.0.min(y0), painted.1.max(y0 + rows));
                 Some(Band { px, width, height, y0 })
             })
             .collect();
@@ -183,7 +192,7 @@ impl Renderer {
             for band in bands.iter_mut().flatten() {
                 job(band);
             }
-            return painted;
+            return painted.0.min(painted.1)..painted.1;
         }
         let slots: Vec<parking_lot::Mutex<Option<Band<'_>>>> =
             bands.iter_mut().filter(|b| b.is_some()).map(|b| parking_lot::Mutex::new(b.take())).collect();
@@ -203,7 +212,7 @@ impl Renderer {
             }
             work();
         });
-        painted
+        painted.0.min(painted.1)..painted.1
     }
 }
 
@@ -236,6 +245,7 @@ mod tests {
         let atlas = egui::ColorImage::new([4, 4], vec![Color32::WHITE; 16]);
         delta.set.insert(TextureId::default(), [egui::epaint::ImageDelta::full(atlas, TextureOptions::LINEAR)].into());
         r.set_textures(&delta);
+        delta.clear();
         let prims: Vec<ClippedPrimitive> = meshes
             .into_iter()
             .map(|m| ClippedPrimitive { clip_rect: Rect::EVERYTHING, primitive: Primitive::Mesh(m) })
@@ -270,21 +280,31 @@ mod tests {
                     design::shadow::paint_surface(ui.painter(), rect, 8.0, t.card, &t.shadow_card, None);
                     let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect.shrink(16.0)));
                     text::label(&mut child, "Launch at login", text::TextStyle::BODY, t.fg);
-                    text::label(&mut child, "Start Flow in the system tray when you sign in.", text::TextStyle::CAPTION, t.fg_2);
+                    text::label(
+                        &mut child,
+                        "Start Flow in the system tray when you sign in.",
+                        text::TextStyle::CAPTION,
+                        t.fg_2,
+                    );
                 }
             };
-            let mut out = ctx.run_ui(input(), &mut paint);
+            // A few passes for the fonts to settle; the atlas is uploaded whole below.
             for _ in 0..3 {
-                out = ctx.run_ui(input(), &mut paint);
+                ctx.run_ui(input(), &mut paint).textures_delta.clear();
             }
             let mut r = Renderer::with_threads(1);
             let mut all = ctx.run_ui(input(), &mut paint);
-            all.textures_delta.append(out.textures_delta);
-            r.set_textures(&ctx.fonts(|f| {
+            all.textures_delta.clear();
+            let mut fonts = ctx.fonts(|f| {
                 let mut d = TexturesDelta::default();
-                d.set.insert(TextureId::default(), [egui::epaint::ImageDelta::full(f.image(), TextureOptions::LINEAR)].into());
+                d.set.insert(
+                    TextureId::default(),
+                    [egui::epaint::ImageDelta::full(f.image(), TextureOptions::LINEAR)].into(),
+                );
                 d
-            }));
+            });
+            r.set_textures(&fonts);
+            fonts.clear();
             let prims = ctx.tessellate(all.shapes, 1.0);
             let mut px = vec![0u32; 1000 * 700];
             let start = std::time::Instant::now();
@@ -293,11 +313,12 @@ mod tests {
                 r.invalidate();
                 r.paint(Target { pixels: &mut px, width: 1000, height: 700 }, Color32::BLACK, &prims, 1.0);
             }
-            let tris: usize = prims
-                .iter()
-                .map(|p| if let Primitive::Mesh(m) = &p.primitive { m.indices.len() / 3 } else { 0 })
-                .sum();
-            eprintln!("dark={dark}: {tris} triangles, {:.2} ms per frame", start.elapsed().as_secs_f64() * 1000.0 / n as f64);
+            let tris: usize =
+                prims.iter().map(|p| if let Primitive::Mesh(m) = &p.primitive { m.indices.len() / 3 } else { 0 }).sum();
+            eprintln!(
+                "dark={dark}: {tris} triangles, {:.2} ms per frame",
+                start.elapsed().as_secs_f64() * 1000.0 / n as f64
+            );
         }
     }
 
@@ -347,6 +368,40 @@ mod tests {
         let once = raster::blend(0xff00_0000, 0x3c3c_3c3c);
         assert!(px.iter().all(|&p| p == 0xff00_0000 || p == once), "{px:x?}");
         assert!(px.iter().filter(|&&p| p == once).count() > 100);
+    }
+
+    #[test]
+    fn a_frame_painted_over_the_last_matches_a_fresh_one() {
+        let frame = |shift: f32| {
+            let mut still = Mesh::default();
+            still.add_colored_rect(Rect::from_min_max(pos2(10.0, 10.0), pos2(90.0, 100.0)), Color32::RED);
+            // Only this rect moves, within the band of rows 64..96.
+            let mut moving = Mesh::default();
+            let r = Rect::from_min_max(pos2(10.0 + shift, 70.0), pos2(40.0 + shift, 80.0));
+            moving.add_colored_rect(r, Color32::from_rgba_premultiplied(0, 80, 0, 128));
+            [still, moving]
+                .into_iter()
+                .map(|m| ClippedPrimitive { clip_rect: Rect::EVERYTHING, primitive: Primitive::Mesh(m) })
+                .collect::<Vec<_>>()
+        };
+        let mut r = Renderer::with_threads(1);
+        let mut delta = TexturesDelta::default();
+        let atlas = egui::ColorImage::new([4, 4], vec![Color32::WHITE; 16]);
+        delta.set.insert(TextureId::default(), [egui::epaint::ImageDelta::full(atlas, TextureOptions::LINEAR)].into());
+        r.set_textures(&delta);
+        let (w, h) = (100, 120);
+        let mut px = vec![0u32; w * h];
+        assert_eq!(r.paint(Target { pixels: &mut px, width: w, height: h }, Color32::BLACK, &frame(0.0), 1.0), 0..h);
+        let painted = r.paint(Target { pixels: &mut px, width: w, height: h }, Color32::BLACK, &frame(7.0), 1.0);
+        assert_eq!(painted, 2 * BAND_ROWS..3 * BAND_ROWS, "only the band with the moved rect is painted");
+        let mut fresh = Renderer::with_threads(1);
+        fresh.set_textures(&delta);
+        let mut want = vec![0u32; w * h];
+        fresh.paint(Target { pixels: &mut want, width: w, height: h }, Color32::BLACK, &frame(7.0), 1.0);
+        assert_eq!(px, want);
+        let unchanged = r.paint(Target { pixels: &mut px, width: w, height: h }, Color32::BLACK, &frame(7.0), 1.0);
+        assert!(unchanged.is_empty());
+        delta.clear();
     }
 
     #[test]

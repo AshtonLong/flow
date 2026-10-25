@@ -1,7 +1,7 @@
 # flow-ui — the settings window
 
-Port of `src/renderer/settings/**` (React) to egui 0.37 / eframe (glow). The
-window is its own process (`Flow.exe --settings-window`) and talks to the main
+Port of `src/renderer/settings/**` (React) to egui 0.37, on winit and a CPU
+renderer (no GPU context: see Performance). The window is its own process (`Flow.exe --settings-window`) and talks to the main
 process over stdin/stdout JSON lines (`flow_core::protocol::settings`).
 
 ```rust
@@ -22,7 +22,8 @@ cargo run -p flow-ui --example preview -- --gallery --demo select --screenshot s
 ```
 
 Flags: `--page`, `--theme light|dark`, `--screenshot <png>`, `--scroll <pt>`,
-`--contrast high`, `--motion reduced`, `--gallery`, `--demo select|confirm|modal`,
+`--contrast high`, `--motion reduced`, `--gallery`, `--demo select|confirm|modal`
+(with `--onboarding`: `--demo hotkey|model|cloud|try` starts on a later step),
 and the mock's states `--fresh --onboarding --noissues --history-off
 --downloading <id> --degraded`. Screenshots are taken once config, catalog and
 app info have loaded, at the window's own size (1000×700 at 100 %).
@@ -37,10 +38,12 @@ app info have loaded, at the window's own size (1000×700 at 100 %).
 | `design/` | `brand.css`, `styles.css` | tokens, Recursive families, text styles, box shadows, lucide icons, motion, focus rings |
 | `components/` | `components/*.tsx` | buttons, cards/rows, toggle, select, text fields, chips, dialogs, hotkey recorder, key caps, meters, notices, issues banner, error boundary, tooltip |
 | `pages/<page>.rs` | `pages/*.tsx` | one module per page; `pages/models/*` for the Models sections |
-| `onboarding/` | `onboarding/Onboarding.tsx` | the first-run flow (stub) |
-| `shell/` | `App.tsx`, `main.tsx` | the eframe app: title strip, caption buttons, nav rail, status footer, content panel, Boot/Onboarding/Shell |
-| `adapters/` | — | thin wrappers over APIs still being ported (`flow_audio`, `flow_core::hotkeys`); fix-up spots are marked `ADAPTER:` |
-| `platform.rs` | — | Win32: system theme fallback, high-contrast colours, DWM, clipboard |
+| `onboarding/` | `onboarding/Onboarding.tsx` | the first-run flow: steps, the model choice, the key form, the dictation test |
+| `shell/` | `App.tsx`, `main.tsx` | the app: title strip, caption buttons, nav rail, status footer, content panel, Boot/Onboarding/Shell |
+| `runner/` | `windows/settings.ts` | the event loop (winit + egui-winit), repaint scheduling, the GDI surface frames are presented on |
+| `render/` | — | the CPU rasteriser for egui's meshes, matching `egui_glow`'s output |
+| `adapters/` | `common/capture.ts`, `shared/hotkeys.ts` | the window's view of `flow_audio` (microphone list, level monitor) and the hotkey grammar from `flow_core::hotkeys` |
+| `platform.rs` | — | Win32: system theme fallback, high-contrast colours, DWM and Mica, the caption-button subclass (snap layouts), clipboard |
 
 ## Writing a page
 
@@ -180,6 +183,11 @@ CSS box-shadows (Gaussian, σ = blur / 2). Icons: `design::icons::{paint, show}`
 with lucide's `size` and `strokeWidth`. Motion: `design::motion::{toggle,
 value, snappy, ease}` (durations drop to zero under reduced motion). Focus:
 `design::focus::ring(ui, &response, rect, radius)` draws the keyboard-only ring.
+As in Chromium, the arrow keys never move focus by themselves (`focus::update`
+cancels egui's spatial navigation); a composite widget moves it explicitly,
+e.g. `focus::vertical_list(ui, &triggers)` for Radix's Accordion headers.
+Dialogs trap Tab, focus on open and take Escape as Radix does (see
+`components/dialog.rs`).
 
 ## Performance
 
@@ -188,6 +196,26 @@ The window repaints only on input, replies and events (each arrival calls
 `request_repaint_after` (tooltips, the text-field debounce, `Flash`). Avoid
 `request_repaint()` every frame unless something moves (the spinner and the
 indeterminate progress bar do).
+
+Frames are painted on the CPU (`render/`) into a DIB section and copied to
+the window with GDI: an OpenGL or Direct3D context alone costs 60–90 MB of
+driver memory, the whole window now takes about 10 MB private. The
+rasteriser follows `egui_glow` (fill rule, 8-bit bilinear filtering,
+premultiplied blending in gamma space, the shader's dither), so screenshots
+match the glow ones to within 2–4 levels. Bands of 32 rows whose triangles
+did not change since the last frame are not repainted, so a caret or the
+level meter costs a strip; a full frame (scrolling) is 2–5 ms at 1000×700 on
+four threads. `FLOW_FRAME_STATS=1` prints frame timings, and
+`cargo test --release -p flow-ui render::tests::frame_time -- --ignored --nocapture`
+times a light-theme frame. Frames are paced to the monitor's refresh rate.
+
+The window sits on Mica (`DWMSBT_MAINWINDOW`, Windows 11 22H2+) with the
+paper drawn at 84 %, as Electron's `backgroundMaterial: 'mica'` and
+`color-mix(in srgb, var(--mica) 84%, transparent)` did; high contrast,
+screenshots and older Windows get the solid paper. The caption buttons are
+non-client areas to Windows (`WM_NCHITTEST` → `HTMINBUTTON`/`HTMAXBUTTON`/
+`HTCLOSE`), which brings the snap-layouts flyout and keeps them working above
+a dialog's backdrop.
 
 ## Tests
 

@@ -127,13 +127,13 @@ impl Updater {
         Ok(target)
     }
 
-    /// Quiet background check shortly after launch.
-    pub fn schedule_check(self: &Arc<Self>) {
-        if !self.packaged {
+    /// Quiet background check shortly after launch. Test runs never update.
+    pub fn schedule_check(self: &Arc<Self>, rt: &tokio::runtime::Handle) {
+        if !self.packaged || crate::test_mode::enabled() {
             return;
         }
         let me = self.clone();
-        tokio::runtime::Handle::current().spawn(async move {
+        rt.spawn(async move {
             tokio::time::sleep(Duration::from_secs(30)).await;
             me.check().await;
         });

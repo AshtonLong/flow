@@ -8,7 +8,7 @@ mod chrome;
 mod gallery;
 mod nav;
 mod png;
-mod scroll;
+pub(crate) mod scroll;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -21,8 +21,8 @@ use flow_core::config::ThemeSetting;
 use flow_core::protocol::settings::{Event, Request};
 
 use crate::backend::{Backend, EventQueue, Link, Pending};
-use crate::components::hotkey_recorder;
 use crate::components::{ErrorBoundary, IconButton, Notice, Tone, issues_banner};
+use crate::components::{file_dialog, hotkey_recorder};
 use crate::design::{self, Icon, Tokens, focus, tokens};
 use crate::pages::{self, Cx, Page, PageId};
 use crate::platform::{self, SystemColors};
@@ -51,7 +51,8 @@ pub struct RunOptions {
     /// Show the component gallery in the content panel (preview only).
     #[doc(hidden)]
     pub gallery: bool,
-    /// Opens an overlay in the gallery for a screenshot: `select`, `confirm`, `modal`.
+    /// Opens an overlay in the gallery for a screenshot: `select`, `confirm`, `modal`;
+    /// with `--onboarding`, starts the first-run flow on `hotkey`, `model`, `cloud` or `try`.
     #[doc(hidden)]
     pub demo: Option<String>,
     /// Scrolls the page up and down for this many frames, repainting as fast
@@ -109,10 +110,12 @@ impl SettingsApp {
         let ctx = ctx.clone();
         design::fonts::install(&ctx);
         let window = platform::window::Handle::from_raw(hwnd);
-        if let Some(handle) = window
-            && !platform::caption::install(handle, &ctx)
-        {
-            log::warn!(target: "settings", "snap layouts unavailable: the window could not be subclassed");
+        if let Some(handle) = window {
+            if !platform::caption::install(handle, &ctx) {
+                log::warn!(target: "settings", "snap layouts unavailable: the window could not be subclassed");
+            }
+            // File dialogs (export and import on Advanced) are owned by this window, so they are modal to it.
+            file_dialog::set_owner(&ctx, &handle);
         }
         let link = Link::new(Arc::clone(&backend), ctx.clone());
         let events = EventQueue::subscribe(&backend, &ctx);
@@ -301,7 +304,10 @@ impl SettingsApp {
             Rect::from_min_max(window.min, pos2(window.right(), window.top() + TITLE_H)),
             Id::unique("flow-drag-onboarding"),
         );
-        let page = self.onboarding.get_or_insert_with(|| Box::new(crate::onboarding::Onboarding::default()));
+        // The first-run flow has its own title strip with the mark (`Onboarding.tsx`).
+        nav::logo_strip(ui, window);
+        let demo = self.options.demo.as_deref();
+        let page = self.onboarding.get_or_insert_with(|| Box::new(crate::onboarding::Onboarding::with_demo(demo)));
         let rect = Rect::from_min_max(pos2(window.left(), window.top() + TITLE_H), window.max);
         let mut child = ui.new_child(UiBuilder::new().max_rect(rect).layout(Layout::top_down(Align::Min)));
         let mut cx = Cx {
@@ -366,6 +372,11 @@ impl SettingsApp {
         ctx.request_repaint();
         if shot.requested {
             return;
+        }
+        // The page grows as config, catalog and measured rows arrive, and an
+        // offset is clamped to the height at the time: keep asking until the shot.
+        if let Some(offset) = self.options.scroll {
+            self.scroll.scroll_to(offset);
         }
         if ready {
             shot.ready_frames += 1;
@@ -512,7 +523,8 @@ impl crate::runner::App for SettingsApp {
 
 /// The window icon (`resources/icons/icon.png`).
 pub(crate) fn icon() -> Option<egui::IconData> {
-    let mut decoder = ::png::Decoder::new(std::io::Cursor::new(&include_bytes!("../../../../../resources/icons/icon.png")[..]));
+    let mut decoder =
+        ::png::Decoder::new(std::io::Cursor::new(&include_bytes!("../../../../../resources/icons/icon.png")[..]));
     decoder.set_transformations(::png::Transformations::normalize_to_color8() | ::png::Transformations::ALPHA);
     let mut reader = decoder.read_info().ok()?;
     let mut buf = vec![0; reader.output_buffer_size()];
@@ -520,7 +532,7 @@ pub(crate) fn icon() -> Option<egui::IconData> {
     let rgba = match info.color_type {
         ::png::ColorType::Rgba => buf[..info.buffer_size()].to_vec(),
         ::png::ColorType::GrayscaleAlpha => {
-            buf[..info.buffer_size()].chunks_exact(2).flat_map(|p| [p[0], p[0], p[0], p[1]]).collect()
+            buf[..info.buffer_size()].as_chunks::<2>().0.iter().flat_map(|p| [p[0], p[0], p[0], p[1]]).collect()
         }
         _ => return None,
     };
