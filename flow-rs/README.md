@@ -62,10 +62,23 @@ cargo run -p flow-ui --example preview -- --page models   # the settings window 
 Run a test instance with `FLOW_USER_DATA` and `FLOW_MODELS_DIR` pointing at
 temporary folders to keep it away from your real settings.
 
+The end-to-end tests drive the real `Flow.exe` in test mode (`FLOW_TEST=1`:
+commands on stdin, events on stdout, a WAV file as the microphone; see
+`crates/app/src/test_mode.rs`). They need the staged engine and the Parakeet
+model in `%LOCALAPPDATA%\Flow\models`:
+
+```sh
+cargo test -p flow --test e2e -- --ignored
+```
+
+`vendor/epaint` is epaint 0.37 with one change so text wraps where Chromium
+wraps it (`vendor/epaint/FLOW.md`).
+
 ## Package
 
 ```sh
-pwsh scripts/package.ps1      # dist/Flow-Setup-<version>.exe and dist/latest.yml (needs NSIS 3)
+pwsh scripts/package.ps1          # dist/Flow-Setup-<version>.exe and dist/latest.yml (needs NSIS 3)
+pwsh scripts/test-installer.ps1   # installs a sandbox build to a temp folder, dictates with it, uninstalls
 ```
 
 The installer is per-user and needs no administrator rights. It installs where
