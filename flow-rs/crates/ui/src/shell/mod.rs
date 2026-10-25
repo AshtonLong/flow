@@ -21,8 +21,8 @@ use flow_core::config::ThemeSetting;
 use flow_core::protocol::settings::{Event, Request};
 
 use crate::backend::{Backend, EventQueue, Link, Pending};
-use crate::components::hotkey_recorder;
 use crate::components::{ErrorBoundary, IconButton, Notice, Tone, issues_banner};
+use crate::components::{file_dialog, hotkey_recorder};
 use crate::design::{self, Icon, Tokens, focus, tokens};
 use crate::pages::{self, Cx, Page, PageId};
 use crate::platform::{self, SystemColors};
@@ -326,7 +326,7 @@ impl SettingsApp {
 }
 
 impl eframe::App for SettingsApp {
-    fn ui(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut Ui, frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         let events = self.events.drain();
         let mut nav: Option<PageId> = None;
@@ -353,6 +353,8 @@ impl eframe::App for SettingsApp {
         focus::update(&ctx);
         if self.window.is_none() {
             self.window = platform::window::own_window();
+            // File dialogs (export and import on Advanced) are owned by this window, so they are modal to it.
+            file_dialog::set_owner(&ctx, frame);
         }
         if let Some(handle) = self.window
             && self.styled_dark != Some(dark)

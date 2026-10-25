@@ -17,7 +17,7 @@ use egui::{
 };
 
 use crate::design::text::{self, TextStyle};
-use crate::design::tokens;
+use crate::design::{Icon, icons, tokens};
 
 const DEBOUNCE: f64 = 0.7;
 
@@ -105,6 +105,11 @@ struct EditSpec<'a> {
 }
 
 fn edit(ui: &mut Ui, spec: &EditSpec<'_>, text: &mut String) -> EditOutput {
+    edit_padded(ui, spec, text, 10.0, 10.0)
+}
+
+/// [`edit`] with its own side padding (room for an icon or a clear button inside the box).
+fn edit_padded(ui: &mut Ui, spec: &EditSpec<'_>, text: &mut String, left: f32, right: f32) -> EditOutput {
     let ctx = ui.ctx().clone();
     let t = tokens(&ctx);
     let had_focus = ctx.memory(|m| m.has_focus(spec.id));
@@ -127,10 +132,10 @@ fn edit(ui: &mut Ui, spec: &EditSpec<'_>, text: &mut String) -> EditOutput {
     if text.is_empty()
         && let Some(placeholder) = spec.placeholder
     {
-        let galley = text::galley(ui, placeholder, spec.style, t.fg_3, inner.width() - 20.0);
+        let galley = text::galley(ui, placeholder, spec.style, t.fg_3, inner.width() - left - right);
         let x = match spec.align {
-            Align::Max => inner.right() - 10.0 - galley.size().x,
-            _ => inner.left() + 10.0,
+            Align::Max => inner.right() - right - galley.size().x,
+            _ => inner.left() + left,
         };
         ui.painter().with_clip_rect(inner).galley(pos2(x, inner.top() + pad_y), galley, t.fg_3);
     }
@@ -142,12 +147,12 @@ fn edit(ui: &mut Ui, spec: &EditSpec<'_>, text: &mut String) -> EditOutput {
         .id(spec.id)
         // With an explicit frame egui takes the padding from it, not from `.margin()`.
         .frame(Frame::NONE.inner_margin(Margin {
-            left: 10,
-            right: 10,
+            left: left as i8,
+            right: right as i8,
             top: pad_y.floor() as i8,
             bottom: pad_y.ceil() as i8,
         }))
-        .desired_width(inner.width() - 20.0)
+        .desired_width(inner.width() - left - right)
         .min_size(inner.size())
         .align(egui::Align2([spec.align, Align::Min]))
         .password(spec.password)
@@ -515,4 +520,61 @@ pub fn input(
         invalid: false,
     };
     edit(ui, &spec, text).response
+}
+
+/// A search box: `<input type="search">` in an `.input` with a leading 15 px
+/// `Search` icon (`gap-2`). As in Chromium, Escape clears it (focus stays),
+/// and a 10 px clear button shows while it has text and is hovered or focused.
+pub fn search_input(
+    ui: &mut Ui,
+    id_salt: impl Hash + std::fmt::Debug,
+    text: &mut String,
+    width: f32,
+    placeholder: Option<&str>,
+) -> Response {
+    let ctx = ui.ctx().clone();
+    let t = tokens(&ctx);
+    let id = Id::unique(("flow-input", id_salt));
+    if ctx.memory(|m| m.had_focus_last_frame(id)) && ctx.input(|i| i.key_pressed(Key::Escape)) {
+        text.clear();
+        ctx.memory_mut(|m| m.request_focus(id));
+    }
+    let (rect, _) = ui.allocate_exact_size(vec2(width, 32.0), Sense::hover());
+    let clear_shown =
+        |ui: &Ui, text: &str| !text.is_empty() && (ctx.memory(|m| m.has_focus(id)) || ui.rect_contains_pointer(rect));
+    let clear = clear_shown(ui, text);
+    let spec = EditSpec {
+        id,
+        rect,
+        style: TextStyle::BODY,
+        align: Align::Min,
+        multiline: false,
+        password: false,
+        placeholder,
+        enabled: true,
+        invalid: false,
+    };
+    // The clear button takes 10 px plus `margin-inline-start: 1px` from the text.
+    let right = if clear { 10.0 + 1.0 + 10.0 } else { 10.0 };
+    let mut out = edit_padded(ui, &spec, text, 10.0 + 15.0 + 8.0, right);
+    let inner = rect.shrink(1.0);
+    let icon = Rect::from_min_size(pos2(inner.left() + 10.0, inner.center().y - 7.5), egui::Vec2::splat(15.0));
+    icons::paint(ui, Icon::Search, icon, 15.0, 2.0, t.fg_2);
+    if clear {
+        let button = Rect::from_min_size(pos2(inner.right() - 20.0, inner.center().y - 5.0), egui::Vec2::splat(10.0));
+        let response = ui.interact(button, id.with("clear"), Sense::click());
+        let stroke = Stroke::new(1.5, if response.hovered() { t.fg } else { t.fg_2 });
+        let cross = button.shrink(1.0);
+        ui.painter().line_segment([cross.left_top(), cross.right_bottom()], stroke);
+        ui.painter().line_segment([cross.right_top(), cross.left_bottom()], stroke);
+        if response.clicked() {
+            text.clear();
+            ctx.memory_mut(|m| m.request_focus(id));
+            out.response.mark_changed();
+        }
+    }
+    if clear_shown(ui, text) != clear {
+        ctx.request_repaint();
+    }
+    out.response
 }

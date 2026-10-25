@@ -100,8 +100,11 @@ impl<'a> HotkeyRecorder<'a> {
 
         let mut start = false;
         // `flex flex-col items-end gap-1`, the row right-aligned: laid out right
-        // to left, so its items are added last first.
-        ui.with_layout(Layout::top_down(Align::Max), |ui| {
+        // to left, so its items are added last first. Allocated at its height so
+        // a centring parent (the `SettingRow` control) centres it.
+        let height = if state.error.is_some() { 32.0 + 4.0 + 16.0 } else { 32.0 };
+        let size = egui::vec2(ui.available_width(), height);
+        ui.allocate_ui_with_layout(size, Layout::top_down(Align::Max), |ui| {
             ui.spacing_mut().item_spacing.y = 4.0;
             // A finite row height: centring in an unbounded height (a scroll area) breaks.
             let width = ui.available_width();

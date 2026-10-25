@@ -279,7 +279,9 @@ pub fn empty_state(ui: &mut Ui, sentence: &str, action: impl FnOnce(&mut Ui)) {
     let top = ui.cursor().min;
     let (left, right) = (top.x + 16.0, top.x + width - 16.0);
     let action_size = measure::remembered(&ctx, id).unwrap_or(Vec2::ZERO);
-    let text_w = (right - left - 24.0 - action_size.x).max(40.0);
+    // `gap-6` only separates the sentence from an action; alone it takes the whole row.
+    let gap = if action_size.x > 0.0 { 24.0 } else { 0.0 };
+    let text_w = (right - left - gap - action_size.x).max(40.0);
     let galley = text::galley(ui, sentence, TextStyle::BODY, t.fg_2, text_w);
     let row_h = galley.size().y.max(action_size.y);
     ui.painter().galley(pos2(left, top.y + 16.0 + (row_h - galley.size().y) / 2.0), galley, t.fg_2);
