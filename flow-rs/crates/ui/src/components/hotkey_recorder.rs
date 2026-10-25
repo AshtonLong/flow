@@ -35,10 +35,13 @@ pub fn capturing(ctx: &egui::Context) -> bool {
     ctx.data(|d| d.get_temp::<Option<Id>>(active_id())).flatten().is_some()
 }
 
-/// Cancels the capture in progress, if any (page change, window blur).
+/// Cancels the capture in progress, if any (page change, window blur). The
+/// window takes keys again at once, even if the recorder is not drawn again
+/// (it unmounted, as in the TSX's cleanup).
 pub fn cancel_capture(ctx: &egui::Context, link: &Link) {
     if capturing(ctx) {
         link.send(Request::HotkeysCaptureCancel);
+        ctx.data_mut(|d| d.insert_temp(active_id(), None::<Id>));
     }
 }
 

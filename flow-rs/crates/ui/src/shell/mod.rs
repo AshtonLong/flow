@@ -8,7 +8,7 @@ mod chrome;
 mod gallery;
 mod nav;
 mod png;
-mod scroll;
+pub(crate) mod scroll;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -51,7 +51,8 @@ pub struct RunOptions {
     /// Show the component gallery in the content panel (preview only).
     #[doc(hidden)]
     pub gallery: bool,
-    /// Opens an overlay in the gallery for a screenshot: `select`, `confirm`, `modal`.
+    /// Opens an overlay in the gallery for a screenshot: `select`, `confirm`, `modal`;
+    /// with `--onboarding`, starts the first-run flow on `hotkey`, `model`, `cloud` or `try`.
     #[doc(hidden)]
     pub demo: Option<String>,
 }
@@ -273,7 +274,10 @@ impl SettingsApp {
             Rect::from_min_max(window.min, pos2(window.right(), window.top() + TITLE_H)),
             Id::unique("flow-drag-onboarding"),
         );
-        let page = self.onboarding.get_or_insert_with(|| Box::new(crate::onboarding::Onboarding::default()));
+        // The first-run flow has its own title strip with the mark (`Onboarding.tsx`).
+        nav::logo_strip(ui, window);
+        let demo = self.options.demo.as_deref();
+        let page = self.onboarding.get_or_insert_with(|| Box::new(crate::onboarding::Onboarding::with_demo(demo)));
         let rect = Rect::from_min_max(pos2(window.left(), window.top() + TITLE_H), window.max);
         let mut child = ui.new_child(UiBuilder::new().max_rect(rect).layout(Layout::top_down(Align::Min)));
         let mut cx = Cx {
