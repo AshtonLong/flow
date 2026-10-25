@@ -502,6 +502,18 @@ pub fn input(
     width: f32,
     placeholder: Option<&str>,
 ) -> Response {
+    input_invalid(ui, id_salt, text, width, placeholder, false)
+}
+
+/// [`input`] with `aria-invalid`: the bottom edge turns red while `invalid`.
+pub fn input_invalid(
+    ui: &mut Ui,
+    id_salt: impl Hash + std::fmt::Debug,
+    text: &mut String,
+    width: f32,
+    placeholder: Option<&str>,
+    invalid: bool,
+) -> Response {
     let (rect, _) = ui.allocate_exact_size(vec2(width, 32.0), Sense::hover());
     let spec = EditSpec {
         id: Id::unique(("flow-input", id_salt)),
@@ -512,7 +524,7 @@ pub fn input(
         password: false,
         placeholder,
         enabled: true,
-        invalid: false,
+        invalid,
     };
     edit(ui, &spec, text).response
 }
