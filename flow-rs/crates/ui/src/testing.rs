@@ -164,15 +164,20 @@ impl Harness {
     }
 
     pub(crate) fn key(&mut self, key: Key) {
+        self.key_with(key, Modifiers::NONE);
+    }
+
+    /// A key with modifiers held: `key_with(Key::Tab, Modifiers::SHIFT)`.
+    pub(crate) fn key_with(&mut self, key: Key, modifiers: Modifiers) {
         for pressed in [true, false] {
-            self.pending.push(Event::Key {
-                key,
-                physical_key: None,
-                pressed,
-                repeat: false,
-                modifiers: Modifiers::NONE,
-            });
+            self.pending.push(Event::Key { key, physical_key: None, pressed, repeat: false, modifiers });
         }
+    }
+
+    /// Where the widget with keyboard focus is, if any.
+    pub(crate) fn focused_rect(&self) -> Option<Rect> {
+        let id = self.ctx.memory(|m| m.focused())?;
+        self.ctx.read_response(id).map(|r| r.rect)
     }
 
     pub(crate) fn type_text(&mut self, text: &str) {
@@ -226,6 +231,8 @@ impl PageHarness {
         let Self { h, config, catalog, app_info, mics, page, link, nav, events, .. } = self;
         let events = std::mem::take(events);
         h.frame(|ui| {
+            // As the shell does at the start of every frame.
+            design::focus::update(ui.ctx());
             config.pump(&[]);
             catalog.pump(&[]);
             app_info.pump(false);
@@ -364,6 +371,29 @@ mod tests {
         h.frame(&mut draw);
         assert_eq!(*value.borrow(), "Ctrl+V!");
         assert_eq!(commits.get(), 1);
+    }
+
+    #[test]
+    fn escape_in_a_text_field_reverts_the_draft_and_keeps_focus() {
+        let mut h = Harness::new();
+        let value = std::cell::RefCell::new("Ctrl+V".to_string());
+        let mut draw = |ui: &mut Ui| {
+            let current = value.borrow().clone();
+            if let Some(v) = crate::components::TextField::new("test.text", &current).show(ui).committed {
+                *value.borrow_mut() = v;
+            }
+        };
+        h.frame(&mut draw);
+        h.click(pos2(100.0, 16.0), &mut draw);
+        h.type_text("!");
+        h.frame(&mut draw);
+        h.key(Key::Escape);
+        h.frame(&mut draw);
+        h.frame(&mut draw);
+        assert!(h.focused_rect().is_some(), "Chromium keeps focus in the box");
+        h.wait(1.0);
+        h.frame(&mut draw);
+        assert_eq!(*value.borrow(), "Ctrl+V", "the typing is undone, not saved");
     }
 
     #[test]

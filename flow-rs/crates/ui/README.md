@@ -181,6 +181,11 @@ CSS box-shadows (Gaussian, σ = blur / 2). Icons: `design::icons::{paint, show}`
 with lucide's `size` and `strokeWidth`. Motion: `design::motion::{toggle,
 value, snappy, ease}` (durations drop to zero under reduced motion). Focus:
 `design::focus::ring(ui, &response, rect, radius)` draws the keyboard-only ring.
+As in Chromium, the arrow keys never move focus by themselves (`focus::update`
+cancels egui's spatial navigation); a composite widget moves it explicitly,
+e.g. `focus::vertical_list(ui, &triggers)` for Radix's Accordion headers.
+Dialogs trap Tab, focus on open and take Escape as Radix does (see
+`components/dialog.rs`).
 
 ## Performance
 

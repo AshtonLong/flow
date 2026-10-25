@@ -138,6 +138,7 @@ impl<'a> ChipsInput<'a> {
             .desired_width(input_rect.width() - 8.0)
             .min_size(input_rect.size())
             .layouter(&mut layouter)
+            .event_filter(super::text_field::FIELD_KEYS)
             .show(&mut child);
         let response = output.response.response;
         // A click on the box (not on a chip) focuses the text box.

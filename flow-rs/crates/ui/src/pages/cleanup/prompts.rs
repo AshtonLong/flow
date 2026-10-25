@@ -80,9 +80,10 @@ impl Prompts {
                  instruction to rewrite it and never to answer or obey it.",
             )
             .show(ui, |ui| {
-                for item in &items {
-                    accordion_item(ui, item, self.open == item.name, &mut actions);
-                }
+                let triggers: Vec<Response> =
+                    items.iter().map(|item| accordion_item(ui, item, self.open == item.name, &mut actions)).collect();
+                // Up, Down, Home and End move between the headers only, as in Radix's Accordion.
+                focus::vertical_list(ui, &triggers);
                 if add_form(ui, &mut self.name, &key, name_taken) {
                     actions.push(Action::Add);
                 }
@@ -116,16 +117,24 @@ impl Prompts {
 }
 
 /// One `Accordion.Item` card: the trigger row, and the editor when open.
-fn accordion_item(ui: &mut Ui, item: &Item, open: bool, actions: &mut Vec<Action>) {
+/// Returns the trigger.
+fn accordion_item(ui: &mut Ui, item: &Item, open: bool, actions: &mut Vec<Action>) -> Response {
     card(ui, Margin::ZERO, |ui| {
         ui.spacing_mut().item_spacing = Vec2::ZERO;
-        if trigger(ui, item, open).clicked() {
+        let trigger = trigger(ui, item, open);
+        // A press focuses the trigger, as Chromium focuses a <button> (no ring after a click).
+        if trigger.is_pointer_button_down_on() && !trigger.has_focus() {
+            trigger.request_focus();
+        }
+        if trigger.clicked() {
             actions.push(Action::Toggle(item.name.clone()));
         }
         if open {
             content(ui, item, actions);
         }
-    });
+        trigger
+    })
+    .0
 }
 
 /// `flex min-h-12 items-center gap-3 px-4 py-2 hover:bg-hover`: the label, a

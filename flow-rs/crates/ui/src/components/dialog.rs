@@ -9,12 +9,28 @@
 //!     cx.link.send(Request::ModelsRemove(id));
 //! }
 //! ```
+//!
+//! Focus works as in Radix's `FocusScope` and `DismissableLayer`:
+//!
+//! - On open, `AlertDialog` focuses Cancel; the TSX's `Modal` focuses the
+//!   dialog itself (nothing inside), so its Close button shows no tooltip.
+//!   The ring follows `:focus-visible` (see `design::focus`).
+//! - Tab and Shift+Tab cycle through the dialog's controls only. With the
+//!   dialog itself focused, Tab goes to the first control and Shift+Tab stays.
+//! - Escape closes the dialog, also from a text box with a changed draft: the
+//!   layer's capture-phase listener runs before the field's own handler. Text
+//!   fields save their draft as the dialog closes, as React's do on unmount.
+//!   A Select list or a tooltip open over the dialog takes Escape first.
+//! - On close focus is not handed back: the TSX has no `Dialog.Trigger`, so
+//!   Radix has nowhere to return it and Chromium leaves it on the document.
+//!   The next Tab starts from the top of the window, as in egui with nothing
+//!   focused.
 
 use std::hash::Hash;
 
 use egui::{
-    Align, Area, Context, CornerRadius, Id, Key, Layout, Order, Rect, ScrollArea, Sense, Ui, UiBuilder, Vec2, pos2,
-    vec2,
+    Align, Area, Context, CornerRadius, FocusDirection, Id, Key, Layout, Modifiers, Order, Rect, Response, ScrollArea,
+    Sense, Ui, UiBuilder, Vec2, pos2, vec2,
 };
 
 use super::button::{Button, IconButton};
@@ -27,6 +43,52 @@ struct Frame {
     width: f32,
     /// Radix `Dialog` closes on a press outside; `AlertDialog` does not.
     close_outside: bool,
+    /// The TSX's `onOpenAutoFocus` focuses the dialog itself, not a control.
+    focus_self: bool,
+}
+
+fn layer_key() -> Id {
+    Id::unique("flow-dismissable-layer")
+}
+
+fn closing_key() -> Id {
+    Id::unique("flow-dialog-closing")
+}
+
+/// Called each pass by a layer drawn over a dialog that dismisses itself on
+/// Escape (an open Select list, a tooltip). Radix hands Escape to the topmost
+/// `DismissableLayer` only, so the dialog under it stays open.
+pub(crate) fn layer_shown(ctx: &Context) {
+    let pass = ctx.cumulative_pass_nr();
+    ctx.data_mut(|d| d.insert_temp(layer_key(), pass));
+}
+
+/// Whether such a layer was shown in this pass or the last one.
+fn layer_above(ctx: &Context) -> bool {
+    let pass = ctx.cumulative_pass_nr();
+    ctx.data(|d| d.get_temp::<u64>(layer_key())).is_some_and(|shown| shown + 1 >= pass)
+}
+
+/// True while a dialog that is closing draws its contents for the last time.
+/// A text field saves its pending draft then, as `useDraft` does on unmount.
+pub(crate) fn closing(ctx: &Context) -> bool {
+    ctx.data(|d| d.get_temp::<bool>(closing_key())).unwrap_or(false)
+}
+
+/// Whether the dialog `id` was not on screen in the previous pass.
+fn just_opened(ctx: &Context, id: Id) -> bool {
+    let pass = ctx.cumulative_pass_nr();
+    ctx.data(|d| d.get_temp::<u64>(id.with("shown"))).is_none_or(|shown| shown + 1 < pass)
+}
+
+/// Shift+Tab (or Tab) pressed this pass.
+fn tab_pressed(ctx: &Context, shift: bool) -> bool {
+    ctx.input(|i| {
+        i.events.iter().any(|e| {
+            matches!(e, egui::Event::Key { key: Key::Tab, pressed: true, modifiers, .. }
+                if if shift { modifiers.shift_only() } else { !modifiers.any() })
+        })
+    })
 }
 
 /// The shared dialog shell: smoke, the centred surface, header / body / footer.
@@ -49,12 +111,38 @@ fn dialog<R>(
     let height = natural.min(max_h);
     let rect = Rect::from_center_size(screen.center(), vec2(width, height)).round();
     let mut result = None;
-    if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape)) {
+
+    if just_opened(ctx, frame.id) {
+        if frame.focus_self {
+            ctx.memory_mut(|m| {
+                if let Some(focused) = m.focused() {
+                    m.surrender_focus(focused);
+                }
+            });
+        }
+        // The control focused on open gets its ring next pass.
+        ctx.request_repaint();
+    }
+    // `DismissableLayer`: Escape closes the topmost layer only.
+    if !layer_above(ctx) && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape)) {
         *open = false;
     }
+    // `FocusScope trapped loop`: egui keeps Tab among this layer's widgets (the
+    // modal layer below) and wraps around the ends on the next pass.
+    let (tab, shift_tab) = (tab_pressed(ctx, false), tab_pressed(ctx, true));
+    if tab || shift_tab {
+        ctx.request_repaint();
+    }
+    if shift_tab && ctx.memory(|m| m.focused().is_none()) {
+        // The dialog itself has focus: Shift+Tab leaves the scope and is pulled back.
+        ctx.memory_mut(|m| m.move_focus(FocusDirection::None));
+    }
+
     Area::new(frame.id).order(Order::Middle).fixed_pos(screen.min).show(ctx, |ui| {
+        // Nothing under the smoke can be focused or pressed.
+        ui.memory_mut(|m| m.set_modal_layer(ui.layer_id()));
         ui.painter().rect_filled(screen, CornerRadius::ZERO, t.smoke);
-        let backdrop = ui.allocate_rect(screen, Sense::click());
+        let backdrop = ui.allocate_rect(screen, Sense::CLICK);
         let pressed_outside =
             ctx.input(|i| i.pointer.any_pressed() && i.pointer.interact_pos().is_some_and(|p| !rect.contains(p)));
         if frame.close_outside && pressed_outside && backdrop.hovered() {
@@ -80,6 +168,10 @@ fn dialog<R>(
         let mut body_ui = ui.new_child(UiBuilder::new().max_rect(body_rect).layout(Layout::top_down(Align::Min)));
         body_ui.set_clip_rect(clip);
         let mut body_h = 0.0;
+        let closing = !*open;
+        if closing {
+            ctx.data_mut(|d| d.insert_temp(closing_key(), true));
+        }
         ScrollArea::vertical().id_salt(frame.id.with("body")).max_height(body_max).auto_shrink([false, true]).show(
             &mut body_ui,
             |ui| {
@@ -88,6 +180,9 @@ fn dialog<R>(
                 body_h = ui.cursor().min.y - start;
             },
         );
+        if closing {
+            ctx.data_mut(|d| d.remove::<bool>(closing_key()));
+        }
         let body_shown = body_h.min(body_max);
 
         let footer_top = rect.top() + header_h + body_shown;
@@ -118,19 +213,30 @@ fn dialog<R>(
         measure::record(ctx, frame.id.with("footer"), footer_rect.size());
         measure::record(ctx, frame.id.with("size"), vec2(width, header_h + body_h + footer_rect.height()));
     });
+    let pass = ctx.cumulative_pass_nr();
+    ctx.data_mut(|d| d.insert_temp(frame.id.with("shown"), pass));
     result
 }
 
-/// The footer row: buttons right-aligned, 8 px apart, `px-6 py-4`.
-fn footer_row(ui: &mut Ui, buttons: impl FnOnce(&mut Ui)) {
+/// The footer row (`flex justify-end gap-2 px-6 py-4`): the buttons in
+/// document order, so Tab meets them left to right, pushed to the right.
+fn footer_row<const N: usize>(ui: &mut Ui, buttons: [Button<'_>; N]) -> [Response; N] {
     ui.add_space(16.0);
     let width = ui.available_width();
     let row = Rect::from_min_size(ui.cursor().min + vec2(24.0, 0.0), vec2(width - 48.0, 32.0));
-    let mut child = ui.new_child(UiBuilder::new().max_rect(row).layout(Layout::right_to_left(Align::Center)));
-    child.spacing_mut().item_spacing = vec2(8.0, 0.0);
-    buttons(&mut child);
+    let widths = buttons.each_ref().map(|b| b.natural_width(ui));
+    let mut x = row.right() - widths.iter().sum::<f32>() - 8.0 * N.saturating_sub(1) as f32;
+    let mut i = 0;
+    let responses = buttons.map(|button| {
+        let slot = Rect::from_min_size(pos2(x, row.top()), vec2(widths[i], row.height()));
+        x += widths[i] + 8.0;
+        i += 1;
+        let mut child = ui.new_child(UiBuilder::new().max_rect(slot).layout(Layout::left_to_right(Align::Center)));
+        button.show(&mut child)
+    });
     ui.advance_cursor_after_rect(row);
     ui.add_space(16.0);
+    responses
 }
 
 /// A yes/no question before something is removed. Esc and Cancel both back out.
@@ -156,9 +262,10 @@ impl<'a> ConfirmDialog<'a> {
     pub fn show(self, ctx: &Context, open: &mut bool) -> bool {
         let mut confirmed = false;
         let (title, description, confirm_label) = (self.title, self.description, self.confirm_label);
+        let opening = just_opened(ctx, self.id);
         dialog(
             ctx,
-            Frame { id: self.id, width: 440.0, close_outside: false },
+            Frame { id: self.id, width: 440.0, close_outside: false, focus_self: false },
             open,
             |ui, _| {
                 let t = tokens(ui.ctx());
@@ -172,16 +279,21 @@ impl<'a> ConfirmDialog<'a> {
             },
             |_| {},
             |ui, open| {
-                footer_row(ui, |ui| {
-                    // Right to left: Cancel is drawn first so it ends up on the right.
-                    if Button::new("Cancel").min_width(120.0).show(ui).clicked() {
-                        *open = false;
-                    }
-                    if Button::new(confirm_label).accent().min_width(120.0).show(ui).clicked() {
-                        confirmed = true;
-                        *open = false;
-                    }
-                });
+                let [confirm, cancel] = footer_row(
+                    ui,
+                    [Button::new(confirm_label).accent().min_width(120.0), Button::new("Cancel").min_width(120.0)],
+                );
+                // `AlertDialog` focuses Cancel when it opens.
+                if opening {
+                    cancel.request_focus();
+                }
+                if cancel.clicked() {
+                    *open = false;
+                }
+                if confirm.clicked() {
+                    confirmed = true;
+                    *open = false;
+                }
             },
         );
         confirmed
@@ -215,7 +327,7 @@ impl<'a> Modal<'a> {
         let (title, description) = (self.title, self.description);
         dialog(
             ctx,
-            Frame { id: self.id, width: self.width, close_outside: true },
+            Frame { id: self.id, width: self.width, close_outside: true, focus_self: true },
             open,
             |ui, open| {
                 let t = tokens(ui.ctx());
@@ -249,11 +361,10 @@ impl<'a> Modal<'a> {
                 out
             },
             |ui, open| {
-                footer_row(ui, |ui| {
-                    if Button::new("Done").accent().min_width(120.0).show(ui).clicked() {
-                        *open = false;
-                    }
-                });
+                let [done] = footer_row(ui, [Button::new("Done").accent().min_width(120.0)]);
+                if done.clicked() {
+                    *open = false;
+                }
             },
         )
         .flatten()
@@ -268,4 +379,209 @@ fn inset(ui: &mut Ui, x: f32, content: impl FnOnce(&mut Ui)) {
     content(&mut child);
     let used = child.min_rect();
     ui.advance_cursor_after_rect(Rect::from_min_max(ui.cursor().min, pos2(ui.cursor().min.x + width, used.bottom())));
+}
+
+#[cfg(test)]
+mod tests {
+    use std::cell::{Cell, RefCell};
+
+    use egui::{Key, Modifiers, Ui};
+
+    use super::*;
+    use crate::components::TextField;
+    use crate::design::focus;
+    use crate::testing::Harness;
+
+    /// A page with three buttons; "Delete" opens a `ConfirmDialog`, "Edit" a
+    /// `Modal` with a name field.
+    #[derive(Default)]
+    struct Page {
+        confirm: Cell<bool>,
+        confirmed: Cell<bool>,
+        modal: Cell<bool>,
+        name: RefCell<String>,
+    }
+
+    impl Page {
+        fn draw(&self, ui: &mut Ui) {
+            focus::update(ui.ctx());
+            Button::new("Before").show(ui);
+            if Button::new("Delete").show(ui).clicked() {
+                self.confirm.set(true);
+            }
+            if Button::new("Edit").show(ui).clicked() {
+                self.modal.set(true);
+            }
+            let mut open = self.confirm.get();
+            let dialog = ConfirmDialog::new("test.confirm", "Delete Slack?", "It goes for good.", "Delete profile");
+            if dialog.show(ui.ctx(), &mut open) {
+                self.confirmed.set(true);
+            }
+            self.confirm.set(open);
+
+            let mut open = self.modal.get();
+            let name = self.name.borrow().clone();
+            let committed = Modal::new("test.modal", "Edit Slack")
+                .show(ui.ctx(), &mut open, |ui| TextField::new("test.name", &name).show(ui).committed)
+                .flatten();
+            if let Some(name) = committed {
+                *self.name.borrow_mut() = name;
+            }
+            self.modal.set(open);
+        }
+    }
+
+    fn harness() -> (Harness, Page) {
+        let page = Page { name: RefCell::new("Slack".into()), ..Page::default() };
+        let mut h = Harness::new();
+        frames(&mut h, &page, 2);
+        (h, page)
+    }
+
+    fn frames(h: &mut Harness, page: &Page, n: usize) {
+        for _ in 0..n {
+            h.frame(|ui| page.draw(ui));
+        }
+    }
+
+    fn press(h: &mut Harness, page: &Page, key: Key, modifiers: Modifiers) {
+        h.key_with(key, modifiers);
+        // egui hands focus around the end of the list on the following pass.
+        frames(h, page, 2);
+    }
+
+    /// Clicks the text `label` painted last (the topmost).
+    fn click(h: &mut Harness, page: &Page, label: &str) {
+        let at = h.text_rects(label).last().unwrap_or_else(|| panic!("“{label}” is not on screen")).center();
+        h.click(at, |ui| page.draw(ui));
+        frames(h, page, 2);
+    }
+
+    /// Whether the focused widget is the one labelled `label`.
+    fn focused_on(h: &Harness, label: &str) -> bool {
+        let Some(text) = h.text_rects(label).last().copied() else { return false };
+        h.focused_rect().is_some_and(|r| r.contains(text.center()))
+    }
+
+    /// Whether the last frame painted a focus ring anywhere.
+    fn ring_shown(h: &Harness) -> bool {
+        fn find(shape: &egui::Shape, color: egui::Color32) -> bool {
+            match shape {
+                egui::Shape::Rect(r) => r.stroke.width == 2.0 && r.stroke.color == color,
+                egui::Shape::Vec(shapes) => shapes.iter().any(|s| find(s, color)),
+                _ => false,
+            }
+        }
+        let color = tokens(&h.ctx).focus;
+        h.shapes.iter().any(|s| find(&s.shape, color))
+    }
+
+    #[test]
+    fn a_confirm_dialog_focuses_cancel_with_a_ring_only_after_the_keyboard() {
+        let (mut h, page) = harness();
+        click(&mut h, &page, "Delete");
+        assert!(page.confirm.get());
+        assert!(focused_on(&h, "Cancel"), "AlertDialog focuses Cancel");
+        assert!(!ring_shown(&h), "no ring after a click, as with Chromium's :focus-visible");
+        press(&mut h, &page, Key::Escape, Modifiers::NONE);
+        assert!(!page.confirm.get());
+
+        // Tab to Delete, then Enter: the same focus, now with its ring.
+        press(&mut h, &page, Key::Tab, Modifiers::NONE);
+        press(&mut h, &page, Key::Tab, Modifiers::NONE);
+        assert!(focused_on(&h, "Delete"));
+        press(&mut h, &page, Key::Enter, Modifiers::NONE);
+        assert!(page.confirm.get());
+        assert!(focused_on(&h, "Cancel"));
+        assert!(ring_shown(&h));
+        assert!(!page.confirmed.get());
+    }
+
+    #[test]
+    fn tab_and_shift_tab_cycle_through_the_dialog_only() {
+        let (mut h, page) = harness();
+        click(&mut h, &page, "Delete");
+        let mut seen = Vec::new();
+        for _ in 0..4 {
+            press(&mut h, &page, Key::Tab, Modifiers::NONE);
+            seen.push(["Delete profile", "Cancel"].into_iter().find(|l| focused_on(&h, l)));
+        }
+        assert_eq!(seen, [Some("Delete profile"), Some("Cancel"), Some("Delete profile"), Some("Cancel")]);
+        press(&mut h, &page, Key::Tab, Modifiers::SHIFT);
+        assert!(focused_on(&h, "Delete profile"));
+        press(&mut h, &page, Key::Tab, Modifiers::SHIFT);
+        assert!(focused_on(&h, "Cancel"), "Shift+Tab wraps around too");
+        // Enter on the focused confirm button confirms.
+        press(&mut h, &page, Key::Tab, Modifiers::NONE);
+        press(&mut h, &page, Key::Enter, Modifiers::NONE);
+        assert!(page.confirmed.get());
+        assert!(!page.confirm.get());
+    }
+
+    #[test]
+    fn closing_a_dialog_leaves_nothing_focused() {
+        let (mut h, page) = harness();
+        press(&mut h, &page, Key::Tab, Modifiers::NONE);
+        press(&mut h, &page, Key::Tab, Modifiers::NONE);
+        press(&mut h, &page, Key::Enter, Modifiers::NONE);
+        assert!(focused_on(&h, "Cancel"));
+        press(&mut h, &page, Key::Enter, Modifiers::NONE);
+        assert!(!page.confirm.get());
+        // The TSX has no `Dialog.Trigger`, so Radix does not hand focus back to Delete.
+        assert_eq!(h.ctx.memory(|m| m.focused()), None);
+        press(&mut h, &page, Key::Tab, Modifiers::NONE);
+        assert!(focused_on(&h, "Before"), "the next Tab starts from the top");
+    }
+
+    #[test]
+    fn a_modal_focuses_itself_then_tab_cycles_from_its_close_button() {
+        let (mut h, page) = harness();
+        click(&mut h, &page, "Edit");
+        assert!(page.modal.get());
+        assert_eq!(h.ctx.memory(|m| m.focused()), None, "the dialog itself has focus, not Close");
+        press(&mut h, &page, Key::Tab, Modifiers::SHIFT);
+        assert_eq!(h.ctx.memory(|m| m.focused()), None, "Shift+Tab from the dialog itself stays");
+
+        press(&mut h, &page, Key::Tab, Modifiers::NONE);
+        let close = h.focused_rect().expect("Close is focused");
+        assert_eq!(close.size(), egui::vec2(32.0, 32.0), "the Close icon button");
+        press(&mut h, &page, Key::Tab, Modifiers::NONE);
+        assert!(focused_on(&h, "Slack"), "then the name field");
+        press(&mut h, &page, Key::Tab, Modifiers::NONE);
+        assert!(focused_on(&h, "Done"));
+        press(&mut h, &page, Key::Tab, Modifiers::NONE);
+        assert_eq!(h.focused_rect(), Some(close), "around to Close, never to the page");
+        press(&mut h, &page, Key::Tab, Modifiers::SHIFT);
+        assert!(focused_on(&h, "Done"));
+        assert!(page.modal.get());
+    }
+
+    #[test]
+    fn escape_closes_a_tooltip_over_the_modal_first() {
+        let (mut h, page) = harness();
+        click(&mut h, &page, "Edit");
+        press(&mut h, &page, Key::Tab, Modifiers::NONE);
+        h.wait(0.6);
+        frames(&mut h, &page, 1);
+        assert!(h.shows("Close"), "the focused Close button shows its tooltip");
+        press(&mut h, &page, Key::Escape, Modifiers::NONE);
+        assert!(!h.shows("Close"), "Escape dismisses the tooltip, the topmost layer");
+        assert!(page.modal.get(), "and leaves the dialog open");
+        press(&mut h, &page, Key::Escape, Modifiers::NONE);
+        assert!(!page.modal.get());
+    }
+
+    #[test]
+    fn escape_in_a_changed_text_box_closes_the_modal_and_keeps_the_text() {
+        let (mut h, page) = harness();
+        click(&mut h, &page, "Edit");
+        click(&mut h, &page, "Slack");
+        h.key(Key::End);
+        h.type_text("bot");
+        frames(&mut h, &page, 1);
+        assert_eq!(*page.name.borrow(), "Slack", "nothing is saved while typing");
+        press(&mut h, &page, Key::Escape, Modifiers::NONE);
+        assert!(!page.modal.get(), "Radix's capture-phase Escape listener runs before the field's own");
+        assert_eq!(*page.name.borrow(), "Slackbot", "the draft is saved as the field unmounts");
+    }
 }

@@ -1,7 +1,7 @@
 //! Profiles page behaviour, through the headless harness. Positions are the
 //! Electron layout's, less the column origin (256, 65).
 
-use egui::pos2;
+use egui::{Key, pos2};
 use serde_json::{Value, json};
 
 use crate::pages::PageId;
@@ -80,6 +80,76 @@ fn adding_a_profile_writes_a_free_name_and_opens_the_editor() {
     p.click(pos2(634.0, 119.0));
     p.frame();
     assert_eq!(names(&p).len(), 3);
+}
+
+/// Opens the first profile in the editor.
+fn edit_first(p: &mut PageHarness) {
+    p.click_text("Edit");
+    p.frame();
+    assert!(p.h.shows("Edit Terminals"), "the editor is open");
+}
+
+/// Clicks the last run of `text` painted (the dialog is drawn over the page).
+fn click_last(p: &mut PageHarness, text: &str) {
+    let rect = *p.h.text_rects(text).last().unwrap_or_else(|| panic!("“{text}” is not on screen"));
+    p.click(rect.center());
+}
+
+fn escape(p: &mut PageHarness) {
+    p.h.key(Key::Escape);
+    p.frame();
+    p.frame();
+}
+
+#[test]
+fn escape_in_the_name_field_closes_the_editor_and_keeps_the_new_name() {
+    let mut p = harness(two_profiles());
+    edit_first(&mut p);
+    click_last(&mut p, "Terminals");
+    p.h.key(Key::End);
+    p.h.type_text(" 2");
+    p.frame();
+    assert_eq!(names(&p), ["Terminals", "Slack"], "nothing is saved while typing");
+    escape(&mut p);
+    // Radix's Escape listener (capture phase) closes the dialog before the field
+    // can revert; the field's draft is saved as it unmounts.
+    assert!(!p.h.shows("Edit Terminals") && !p.h.shows("Edit Terminals 2"), "the editor closed");
+    assert_eq!(names(&p), ["Terminals 2", "Slack"]);
+}
+
+#[test]
+fn escape_closes_an_open_list_before_the_editor() {
+    let mut p = harness(two_profiles());
+    // Tall enough for the whole editor, so its rows are not scrolled out of view.
+    p.h.screen = egui::vec2(1000.0, 1400.0);
+    edit_first(&mut p);
+    p.frame();
+    let defaults = p.h.text_rects("Use default").len();
+    assert_eq!(defaults, 4, "the overrides left at their default");
+    // "AI cleanup" is Off for Terminals: its select is the last "Off".
+    click_last(&mut p, "Off");
+    p.frame();
+    assert_eq!(p.h.text_rects("Use default").len(), defaults + 1, "the list is open");
+    escape(&mut p);
+    assert_eq!(p.h.text_rects("Use default").len(), defaults, "the list closed");
+    assert!(p.h.shows("Edit Terminals"), "the editor stays open");
+    escape(&mut p);
+    assert!(!p.h.shows("Edit Terminals"));
+}
+
+#[test]
+fn escape_drops_an_app_name_that_was_not_entered() {
+    let mut p = harness(two_profiles());
+    edit_first(&mut p);
+    // The chips box, right of its last chip.
+    let chip = *p.h.text_rects("wezterm-gui.exe").last().expect("the Apps chips");
+    p.click(chip.right_center() + egui::vec2(80.0, 0.0));
+    p.h.type_text("alacritty.exe");
+    p.frame();
+    escape(&mut p);
+    assert!(!p.h.shows("Edit Terminals"));
+    // React unmounts the box without a blur, so the typed text is not added.
+    assert_eq!(p.config().profiles[0].match_process, ["WindowsTerminal.exe", "wezterm-gui.exe"]);
 }
 
 #[test]

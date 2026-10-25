@@ -167,7 +167,10 @@ impl<'a, T: Clone + PartialEq> Select<'a, T> {
                 )
             });
             changed = self.flyout(ui, rect, &mut state);
-            if !state.open {
+            if state.open {
+                // The list is the topmost layer: Escape closes it, not a dialog under it.
+                super::dialog::layer_shown(&ctx);
+            } else {
                 trigger.request_focus();
             }
         }

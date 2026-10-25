@@ -16,6 +16,7 @@ use egui::{
     Stroke, TextBuffer, TextEdit, Ui, UiBuilder, pos2, vec2,
 };
 
+use super::dialog;
 use crate::design::text::{self, TextStyle};
 use crate::design::{Icon, icons, tokens};
 
@@ -91,6 +92,13 @@ struct EditOutput {
     enter: bool,
 }
 
+/// The keys a focused text box keeps from egui's focus handling: the arrows
+/// move the caret, and Escape does not blur it (Chromium keeps focus in an
+/// `<input>` on Escape; the field reverts its draft, a dialog closes). Tab
+/// still moves focus.
+pub(crate) const FIELD_KEYS: EventFilter =
+    EventFilter { tab: false, horizontal_arrows: true, vertical_arrows: true, escape: true };
+
 /// Everything about one TextEdit inside an `.input` frame.
 struct EditSpec<'a> {
     id: Id,
@@ -120,12 +128,8 @@ fn edit_padded(ui: &mut Ui, spec: &EditSpec<'_>, text: &mut String, left: f32, r
         InputLook { hovered, focused: had_focus, disabled: !spec.enabled, invalid: spec.invalid },
     );
     // Escape and Enter belong to the field (revert / commit), not to focus handling.
-    let (escape, enter) = if had_focus {
-        ui.memory_mut(|m| m.set_focus_lock_filter(spec.id, EventFilter { escape: true, ..EventFilter::default() }));
-        ctx.input(|i| (i.key_pressed(Key::Escape), i.key_pressed(Key::Enter)))
-    } else {
-        (false, false)
-    };
+    let (escape, enter) =
+        if had_focus { ctx.input(|i| (i.key_pressed(Key::Escape), i.key_pressed(Key::Enter))) } else { (false, false) };
     let color = if spec.enabled { t.fg } else { t.fg_disabled };
     let inner = spec.rect.shrink(1.0);
     let pad_y = if spec.multiline { 5.0 } else { ((inner.height() - spec.style.line_height) / 2.0).max(0.0) };
@@ -156,6 +160,7 @@ fn edit_padded(ui: &mut Ui, spec: &EditSpec<'_>, text: &mut String, left: f32, r
         .min_size(inner.size())
         .align(egui::Align2([spec.align, Align::Min]))
         .password(spec.password)
+        .event_filter(FIELD_KEYS)
         .interactive(spec.enabled)
         .text_color(color)
         .layouter(&mut layout)
@@ -299,7 +304,8 @@ impl<'a> TextField<'a> {
         if out.response.gained_focus() {
             d.focused = true;
         }
-        if out.response.lost_focus() || (d.focused && !out.response.has_focus()) {
+        if out.response.lost_focus() || (d.focused && !out.response.has_focus()) || dialog::closing(&ctx) {
+            // A pending edit is still saved when the dialog around the field closes (React unmounts it).
             d.focused = false;
             flush(&mut d);
         }
@@ -411,7 +417,7 @@ impl<'a> NumberField<'a> {
         if out.response.gained_focus() {
             d.focused = true;
         }
-        if out.response.lost_focus() || (d.focused && !out.response.has_focus()) {
+        if out.response.lost_focus() || (d.focused && !out.response.has_focus()) || dialog::closing(&ctx) {
             d.focused = false;
             settle(&mut d);
         }
@@ -482,7 +488,7 @@ impl<'a> TextArea<'a> {
         if out.response.gained_focus() {
             d.focused = true;
         }
-        if out.response.lost_focus() || (d.focused && !out.response.has_focus()) {
+        if out.response.lost_focus() || (d.focused && !out.response.has_focus()) || dialog::closing(&ctx) {
             d.focused = false;
             flush(&mut d);
         }

@@ -290,6 +290,15 @@ impl<'a> Button<'a> {
         TextStyle::BODY.weight(if self.variant == Variant::Subtle { Weight::Medium } else { Weight::Strong })
     }
 
+    /// The width [`Button::show`] gives the button, for rows laid out before drawing.
+    pub fn natural_width(&self, ui: &Ui) -> f32 {
+        let galley = text::galley(ui, self.label.as_ref(), self.style(), Color32::PLACEHOLDER, f32::INFINITY);
+        let content = self.icon.map(|i| i.size - 2.0 + 8.0).unwrap_or(0.0)
+            + galley.size().x
+            + self.trailing.map(|i| 8.0 + i.size).unwrap_or(0.0);
+        self.width.unwrap_or(content + 2.0 * self.size.padding()).max(self.min_width)
+    }
+
     pub fn show(self, ui: &mut Ui) -> Response {
         let style = self.style();
         let galley = text::galley(ui, self.label.as_ref(), style, Color32::PLACEHOLDER, f32::INFINITY);
@@ -298,7 +307,7 @@ impl<'a> Button<'a> {
         let trailing_w = self.trailing.map(|i| gap + i.size).unwrap_or(0.0);
         let content = icon_w + galley.size().x + trailing_w;
         let height = self.size.height();
-        let width = self.width.unwrap_or(content + 2.0 * self.size.padding()).max(self.min_width);
+        let width = self.natural_width(ui);
         let sense = if self.disabled { Sense::hover() } else { Sense::click() };
         let (rect, response) = ui.allocate_exact_size(vec2(width, height), sense);
         if ui.is_rect_visible(rect.expand(4.0)) {
