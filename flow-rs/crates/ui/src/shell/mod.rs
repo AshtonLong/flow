@@ -305,6 +305,11 @@ impl SettingsApp {
         if shot.requested {
             return;
         }
+        // The page grows as config, catalog and measured rows arrive, and an
+        // offset is clamped to the height at the time: keep asking until the shot.
+        if let Some(offset) = self.options.scroll {
+            self.scroll.scroll_to(offset);
+        }
         if ready {
             shot.ready_frames += 1;
         }

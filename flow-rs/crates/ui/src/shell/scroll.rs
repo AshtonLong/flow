@@ -16,6 +16,8 @@ pub struct PageScroll {
     set: Option<f32>,
     /// Where a thumb drag started: pointer y and scroll offset.
     drag_from: Option<(f32, f32)>,
+    /// The largest offset as of last frame, to clamp `set` (egui does not clamp a set offset).
+    max_offset: f32,
 }
 
 impl PageScroll {
@@ -41,12 +43,13 @@ impl PageScroll {
             .scroll_bar_visibility(ScrollBarVisibility::AlwaysHidden)
             .animated(false);
         if let Some(offset) = self.set.take() {
-            area = area.vertical_scroll_offset(offset);
+            area = area.vertical_scroll_offset(offset.min(self.max_offset).max(0.0));
         }
         let output = area.show(&mut child, content);
 
         let content_h = output.content_size.y;
         let view_h = output.inner_rect.height();
+        self.max_offset = (content_h - view_h).max(0.0);
         if content_h <= view_h + 0.5 {
             return;
         }
