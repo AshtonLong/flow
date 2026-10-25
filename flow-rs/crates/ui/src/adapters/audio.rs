@@ -1,5 +1,6 @@
-//! The settings window's view of the microphone: the device list and a level
-//! monitor for the meter. Stands in for `listMicrophones` / `startCapture` in
+//! The settings window's view of the microphone: the device list, a level
+//! monitor for the meter and the test bench's clip recorder. Stands in for
+//! `listMicrophones` / `startCapture` / `recordClip` in
 //! `src/renderer/common/capture.ts`, over `flow_audio`.
 
 use std::sync::Arc;
@@ -123,5 +124,78 @@ impl LevelMonitor {
 impl Drop for LevelMonitor {
     fn drop(&mut self) {
         self.device.lock().take();
+    }
+}
+
+/// Records one clip for the test bench (`recordClip` in capture.ts). Starting
+/// never blocks: the microphone opens on its own thread and [`Self::state`]
+/// turns `Listening` once audio is being recorded. `wake` is called whenever
+/// the state or the level changes. Dropping the recorder discards the clip
+/// and releases the microphone (`cancel()`).
+pub struct ClipRecorder {
+    shared: Arc<Mutex<Shared>>,
+    /// The open recorder; filled by the opening thread, like [`LevelMonitor`]'s.
+    device: Arc<Mutex<Option<flow_audio::ClipRecorder>>>,
+}
+
+impl ClipRecorder {
+    pub fn start(device: &str, wake: Arc<dyn Fn() + Send + Sync>) -> Self {
+        let shared = Arc::new(Mutex::new(Shared { state: MonitorState::Opening, level: 0.0 }));
+        let slot = Arc::new(Mutex::new(None));
+        let label = device.to_string();
+        let (thread_shared, thread_slot) = (shared.clone(), slot.clone());
+        let spawned = std::thread::Builder::new().name("flow-clip-recorder".into()).spawn(move || {
+            let shared = thread_shared;
+            let on_level: Arc<dyn Fn(f32) + Send + Sync> = {
+                let (shared, wake) = (shared.clone(), wake.clone());
+                Arc::new(move |level| {
+                    shared.lock().level = level;
+                    wake();
+                })
+            };
+            match flow_audio::ClipRecorder::start(&label, Some(on_level), None) {
+                Ok(recorder) => {
+                    shared.lock().state = MonitorState::Listening;
+                    *thread_slot.lock() = Some(recorder);
+                }
+                Err(err) => {
+                    shared.lock().state =
+                        MonitorState::Failed(CaptureError { reason: err.reason, message: err.message });
+                }
+            }
+            wake();
+        });
+        if let Err(err) = spawned {
+            shared.lock().state = MonitorState::Failed(CaptureError {
+                reason: CaptureErrorReason::Unknown,
+                message: format!("Could not open the microphone: {err}"),
+            });
+        }
+        Self { shared, device: slot }
+    }
+
+    /// `Opening`, then `Listening` while recording, or `Failed` if the microphone could not be opened.
+    pub fn state(&self) -> MonitorState {
+        self.shared.lock().state.clone()
+    }
+
+    /// The latest level, 0 to 1.
+    pub fn level(&self) -> f32 {
+        self.shared.lock().level
+    }
+
+    /// Stops recording and returns the clip: 16 kHz mono. Empty if the
+    /// microphone never opened.
+    pub fn stop(self) -> Vec<f32> {
+        let recorder = self.device.lock().take();
+        recorder.map(flow_audio::ClipRecorder::stop).unwrap_or_default()
+    }
+}
+
+impl Drop for ClipRecorder {
+    fn drop(&mut self) {
+        if let Some(recorder) = self.device.lock().take() {
+            recorder.cancel();
+        }
     }
 }
