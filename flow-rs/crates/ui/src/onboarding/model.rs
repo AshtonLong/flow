@@ -8,7 +8,6 @@ use flow_core::catalog::{CatalogSnapshot, CloudModelEntry, DownloadState, LocalM
 use flow_core::config::DEFAULT_LOCAL_MODEL;
 use flow_core::protocol::settings::{KeyTestResult, Request};
 
-use super::key_form::KeyForm;
 use super::step_heading;
 use super::try_it::TestDictation;
 use crate::backend::Pending;
@@ -16,6 +15,7 @@ use crate::components::{BadgeTone, Button, Notice, Tone, badge, card, progress_b
 use crate::design::text::{self, TextStyle};
 use crate::design::{Icon, Weight, tokens};
 use crate::pages::Cx;
+use crate::pages::models::cloud_providers::KeyForm;
 use crate::util::format::{error_message, format_bytes, format_price, format_speed};
 use crate::util::models::{find_provider, provider_connected};
 
@@ -358,7 +358,7 @@ impl StepModel {
         ui.add_space(12.0);
         if provider_connected(snapshot, &provider.id) {
             badge(ui, &format!("{} connected", provider.name), BadgeTone::Ok);
-        } else if let Some(result) = self.cloud.form.show(ui, cx.link, provider) {
+        } else if let Some(result) = self.cloud.form.show(ui, cx, provider, false).done {
             self.cloud.result = Some(result);
             cx.catalog.reload();
         }

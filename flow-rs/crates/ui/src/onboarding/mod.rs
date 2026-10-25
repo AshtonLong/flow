@@ -12,7 +12,6 @@
 //! hotkey step cancels a recording, and the model step starts over.
 
 mod hotkey;
-mod key_form;
 mod microphone;
 mod model;
 mod try_it;

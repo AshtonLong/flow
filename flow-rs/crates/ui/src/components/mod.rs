@@ -40,7 +40,6 @@ pub use level_meter::{MicMeter, capture_help, level_meter, mic_select};
 pub use notice::{BadgeTone, Notice, Tone, badge, progress_bar, spinner};
 pub use select::{Select, SelectOption, SelectResponse};
 pub use text_field::{
-    FieldResponse, Input, NumberField, TextArea, TextField, input, input_area, input_invalid, password_input,
-    search_input,
+    FieldResponse, Input, NumberField, TextArea, TextField, input, input_area, input_invalid, search_input,
 };
 pub use toggle::{Toggle, ToggleResponse, checkbox, radio};

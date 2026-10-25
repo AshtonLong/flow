@@ -534,30 +534,6 @@ pub fn input_invalid(
     edit(ui, &spec, text).response
 }
 
-/// A bare password `.input` in the mono face (`type="password"`, `font-mono
-/// text-[13px]`), for API key entry. Edits `text` in place.
-pub fn password_input(
-    ui: &mut Ui,
-    id_salt: impl Hash + std::fmt::Debug,
-    text: &mut String,
-    width: f32,
-    placeholder: Option<&str>,
-) -> Response {
-    let (rect, _) = ui.allocate_exact_size(vec2(width, 32.0), Sense::hover());
-    let spec = EditSpec {
-        id: Id::unique(("flow-input", id_salt)),
-        rect,
-        style: TextStyle::BODY.mono().size(13.0, 20.0),
-        align: Align::Min,
-        multiline: false,
-        password: true,
-        placeholder,
-        enabled: true,
-        invalid: false,
-    };
-    edit(ui, &spec, text).response
-}
-
 /// A bare multi-line `.input` (`<textarea rows>`) for local state that is not
 /// a setting, full width. Edits `text` in place.
 pub fn input_area(
