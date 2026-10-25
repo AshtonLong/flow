@@ -371,6 +371,11 @@ impl<'a> IconButton<'a> {
         self.icon.stroke = stroke;
         self
     }
+    /// Turns the icon by `radians` (`.spin` on History's re-run icon; see [`spin_angle`]).
+    pub fn rotation(mut self, radians: f32) -> Self {
+        self.icon.rotation = radians;
+        self
+    }
 
     pub fn show(self, ui: &mut Ui) -> Response {
         let side = self.size.height();
@@ -389,6 +394,16 @@ impl<'a> IconButton<'a> {
         }
         response
     }
+}
+
+/// The turn of a `.spin` icon this frame: one turn per 900 ms, repainting while
+/// it turns. Still under reduced motion.
+pub fn spin_angle(ui: &Ui) -> f32 {
+    if !motion::enabled(ui) {
+        return 0.0;
+    }
+    ui.ctx().request_repaint();
+    (ui.input(|i| i.time) % 0.9 / 0.9) as f32 * std::f32::consts::TAU
 }
 
 /// `.link`: inline text, weight 620, underlined (thicker on hover), pointer cursor.

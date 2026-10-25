@@ -122,8 +122,14 @@ pub fn snap_baselines(galley: Arc<Galley>, style: TextStyle) -> Arc<Galley> {
 /// Lays out one run of text. `wrap` is the maximum width (`f32::INFINITY` for one line).
 pub fn galley(ui: &Ui, text: impl Into<String>, style: TextStyle, color: Color32, wrap: f32) -> Arc<Galley> {
     let mut job = LayoutJob::single_section(text.into(), style.format(color));
-    job.wrap = TextWrapping { max_width: wrap, ..TextWrapping::default() };
+    job.wrap = TextWrapping { max_width: css_wrap_width(wrap), ..TextWrapping::default() };
     snap_baselines(ui.painter().layout_job(job), style)
+}
+
+/// egui lets a line run 0.5 px past its wrap width (`LayoutJob::effective_wrap_width`);
+/// Chromium breaks as soon as the text is wider than its box. Cancel the slack.
+pub fn css_wrap_width(width: f32) -> f32 {
+    if width.is_finite() { (width - 0.5).max(0.0) } else { width }
 }
 
 /// One line, cut with an ellipsis to fit `max_width` (`truncate`).
