@@ -323,3 +323,27 @@ pub fn baseline(galley: &Galley) -> f32 {
 pub fn line_size(width: f32, style: TextStyle) -> Vec2 {
     Vec2::new(width, style.line_height)
 }
+
+#[cfg(test)]
+mod wrap_tests {
+    use super::*;
+
+    /// A line that fits, but only without its trailing space, stays whole
+    /// (vendor/epaint); one a little too wide still wraps.
+    #[test]
+    fn wraps_where_chromium_wraps() {
+        let mut h = crate::testing::Harness::new();
+        h.frame(|ui| {
+            let line = "Fix words Flow mishears: names, product terms, acronyms. The right spellings are also given";
+            let fits = width(ui, line, TextStyle::CAPTION);
+            let rows = |wrap: f32| {
+                let galley =
+                    galley(ui, format!("{line} to the speech model."), TextStyle::CAPTION, Color32::WHITE, wrap);
+                galley.rows.first().map(|r| r.row.text().trim_end().to_string()).unwrap_or_default()
+            };
+            assert_eq!(rows(fits + 1.0), line);
+            assert_eq!(rows(fits), line);
+            assert!(rows(fits - 2.0).ends_with("also"));
+        });
+    }
+}

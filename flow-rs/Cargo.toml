@@ -81,3 +81,8 @@ debug = "line-tables-only"
 # Debug builds of the DSP and VAD code are slow enough to distort timing; optimise deps.
 [profile.dev.package."*"]
 opt-level = 2
+
+# epaint 0.37 with one change: trailing spaces hang past the wrap width, as in
+# CSS, so text wraps where Chromium wraps it. See vendor/epaint/FLOW.md.
+[patch.crates-io]
+epaint = { path = "vendor/epaint" }
