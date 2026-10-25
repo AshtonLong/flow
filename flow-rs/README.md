@@ -15,7 +15,7 @@ here is a port of a TypeScript module, with its unit tests ported too.
 | Tray app | Electron main process (Node.js) | `Flow.exe`: a Win32 message loop, a 2-thread tokio runtime, the hook and capture threads |
 | Overlay pill | Always-alive transparent `BrowserWindow` + mic capture | Layered Win32 window drawn with tiny-skia; capture through WASAPI (cpal) in the tray process |
 | Speech engine | Electron utility process (transcribe-cpp over koffi, Silero on onnxruntime) | `Flow.exe --engine`: transcribe.cpp 0.3.0 over libloading, Silero VAD in pure Rust |
-| Settings | React in a `BrowserWindow`, created on open | `Flow.exe --settings-window`: egui (glow), created on open, exits on close |
+| Settings | React in a `BrowserWindow`, created on open | `Flow.exe --settings-window`: egui drawn by a small CPU renderer to a GDI window (no GPU context), created on open, exits on close |
 
 The settings window talks to the tray app over its stdin/stdout, one JSON
 message per line (`flow_core::protocol::settings`, mirroring `SettingsApi` in
@@ -33,6 +33,22 @@ message per line (`flow_core::protocol::settings`, mirroring `SettingsApi` in
 | `flow-shell` | Overlay pill, tray icon, start and stop sounds |
 | `flow-ui` | The settings window |
 | `flow` | `Flow.exe`: startup, the dictation session, the transcriber router, the settings-window host, updates |
+
+## Measurements
+
+Release builds on the development machine (Windows 11, GTX 1070 Ti), October 2026.
+
+| | Electron | Rust |
+| --- | --- | --- |
+| Idle in the tray | 6 processes, 159 MB private, 379 MB working set | 1 process, 9 MB private, 28 MB working set |
+| Idle CPU over 10 s | 16 ms | 16–31 ms (one or two timer ticks) |
+| Tray ready after launch | — | 42 ms |
+| Settings window open | a Chromium renderer and GPU process | 1 process, 12 MB private, 39 MB working set |
+| Installed size | 415 MB | 77 MB (24 MB `Flow.exe`, the rest is the speech engine) |
+| Installer | — | 14 MB |
+
+The engine process holds the loaded model either way (about 636 MB private for
+Parakeet TDT 0.6B v2). Warm, Parakeet transcribes an 11 s clip in about 240 ms.
 
 ## Drop-in replacement
 

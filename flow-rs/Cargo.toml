@@ -37,7 +37,6 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 cpal = "0.18"
 crossbeam-channel = "0.5"
 ed25519-dalek = { version = "2", default-features = false, features = ["std"] }
-eframe = { version = "0.37", default-features = false, features = ["glow", "accesskit"] }
 egui = "0.37"
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit"] }
 fancy-regex = "0.14"
