@@ -1,5 +1,6 @@
-//! The settings window's view of the microphone: the device list and a level
-//! monitor for the meter. Stands in for `listMicrophones` / `startCapture` in
+//! The settings window's view of the microphone: the device list, a level
+//! monitor for the meter and the test bench's clip recorder. Stands in for
+//! `listMicrophones` / `startCapture` / `recordClip` in
 //! `src/renderer/common/capture.ts`, over `flow_audio`.
 
 use std::sync::Arc;

@@ -639,3 +639,66 @@ pub fn search_input(
     }
     out.response
 }
+
+/// [`input`] with the `.input` variants forms need: `font-mono text-[13px]`,
+/// `type="password"`. Edits `text` in place.
+///
+/// ```ignore
+/// let response = Input::new("key", &mut self.key).width(300.0).mono().password().placeholder("Paste the key").show(ui);
+/// let submit = response.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
+/// ```
+pub struct Input<'a> {
+    id: Id,
+    text: &'a mut String,
+    width: f32,
+    placeholder: Option<&'a str>,
+    mono: bool,
+    password: bool,
+}
+
+impl<'a> Input<'a> {
+    /// Same id as [`input`] for the same `id_salt`.
+    pub fn new(id_salt: impl Hash + std::fmt::Debug, text: &'a mut String) -> Self {
+        Self {
+            id: Id::unique(("flow-input", id_salt)),
+            text,
+            width: 200.0,
+            placeholder: None,
+            mono: false,
+            password: false,
+        }
+    }
+    pub fn width(mut self, width: f32) -> Self {
+        self.width = width;
+        self
+    }
+    pub fn placeholder(mut self, placeholder: &'a str) -> Self {
+        self.placeholder = Some(placeholder);
+        self
+    }
+    /// `font-mono text-[13px]`
+    pub fn mono(mut self) -> Self {
+        self.mono = true;
+        self
+    }
+    pub fn password(mut self) -> Self {
+        self.password = true;
+        self
+    }
+
+    pub fn show(self, ui: &mut Ui) -> Response {
+        let (rect, _) = ui.allocate_exact_size(vec2(self.width, 32.0), Sense::hover());
+        let spec = EditSpec {
+            id: self.id,
+            rect,
+            style: if self.mono { TextStyle::BODY.mono().size(13.0, 20.0) } else { TextStyle::BODY },
+            align: Align::Min,
+            multiline: false,
+            password: self.password,
+            placeholder: self.placeholder,
+            enabled: true,
+            invalid: false,
+        };
+        edit(ui, &spec, self.text).response
+    }
+}
