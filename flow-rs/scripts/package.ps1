@@ -5,8 +5,12 @@
   format the updater reads).
 .PARAMETER SkipBuild
   Package the existing target\release\Flow.exe.
+.PARAMETER Sandbox
+  Build dist\Flow-Setup-<version>-sandbox.exe instead, with its own uninstall
+  key, shortcut and autostart value, so installing it (scripts\test-installer.ps1)
+  leaves a real Flow install alone. No update feed.
 #>
-param([switch] $SkipBuild)
+param([switch] $SkipBuild, [switch] $Sandbox)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent          # flow-rs
 $repo = Split-Path $root -Parent                  # the repository
@@ -57,31 +61,31 @@ foreach ($candidate in @("$env:NSIS_HOME\makensis.exe", 'C:\Program Files (x86)\
 if (-not $makensis) { throw 'makensis not found: install NSIS 3 or set NSIS_HOME' }
 
 $dist = Join-Path $root 'dist'
-$installerName = "Flow-Setup-$version.exe"
+$installerName = if ($Sandbox) { "Flow-Setup-$version-sandbox.exe" } else { "Flow-Setup-$version.exe" }
 $installer = Join-Path $dist $installerName
+$defines = @("/DVERSION=$version", "/DSTAGE=$stage", "/DOUTFILE=$installer")
+if ($Sandbox) {
+  $defines += @(
+    '/DUNINSTALL_KEY=Software\Microsoft\Windows\CurrentVersion\Uninstall\computer.flow.dictation.sandbox',
+    '/DSHORTCUT=Flow (sandbox)',
+    '/DRUN_VALUE=computer.flow.dictation.sandbox'
+  )
+}
+
 Push-Location (Join-Path $root 'installer')
 try {
-  & $makensis /V2 "/DVERSION=$version" "/DSTAGE=$stage" "/DOUTFILE=$installer" flow.nsi
+  & $makensis /V2 @defines flow.nsi
   if ($LASTEXITCODE -ne 0) { throw 'makensis failed' }
 } finally { Pop-Location }
+
+if ($Sandbox) { Write-Host "Built $installerName in $dist"; return }
 
 # The update feed, in the format electron-updater (and Flow's updater) reads.
 $bytes = [IO.File]::ReadAllBytes($installer)
 $sha512 = [Convert]::ToBase64String([Security.Cryptography.SHA512]::Create().ComputeHash($bytes))
 $date = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
-@"
-version: $version
-files:
-  - url: $installerName
-    sha512: $sha512
-    size: $($bytes.Length)
-path: $installerName
-sha512: $sha512
-releaseDate: '$date'
-"@ | Set-Content -Encoding utf8NoBOM (Join-Path $dist 'latest.yml') -ErrorAction SilentlyContinue
-if (-not (Test-Path (Join-Path $dist 'latest.yml'))) {
-  # Windows PowerShell 5 has no utf8NoBOM.
-  [IO.File]::WriteAllText((Join-Path $dist 'latest.yml'), "version: $version`nfiles:`n  - url: $installerName`n    sha512: $sha512`n    size: $($bytes.Length)`npath: $installerName`nsha512: $sha512`nreleaseDate: '$date'`n")
-}
+# WriteAllText writes UTF-8 without a byte-order mark on every PowerShell.
+$feed = "version: $version`nfiles:`n  - url: $installerName`n    sha512: $sha512`n    size: $($bytes.Length)`npath: $installerName`nsha512: $sha512`nreleaseDate: '$date'`n"
+[IO.File]::WriteAllText((Join-Path $dist 'latest.yml'), $feed)
 $mb = [math]::Round($bytes.Length / 1MB, 1)
 Write-Host "Built $installerName ($mb MB) and latest.yml in $dist"

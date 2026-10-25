@@ -141,7 +141,9 @@ impl App {
         self.hook.set_bindings(&cfg.hotkeys);
         self.engine.set_keep_loaded_minutes(cfg.model.keep_loaded_minutes);
         self.overlay.configure(self.overlay_appearance(cfg), cfg.overlay.position);
+        // A test run (FLOW_TEST) of an installed copy leaves the real autostart entry alone.
         if self.paths.packaged
+            && !crate::test_mode::enabled()
             && let Err(err) = system::set_launch_at_login(cfg.general.launch_at_login, &self.paths.exe)
         {
             log::warn!(target: "app", "launch at login: {err}");
@@ -394,7 +396,7 @@ pub fn run(args: Vec<String>) -> i32 {
             flow_core::cleanup::apply_rules("warm up", &config, &flow_core::cleanup::RulesContext::default())
         });
     }
-    app.updater.schedule_check();
+    app.updater.schedule_check(&rt);
     log::info!(target: "app", "tray ready in {} ms", started.elapsed().as_millis());
     if test_mode {
         crate::test_mode::ready();

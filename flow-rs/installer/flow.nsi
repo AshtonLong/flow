@@ -23,8 +23,17 @@ ManifestDPIAware true
 !endif
 
 ; electron-builder's key for appId computer.flow.dictation (a UUID v5 of it).
-!define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\cc05d316-dd59-5bb1-9f29-ab384ad1d9b1"
+; Tests override it, SHORTCUT and RUN_VALUE, so a trial install leaves the real one alone.
+!ifndef UNINSTALL_KEY
+  !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\cc05d316-dd59-5bb1-9f29-ab384ad1d9b1"
+!endif
+!ifndef SHORTCUT
+  !define SHORTCUT "Flow"
+!endif
 !define RUN_KEY "Software\Microsoft\Windows\CurrentVersion\Run"
+!ifndef RUN_VALUE
+  !define RUN_VALUE "computer.flow.dictation"
+!endif
 
 Name "Flow"
 OutFile "${OUTFILE}"
@@ -73,7 +82,7 @@ Section "Flow" SecMain
   File /r "${STAGE}\*.*"
 
   WriteUninstaller "$INSTDIR\Uninstall Flow.exe"
-  CreateShortCut "$SMPROGRAMS\Flow.lnk" "$INSTDIR\Flow.exe" "" "$INSTDIR\Flow.exe" 0
+  CreateShortCut "$SMPROGRAMS\${SHORTCUT}.lnk" "$INSTDIR\Flow.exe" "" "$INSTDIR\Flow.exe" 0
 
   WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayName" "Flow"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayVersion" "${VERSION}"
@@ -100,8 +109,8 @@ SectionEnd
 Section "Uninstall"
   SetShellVarContext current
   !insertmacro StopFlow
-  Delete "$SMPROGRAMS\Flow.lnk"
+  Delete "$SMPROGRAMS\${SHORTCUT}.lnk"
   DeleteRegKey HKCU "${UNINSTALL_KEY}"
-  DeleteRegValue HKCU "${RUN_KEY}" "computer.flow.dictation"
+  DeleteRegValue HKCU "${RUN_KEY}" "${RUN_VALUE}"
   RMDir /r "$INSTDIR"
 SectionEnd
