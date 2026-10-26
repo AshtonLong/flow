@@ -23,7 +23,11 @@ $dir = Join-Path ([IO.Path]::GetTempPath()) "flow-install-test-$PID"
 $userData = Join-Path ([IO.Path]::GetTempPath()) "flow-install-test-data-$PID"
 $failures = @()
 function Check([bool] $ok, [string] $what) {
-  if ($ok) { Write-Host "  ok    $what" } else { Write-Host "  FAIL  $what"; $script:failures += $what }
+  if ($ok) { Write-Host "  ok    $what" } else {
+    Write-Host "  FAIL  $what"
+    if ($env:GITHUB_ACTIONS) { Write-Host "::error title=Installer test::$what" }
+    $script:failures += $what
+  }
 }
 
 Write-Host "Installing into $dir"
@@ -34,7 +38,8 @@ Write-Host "  installed in $($timer.ElapsedMilliseconds) ms"
 foreach ($file in 'Flow.exe', 'Uninstall Flow.exe', 'engine\transcribe.dll', 'engine\vcruntime140.dll', 'resources\catalog.json', 'resources\catalog.json.sig', 'LICENSE') {
   Check (Test-Path (Join-Path $dir $file)) "installed $file"
 }
-Check ((Get-ItemProperty $key -ErrorAction SilentlyContinue).InstallLocation -eq $dir) 'uninstall entry points at the install folder'
+$location = (Get-ItemProperty $key -ErrorAction SilentlyContinue).InstallLocation
+Check ($location -eq $dir) "uninstall entry points at the install folder ($location)"
 Check (Test-Path $shortcut) 'Start-menu shortcut'
 $size = (Get-ChildItem $dir -Recurse -File | Measure-Object Length -Sum).Sum
 Write-Host ("  {0:N1} MB on disk" -f ($size / 1MB))
