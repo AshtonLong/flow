@@ -6,8 +6,11 @@
   shortcut, uninstall entry and settings are not touched.
 .PARAMETER SkipBuild
   Package the existing target\release\Flow.exe.
+.PARAMETER SkipDictation
+  Only check that the installed Flow.exe starts (--smoke-test), for machines
+  without the speech model (CI).
 #>
-param([switch] $SkipBuild)
+param([switch] $SkipBuild, [switch] $SkipDictation)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent          # flow-rs
 $repo = Split-Path $root -Parent
@@ -36,42 +39,54 @@ Check (Test-Path $shortcut) 'Start-menu shortcut'
 $size = (Get-ChildItem $dir -Recurse -File | Measure-Object Length -Sum).Sum
 Write-Host ("  {0:N1} MB on disk" -f ($size / 1MB))
 
-Write-Host 'Dictating with the installed Flow.exe'
-New-Item -ItemType Directory -Force $userData | Out-Null
-[IO.File]::WriteAllText((Join-Path $userData 'config.toml'), "version = 1`n`n[general]`nonboarded = true`n")
-$info = New-Object Diagnostics.ProcessStartInfo (Join-Path $dir 'Flow.exe'), '--hidden'
-$info.UseShellExecute = $false
-$info.RedirectStandardInput = $true
-$info.RedirectStandardOutput = $true
-$info.EnvironmentVariables.Remove('ELECTRON_RUN_AS_NODE')
-$info.EnvironmentVariables['FLOW_TEST'] = '1'
-$info.EnvironmentVariables['FLOW_USER_DATA'] = $userData
-$info.EnvironmentVariables['FLOW_MODELS_DIR'] = Join-Path $env:LOCALAPPDATA 'Flow\models'
-$info.EnvironmentVariables['FLOW_FAKE_MIC'] = Join-Path $repo 'tests\fixtures\jfk.wav'
-$flow = [Diagnostics.Process]::Start($info)
-function Wait-Line([string] $type, [int] $seconds) {
-  $deadline = (Get-Date).AddSeconds($seconds)
-  while ((Get-Date) -lt $deadline) {
-    $task = $flow.StandardOutput.ReadLineAsync()
-    if (-not $task.Wait([int] [math]::Max(1, ($deadline - (Get-Date)).TotalMilliseconds))) { return $null }
-    if ($null -eq $task.Result) { return $null }
-    $line = $task.Result | ConvertFrom-Json -ErrorAction SilentlyContinue
-    if ($line -and $line.type -eq $type) { return $line }
-  }
-  return $null
-}
-try {
-  Check ($null -ne (Wait-Line 'ready' 20)) 'starts in the tray'
-  $flow.StandardInput.WriteLine('hotkey hold-start')
-  Start-Sleep -Milliseconds 400
-  $flow.StandardInput.WriteLine('hotkey hold-end')
-  $insert = Wait-Line 'insert' 90
-  Check ($insert -and $insert.text -match 'ask not what your country can do for you') "transcribes with the local model: $($insert.text)"
-  $flow.StandardInput.WriteLine('quit')
-  Check ($flow.WaitForExit(5000)) 'quits on request'
-} finally {
-  if (-not $flow.HasExited) { $flow.Kill() }
+if ($SkipDictation) {
+  Write-Host 'Starting the installed Flow.exe'
+  New-Item -ItemType Directory -Force $userData | Out-Null
+  # FLOW_TEST keeps the installed copy away from the real autostart entry.
+  $env:FLOW_USER_DATA = $userData
+  $env:FLOW_TEST = '1'
+  $smoke = Start-Process (Join-Path $dir 'Flow.exe') -ArgumentList '--smoke-test', '--hidden' -PassThru -Wait
+  Remove-Item Env:FLOW_USER_DATA, Env:FLOW_TEST
   Remove-Item -Recurse -Force $userData -ErrorAction SilentlyContinue
+  Check ($smoke.ExitCode -eq 0) "starts and exits cleanly (exit code $($smoke.ExitCode))"
+} else {
+  Write-Host 'Dictating with the installed Flow.exe'
+  New-Item -ItemType Directory -Force $userData | Out-Null
+  [IO.File]::WriteAllText((Join-Path $userData 'config.toml'), "version = 1`n`n[general]`nonboarded = true`n")
+  $info = New-Object Diagnostics.ProcessStartInfo (Join-Path $dir 'Flow.exe'), '--hidden'
+  $info.UseShellExecute = $false
+  $info.RedirectStandardInput = $true
+  $info.RedirectStandardOutput = $true
+  $info.EnvironmentVariables.Remove('ELECTRON_RUN_AS_NODE')
+  $info.EnvironmentVariables['FLOW_TEST'] = '1'
+  $info.EnvironmentVariables['FLOW_USER_DATA'] = $userData
+  $info.EnvironmentVariables['FLOW_MODELS_DIR'] = Join-Path $env:LOCALAPPDATA 'Flow\models'
+  $info.EnvironmentVariables['FLOW_FAKE_MIC'] = Join-Path $repo 'tests\fixtures\jfk.wav'
+  $flow = [Diagnostics.Process]::Start($info)
+  function Wait-Line([string] $type, [int] $seconds) {
+    $deadline = (Get-Date).AddSeconds($seconds)
+    while ((Get-Date) -lt $deadline) {
+      $task = $flow.StandardOutput.ReadLineAsync()
+      if (-not $task.Wait([int] [math]::Max(1, ($deadline - (Get-Date)).TotalMilliseconds))) { return $null }
+      if ($null -eq $task.Result) { return $null }
+      $line = $task.Result | ConvertFrom-Json -ErrorAction SilentlyContinue
+      if ($line -and $line.type -eq $type) { return $line }
+    }
+    return $null
+  }
+  try {
+    Check ($null -ne (Wait-Line 'ready' 20)) 'starts in the tray'
+    $flow.StandardInput.WriteLine('hotkey hold-start')
+    Start-Sleep -Milliseconds 400
+    $flow.StandardInput.WriteLine('hotkey hold-end')
+    $insert = Wait-Line 'insert' 90
+    Check ($insert -and $insert.text -match 'ask not what your country can do for you') "transcribes with the local model: $($insert.text)"
+    $flow.StandardInput.WriteLine('quit')
+    Check ($flow.WaitForExit(5000)) 'quits on request'
+  } finally {
+    if (-not $flow.HasExited) { $flow.Kill() }
+    Remove-Item -Recurse -Force $userData -ErrorAction SilentlyContinue
+  }
 }
 
 Write-Host 'Uninstalling'

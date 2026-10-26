@@ -97,5 +97,7 @@ pwsh scripts/package.ps1          # dist/Flow-Setup-<version>.exe and dist/lates
 pwsh scripts/test-installer.ps1   # installs a sandbox build to a temp folder, dictates with it, uninstalls
 ```
 
+To release, bump `version` in `Cargo.toml` and push a matching tag (`git tag v0.3.0 && git push origin v0.3.0`). The Release workflow builds, tests and publishes it.
+
 The installer is per-user and needs no administrator rights. It installs where
 the Electron build did and replaces it in place.

@@ -158,9 +158,7 @@ Product behaviour is specified in [SPEC.md](SPEC.md). The process model, IPC and
 
 ### Releasing
 
-Pushing a tag `vX.Y.Z` that matches the version in `package.json` runs [.github/workflows/release.yml](.github/workflows/release.yml). It builds the installer and uploads it to a draft GitHub Release. Publishing the draft makes the update available to installed copies.
-
-To sign the build, set the repository secrets `CSC_LINK` (the `.pfx` certificate, base64-encoded) and `CSC_KEY_PASSWORD`. Without them the installer is unsigned.
+Releases ship the Rust build in [flow-rs/](flow-rs/). Pushing a tag `vX.Y.Z` that matches the version in `flow-rs/Cargo.toml` runs [.github/workflows/release.yml](.github/workflows/release.yml). It tests the app, builds the installer and `latest.yml`, installs and uninstalls a test copy, and then publishes the GitHub Release. Installed copies, Electron or Rust, update from the latest release. The installer is unsigned.
 
 ### Signing the catalog
 
