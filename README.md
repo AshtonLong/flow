@@ -4,22 +4,29 @@ Push-to-talk dictation for Windows. Hold a key, speak, release, and the text is 
 
 Flow is free and open source (MIT). Speech recognition runs on your own machine by default, and you can switch to a cloud model with your own API key. There is no account, no telemetry and no Flow server.
 
+Since 0.2.0, Flow is a native Rust app ([flow-rs/](flow-rs/)). It looks and works the same as the 0.1.0 Electron app, which stays in the repository root, but idles in one process at about 9 MB of private memory instead of six processes and 159 MB, and installs in 77 MB instead of 415 MB. [flow-rs/README.md](flow-rs/README.md) has the measurements.
+
 ## Status
 
-Version 0.1.0, pre-release.
+Version 0.2.0, pre-release.
 
 - Windows 11, x64 only. macOS is planned after the Windows 1.0.
 - English only.
-- Installers are code-signed only when the release was built with a signing certificate. An unsigned installer triggers a Windows SmartScreen warning.
+- The installer is not code-signed yet, so Windows SmartScreen warns before running it (see [Install](#install)).
 - Performance targets in [SPEC.md](SPEC.md) are design goals. The few figures measured so far are under [Models](#models).
 
 ## Install
 
-1. Download `Flow-Setup-<version>.exe` from [Releases](https://github.com/AshtonLong/flow/releases).
-2. Run it. The installer needs no administrator rights when you install for yourself only.
-3. Flow starts in the system tray. On first run it asks for a microphone, a hotkey and a model.
+1. Download `Flow-Setup-<version>.exe` from the [latest release](https://github.com/AshtonLong/flow/releases/latest).
+2. Run it. If Windows SmartScreen says "Windows protected your PC", click **More info**, then **Run anyway**.
+3. Choose a folder (the default is `%LOCALAPPDATA%\Programs\Flow`) and click **Install**. No administrator rights are needed.
+4. Leave **Start Flow** ticked and click **Finish**. Flow starts in the system tray. On first run it asks for a microphone, a hotkey and a model.
 
 The installer contains no speech model. The default model (475 MB) downloads on first run. Updates arrive through the app from GitHub Releases.
+
+**Upgrading from 0.1.0 (Electron).** Either accept the update when the app offers it, or run the 0.2.0 installer. It replaces the Electron app in place, in the same folder and under the same Start-menu entry. Settings, API keys, history and downloaded models are kept, since they live outside the install folder.
+
+To uninstall, use **Settings > Apps > Installed apps > Flow**. Your settings and models stay in `%APPDATA%\Flow` and `%LOCALAPPDATA%\Flow`; delete those folders to remove them too.
 
 ## Hotkeys
 
@@ -141,28 +148,39 @@ The full reference is in [docs/configuration.md](docs/configuration.md).
 
 ## Development
 
-Requires Windows 11 x64, Node.js 22 or newer (CI uses 24) and pnpm.
+The app is in [flow-rs/](flow-rs/), a Rust workspace. It needs Windows 11 x64 and stable Rust. NSIS 3 is needed only to build the installer.
+
+```sh
+cd flow-rs
+cargo run -p flow --bin Flow                        # run the app
+cargo test --workspace                              # unit tests
+cargo clippy --workspace --all-targets -- -D warnings
+pwsh scripts/package.ps1                            # build the installer into dist/ (does not publish)
+```
+
+[flow-rs/README.md](flow-rs/README.md) covers the crate layout, the end-to-end tests and the installer test. Product behaviour is specified in [SPEC.md](SPEC.md).
+
+### The Electron app
+
+The 0.1.0 Electron app is still in the repository root (`src/`), and the Rust app's look and behaviour are checked against it. It needs Node.js 22 or newer and pnpm:
 
 ```sh
 pnpm install
 pnpm dev        # run with hot reload
 pnpm test       # unit tests (Vitest)
 pnpm test:e2e   # end-to-end tests against the built app (run pnpm build first)
-pnpm typecheck
-pnpm lint
 pnpm build      # type-check and bundle into out/
-pnpm dist       # build the installer into release/ (does not publish)
 ```
 
-Product behaviour is specified in [SPEC.md](SPEC.md). The process model, IPC and repository layout are in [ARCHITECTURE.md](ARCHITECTURE.md).
+Its process model and IPC are described in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ### Releasing
 
-Releases ship the Rust build in [flow-rs/](flow-rs/). Pushing a tag `vX.Y.Z` that matches the version in `flow-rs/Cargo.toml` runs [.github/workflows/release.yml](.github/workflows/release.yml). It tests the app, builds the installer and `latest.yml`, installs and uninstalls a test copy, and then publishes the GitHub Release. Installed copies, Electron or Rust, update from the latest release. The installer is unsigned.
+Bump `version` in `flow-rs/Cargo.toml`, then push a matching tag. Pushing a tag `vX.Y.Z` that matches the version in `flow-rs/Cargo.toml` runs [.github/workflows/release.yml](.github/workflows/release.yml). It tests the app, builds the installer and `latest.yml`, installs and uninstalls a test copy, and then publishes the GitHub Release. Installed copies, Electron or Rust, update from the latest release. The installer is unsigned.
 
 ### Signing the catalog
 
-The app refreshes its model catalog from `resources/catalog.json` on the `main` branch, and accepts it only with a valid Ed25519 signature in `resources/catalog.json.sig`. The public key is embedded in [src/main/models/catalog.ts](src/main/models/catalog.ts). The private key is kept outside the repository and must never be committed.
+The app refreshes its model catalog from `resources/catalog.json` on the `main` branch, and accepts it only with a valid Ed25519 signature in `resources/catalog.json.sig`. The public key is embedded in [flow-rs/crates/core/src/catalog/verify.rs](flow-rs/crates/core/src/catalog/verify.rs). The private key is kept outside the repository and must never be committed.
 
 After any change to `resources/catalog.json`:
 
@@ -180,16 +198,22 @@ This reads the private key from the path in `FLOW_CATALOG_KEY`, or `%USERPROFILE
 
 Flow is MIT-licensed; see [LICENSE](LICENSE). It builds on:
 
-| Component                                                          | Licence | Notes                                                 |
-| ------------------------------------------------------------------ | ------- | ----------------------------------------------------- |
-| [transcribe.cpp](https://github.com/handy-computer/transcribe.cpp) | MIT     | Local speech engine, from the Handy project           |
-| [Silero VAD](https://github.com/snakers4/silero-vad)               | MIT     | Voice activity detection; `resources/silero_vad.onnx` |
-| [ONNX Runtime](https://github.com/microsoft/onnxruntime)           | MIT     | Runs Silero VAD                                       |
-| [Electron](https://www.electronjs.org/)                            | MIT     | App shell                                             |
-| [uiohook-napi](https://github.com/SnosMe/uiohook-napi)             | MIT     | Global key and mouse hook                             |
-| [koffi](https://koffi.dev/)                                        | MIT     | Win32 calls                                           |
-| [better-sqlite3](https://github.com/WiseLibs/better-sqlite3)       | MIT     | History store                                         |
-| [Recursive](https://www.recursive.design/)                         | OFL-1.1 | Typeface for the settings window and the overlay      |
+| Component                                                          | Licence           | Notes                                                              |
+| ------------------------------------------------------------------ | ----------------- | ------------------------------------------------------------------ |
+| [transcribe.cpp](https://github.com/handy-computer/transcribe.cpp) | MIT               | Local speech engine, from the Handy project                        |
+| [Silero VAD](https://github.com/snakers4/silero-vad)               | MIT               | Voice activity detection; weights from `resources/silero_vad.onnx` |
+| [egui](https://github.com/emilk/egui)                              | MIT or Apache-2.0 | Settings window; a patched epaint is in `flow-rs/vendor/epaint`    |
+| [tiny-skia](https://github.com/linebender/tiny-skia)               | BSD-3-Clause      | Draws the settings window on the CPU                               |
+| [winit](https://github.com/rust-windowing/winit)                   | Apache-2.0        | Settings window                                                    |
+| [windows-rs](https://github.com/microsoft/windows-rs)              | MIT or Apache-2.0 | Win32 calls, key and mouse hook                                    |
+| [cpal](https://github.com/RustAudio/cpal)                          | Apache-2.0        | Microphone capture                                                 |
+| [nnnoiseless](https://github.com/jneem/nnnoiseless)                | BSD-3-Clause      | Noise suppression                                                  |
+| [rusqlite](https://github.com/rusqlite/rusqlite)                   | MIT               | History store (bundles SQLite, public domain)                      |
+| [Tokio](https://tokio.rs/)                                         | MIT               | Async runtime                                                      |
+| [Lucide](https://lucide.dev/)                                      | ISC               | Icons                                                              |
+| [Recursive](https://www.recursive.design/)                         | OFL-1.1           | Typeface for the settings window and the overlay                   |
+
+The 0.1.0 Electron app also uses Electron, ONNX Runtime, uiohook-napi, koffi and better-sqlite3 (all MIT).
 
 Speech models are downloaded separately and keep their own licences, shown in the catalog:
 
