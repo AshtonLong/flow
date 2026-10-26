@@ -203,7 +203,7 @@ Flow is MIT-licensed; see [LICENSE](LICENSE). It builds on:
 | [transcribe.cpp](https://github.com/handy-computer/transcribe.cpp) | MIT               | Local speech engine, from the Handy project                        |
 | [Silero VAD](https://github.com/snakers4/silero-vad)               | MIT               | Voice activity detection; weights from `resources/silero_vad.onnx` |
 | [egui](https://github.com/emilk/egui)                              | MIT or Apache-2.0 | Settings window; a patched epaint is in `flow-rs/vendor/epaint`    |
-| [tiny-skia](https://github.com/linebender/tiny-skia)               | BSD-3-Clause      | Draws the settings window on the CPU                               |
+| [tiny-skia](https://github.com/linebender/tiny-skia)               | BSD-3-Clause      | Draws the recording overlay                                        |
 | [winit](https://github.com/rust-windowing/winit)                   | Apache-2.0        | Settings window                                                    |
 | [windows-rs](https://github.com/microsoft/windows-rs)              | MIT or Apache-2.0 | Win32 calls, key and mouse hook                                    |
 | [cpal](https://github.com/RustAudio/cpal)                          | Apache-2.0        | Microphone capture                                                 |
